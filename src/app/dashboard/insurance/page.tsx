@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -30,6 +31,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { UploadInsuranceDocumentModal } from "./components/upload-insurance-document-modal";
 
 const mockDocuments: any[] = [];
 
@@ -51,14 +53,17 @@ const StatusBadge = ({ status }: { status: string }) => {
 
 export default function InsurancePage() {
     const [loading, setLoading] = React.useState(true);
+    const [isUploadModalOpen, setIsUploadModalOpen] = React.useState(false);
+
 
     React.useEffect(() => {
         // Simulate loading
-        const timer = setTimeout(() => setLoading(false), 3000);
+        const timer = setTimeout(() => setLoading(false), 1000);
         return () => clearTimeout(timer);
     }, []);
 
   return (
+    <>
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Insurance Documentation</h1>
@@ -68,7 +73,7 @@ export default function InsurancePage() {
             Active: <span className="font-semibold">0</span> |
             Pending: <span className="font-semibold">0</span>
           </div>
-          <Button>
+          <Button onClick={() => setIsUploadModalOpen(true)}>
             <Plus className="mr-2 h-4 w-4" /> Upload Document
           </Button>
         </div>
@@ -170,5 +175,10 @@ export default function InsurancePage() {
         </CardContent>
       </Card>
     </div>
+    <UploadInsuranceDocumentModal
+        isOpen={isUploadModalOpen}
+        onClose={() => setIsUploadModalOpen(false)}
+      />
+    </>
   );
 }
