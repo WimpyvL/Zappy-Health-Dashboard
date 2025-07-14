@@ -18,6 +18,8 @@ import {
   Plus,
   CheckCircle2,
   Clock,
+  ClipboardList,
+  ClipboardPlus,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 
@@ -134,6 +136,41 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
       </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card className="shadow-md border-l-4 border-orange-500">
+          <CardHeader className="flex flex-row items-center justify-between">
+             <div className="flex items-center gap-3">
+                <ClipboardList className="h-6 w-6 text-orange-700" />
+                <CardTitle className="text-lg text-orange-900">Recent Orders</CardTitle>
+             </div>
+            <Button size="sm">
+              <Plus className="mr-2 h-4 w-4" /> New Order
+            </Button>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center justify-center text-center h-48">
+            <Package className="h-16 w-16 text-orange-400 mb-4" />
+            <p className="text-orange-800 font-medium">No recent orders</p>
+          </CardContent>
+        </Card>
+        
+        <Card className="shadow-md border-l-4 border-purple-500">
+          <CardHeader className="flex flex-row items-center justify-between">
+             <div className="flex items-center gap-3">
+                <ClipboardPlus className="h-6 w-6 text-purple-700" />
+                <CardTitle className="text-lg text-purple-900">Pending Consultations</CardTitle>
+             </div>
+            <Button size="sm">
+               View All
+            </Button>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center justify-center text-center h-48">
+            <MessageSquarePlus className="h-16 w-16 text-purple-400 mb-4" />
+            <p className="text-purple-800 font-medium">No pending consultations</p>
+          </CardContent>
+        </Card>
+      </div>
+
     </div>
   )
 }
