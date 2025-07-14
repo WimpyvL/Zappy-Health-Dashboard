@@ -5,12 +5,21 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Users,
-  ClipboardList,
-  CreditCard,
-  LifeBuoy,
+  CalendarDays,
+  Package,
+  FileText,
+  ClipboardCheck,
+  Shield,
+  MessageSquare,
+  Contact,
+  Store,
+  Tag,
+  Ticket,
+  Box,
+  Library,
   Settings,
-  Calendar,
-  ClipboardPlus,
+  History,
+  Palette,
 } from "lucide-react";
 import {
   SidebarMenu,
@@ -21,51 +30,61 @@ import {
   SidebarSeparator,
 } from "@/components/ui/sidebar";
 
-const mainLinks = [
-  {
-    href: "/dashboard",
-    label: "Dashboard",
-    icon: LayoutDashboard,
-  },
-  {
-    href: "/dashboard/patients",
-    label: "Patients",
-    icon: Users,
-  },
-   {
-    href: "/dashboard/consultations",
-    label: "Consultations",
-    icon: ClipboardPlus,
-  },
-  {
-    href: "/dashboard/orders",
-    label: "Orders",
-    icon: ClipboardList,
-  },
-  {
-    href: "/dashboard/billing",
-    label: "Billing",
-    icon: CreditCard,
-  },
-  {
-    href: "/dashboard/calendar",
-    label: "Calendar",
-    icon: Calendar,
-  },
+const navGroups = [
+    {
+        label: "Overview",
+        items: [
+            { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+        ]
+    },
+    {
+        label: "Patient Care",
+        items: [
+            { href: "/dashboard/patients", label: "Patients", icon: Users },
+            { href: "/dashboard/sessions", label: "Sessions", icon: CalendarDays },
+        ]
+    },
+    {
+        label: "Orders & Billing",
+        items: [
+            { href: "/dashboard/orders", label: "Orders", icon: Package },
+            { href: "/dashboard/invoices", label: "Invoices", icon: FileText },
+        ]
+    },
+    {
+        label: "Management",
+        items: [
+            { href: "/dashboard/tasks", label: "Tasks", icon: ClipboardCheck },
+            { href: "/dashboard/insurance", label: "Insurance", icon: Shield },
+            { href: "/dashboard/messages", label: "Messages", icon: MessageSquare },
+        ]
+    },
+    {
+        label: "Admin",
+        items: [
+            { href: "/dashboard/admin/providers", label: "Providers", icon: Contact },
+            { href: "/dashboard/admin/pharmacies", label: "Pharmacies", icon: Store },
+            { href: "/dashboard/admin/tags", label: "Tags", icon: Tag },
+            { href: "/dashboard/admin/discounts", label: "Discounts", icon: Ticket },
+        ]
+    },
+    {
+        label: "Products & Content",
+        items: [
+            { href: "/dashboard/admin/products", label: "Products & Subscriptions", icon: Box },
+            { href: "/dashboard/admin/resources", label: "Educational Resources", icon: Library },
+        ]
+    },
+    {
+        label: "System",
+        items: [
+            { href: "/dashboard/settings", label: "Settings", icon: Settings },
+            { href: "/dashboard/admin/audit-log", label: "Audit Log", icon: History },
+            { href: "/dashboard/admin/ui-components", label: "UI Components", icon: Palette },
+        ]
+    }
 ];
 
-const secondaryLinks = [
-  {
-    href: "/dashboard/settings",
-    label: "Settings",
-    icon: Settings,
-  },
-  {
-    href: "/dashboard/support",
-    label: "Support",
-    icon: LifeBuoy,
-  },
-];
 
 export function DashboardNav() {
   const pathname = usePathname();
@@ -76,49 +95,32 @@ export function DashboardNav() {
 
   return (
     <>
-      <SidebarGroup>
-        <SidebarGroupLabel>Main Menu</SidebarGroupLabel>
-        <SidebarMenu>
-          {mainLinks.map((link) => (
-            <SidebarMenuItem key={link.href}>
-              <SidebarMenuButton
-                asChild
-                isActive={isActive(link.href)}
-                tooltip={{
-                  children: link.label,
-                }}
-              >
-                <Link href={link.href}>
-                  <link.icon />
-                  <span>{link.label}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
-      </SidebarGroup>
-      <SidebarSeparator />
-      <SidebarGroup>
-         <SidebarGroupLabel>System</SidebarGroupLabel>
-          <SidebarMenu>
-          {secondaryLinks.map((link) => (
-            <SidebarMenuItem key={link.href}>
-              <SidebarMenuButton
-                asChild
-                isActive={isActive(link.href)}
-                tooltip={{
-                  children: link.label,
-                }}
-              >
-                <Link href={link.href}>
-                  <link.icon />
-                  <span>{link.label}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
-      </SidebarGroup>
+      {navGroups.map((group, index) => (
+        <React.Fragment key={group.label}>
+          {index > 0 && <SidebarSeparator />}
+          <SidebarGroup>
+            <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+            <SidebarMenu>
+              {group.items.map((link) => (
+                <SidebarMenuItem key={link.href}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isActive(link.href)}
+                    tooltip={{
+                      children: link.label,
+                    }}
+                  >
+                    <Link href={link.href}>
+                      <link.icon />
+                      <span>{link.label}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroup>
+        </React.Fragment>
+      ))}
     </>
   );
 }
