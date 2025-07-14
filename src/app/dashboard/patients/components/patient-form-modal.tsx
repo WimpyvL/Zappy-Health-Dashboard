@@ -28,9 +28,29 @@ import { CalendarIcon } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
-interface AddPatientModalProps {
+type Patient = {
+  id: string;
+  name: string;
+  email: string;
+  status: "Active" | "Inactive" | "Pending";
+  plan: string;
+  lastActive: string;
+  orders: number;
+  tags: string[];
+  phone?: string;
+  dob?: Date;
+  address?: string;
+  pharmacy?: string;
+  insuranceProvider?: string;
+  policyNumber?: string;
+  groupNumber?: string;
+  insuranceHolder?: string;
+};
+
+interface PatientFormModalProps {
   isOpen: boolean;
   onClose: () => void;
+  patient?: Patient | null;
 }
 
 const formSchema = z.object({
@@ -48,23 +68,49 @@ const formSchema = z.object({
   status: z.string().min(1, "Patient status is required"),
 });
 
-export function AddPatientModal({ isOpen, onClose }: AddPatientModalProps) {
+export function PatientFormModal({ isOpen, onClose, patient }: PatientFormModalProps) {
+  const isEditMode = !!patient;
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      firstName: "",
-      lastName: "",
-      email: "",
-      phone: "",
-      address: "",
-      pharmacy: "",
-      insuranceProvider: "",
-      policyNumber: "",
-      groupNumber: "",
-      insuranceHolder: "",
-      status: "Active",
-    },
   });
+
+  React.useEffect(() => {
+    if (isEditMode && patient) {
+      const [firstName, ...lastNameParts] = patient.name.split(" ");
+      const lastName = lastNameParts.join(" ");
+      
+      form.reset({
+        firstName: firstName,
+        lastName: lastName,
+        email: patient.email,
+        phone: patient.phone || '',
+        dob: patient.dob,
+        address: patient.address || '',
+        pharmacy: patient.pharmacy || '',
+        insuranceProvider: patient.insuranceProvider || '',
+        policyNumber: patient.policyNumber || '',
+        groupNumber: patient.groupNumber || '',
+        insuranceHolder: patient.insuranceHolder || '',
+        status: patient.status || "Active",
+      });
+    } else {
+      form.reset({
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        dob: undefined,
+        address: "",
+        pharmacy: "",
+        insuranceProvider: "",
+        policyNumber: "",
+        groupNumber: "",
+        insuranceHolder: "",
+        status: "Active",
+      });
+    }
+  }, [patient, isEditMode, form]);
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     console.log("Form values:", values);
@@ -76,7 +122,7 @@ export function AddPatientModal({ isOpen, onClose }: AddPatientModalProps) {
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-[800px] p-0">
         <DialogHeader className="p-6 pb-0">
-          <DialogTitle className="text-xl">Add New Patient</DialogTitle>
+          <DialogTitle className="text-xl">{isEditMode ? "Edit Patient" : "Add New Patient"}</DialogTitle>
         </DialogHeader>
         <div className="p-6 max-h-[70vh] overflow-y-auto">
           <Form {...form}>
@@ -299,7 +345,7 @@ export function AddPatientModal({ isOpen, onClose }: AddPatientModalProps) {
             </Button>
           </DialogClose>
           <Button type="submit" onClick={form.handleSubmit(onSubmit)}>
-            Add Patient
+            {isEditMode ? "Save Changes" : "Add Patient"}
           </Button>
         </DialogFooter>
       </DialogContent>

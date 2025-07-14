@@ -16,8 +16,6 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import {
   DropdownMenu,
@@ -42,9 +40,28 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { AddPatientModal } from "./components/add-patient-modal";
+import { PatientFormModal } from "./components/patient-form-modal";
 
-const mockPatients = [
+type Patient = {
+  id: string;
+  name: string;
+  email: string;
+  status: "Active" | "Inactive" | "Pending";
+  plan: string;
+  lastActive: string;
+  orders: number;
+  tags: string[];
+  phone?: string;
+  dob?: Date;
+  address?: string;
+  pharmacy?: string;
+  insuranceProvider?: string;
+  policyNumber?: string;
+  groupNumber?: string;
+  insuranceHolder?: string;
+};
+
+const mockPatients: Patient[] = [
   {
     id: "pat_1",
     name: "John Doe",
@@ -54,6 +71,9 @@ const mockPatients = [
     lastActive: "N/A",
     orders: 0,
     tags: [],
+    phone: "1-555-123-4567",
+    dob: new Date("1990-05-15"),
+    address: "123 Main St, Anytown, USA",
   },
   // Add more mock patients here if needed
 ];
@@ -82,6 +102,22 @@ const FilterDropdown = ({
 
 export default function PatientsPage() {
   const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const [editingPatient, setEditingPatient] = React.useState<Patient | null>(null);
+
+  const handleOpenAddModal = () => {
+    setEditingPatient(null);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEditModal = (patient: Patient) => {
+    setEditingPatient(patient);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingPatient(null);
+  };
 
   return (
     <>
@@ -94,7 +130,7 @@ export default function PatientsPage() {
               Showing:{" "}
               <span className="font-semibold">{mockPatients.length}</span>
             </div>
-            <Button onClick={() => setIsModalOpen(true)}>
+            <Button onClick={handleOpenAddModal}>
               <PlusCircle className="h-4 w-4 mr-2" />
               Add Patient
             </Button>
@@ -179,6 +215,7 @@ export default function PatientsPage() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
+                          onClick={() => handleOpenEditModal(patient)}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -228,9 +265,10 @@ export default function PatientsPage() {
           </div>
         </div>
       </div>
-      <AddPatientModal
+      <PatientFormModal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={handleCloseModal}
+        patient={editingPatient}
       />
     </>
   );
