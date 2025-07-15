@@ -4,7 +4,7 @@
 import * as React from "react";
 import {
   MoreHorizontal,
-  Plus,
+  PlusCircle,
   Search,
   ChevronDown,
   Filter,
@@ -16,9 +16,6 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription
 } from "@/components/ui/card";
 import {
   DropdownMenu,
@@ -36,6 +33,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { CreateInvoiceModal } from "./components/create-invoice-modal";
 
 const mockInvoices: any[] = [
@@ -83,10 +87,11 @@ export default function InvoicesPage() {
               <div className="text-sm text-muted-foreground hidden md:block">
                   Total: <span className="font-semibold">0</span> | 
                   Paid: <span className="font-semibold">0</span> | 
-                  Overdue: <span className="font-semibold">0</span>
+                  Pending: <span className="font-semibold">0</span> |
+                  Total Amount: <span className="font-semibold">$0.00</span>
               </div>
               <Button onClick={() => setIsModalOpen(true)}>
-                  <Plus className="mr-2 h-4 w-4" /> Create Invoice
+                  <PlusCircle className="mr-2 h-4 w-4" /> Create Invoice
               </Button>
           </div>
         </div>
@@ -94,7 +99,7 @@ export default function InvoicesPage() {
         <div className="flex items-center gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search by patient, invoice #, or amount..." className="pl-9" />
+            <Input placeholder="Search invoices by patient or ID..." className="pl-9" />
           </div>
           <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -116,38 +121,24 @@ export default function InvoicesPage() {
           </Button>
         </div>
 
-        {selectedInvoices.length > 0 && (
-          <Card>
-              <CardHeader className="p-4">
-                  <div className="flex items-center justify-between">
-                      <p className="text-sm text-muted-foreground">{selectedInvoices.length} selected</p>
-                      <div className="flex gap-2">
-                          <Button variant="outline" size="sm">Mark Paid</Button>
-                          <Button variant="outline" size="sm">Mark Pending</Button>
-                          <Button variant="outline" size="sm">Send Reminders</Button>
-                          <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">Delete</Button>
-                      </div>
-                  </div>
-              </CardHeader>
-          </Card>
-        )}
-
         <Card>
           <CardContent className="p-0">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[40px]">
-                      <Checkbox
-                          checked={selectedInvoices.length === mockInvoices.length && mockInvoices.length > 0}
-                          onCheckedChange={handleSelectAll}
-                      />
+                   <TableHead className="w-[40px]">
+                    <Checkbox
+                        checked={selectedInvoices.length === mockInvoices.length && mockInvoices.length > 0}
+                        onCheckedChange={handleSelectAll}
+                    />
                   </TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Customer</TableHead>
                   <TableHead>Invoice #</TableHead>
-                  <TableHead>Patient</TableHead>
-                  <TableHead>Amount</TableHead>
-                  <TableHead>Due Date</TableHead>
+                  <TableHead>Product/Plan</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Discount</TableHead>
                   <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -161,34 +152,13 @@ export default function InvoicesPage() {
                               onCheckedChange={() => handleSelect(invoice.id)}
                           />
                       </TableCell>
-                      <TableCell className="font-medium">{invoice.number}</TableCell>
-                      <TableCell>{invoice.patientName}</TableCell>
-                      <TableCell>${invoice.amount.toFixed(2)}</TableCell>
-                      <TableCell>{invoice.dueDate}</TableCell>
-                      <TableCell>
-                        <StatusBadge status={invoice.status} />
-                      </TableCell>
-                      <TableCell>
-                         <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem>View Details</DropdownMenuItem>
-                            <DropdownMenuItem>Send Reminder</DropdownMenuItem>
-                            <DropdownMenuItem><Download className="h-4 w-4 mr-2" /> Download PDF</DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
+                      {/* Cells with data */}
                     </TableRow>
                   ))
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-48 text-center text-muted-foreground">
-                      No invoices found.
+                    <TableCell colSpan={9} className="h-48 text-center text-muted-foreground">
+                      No invoices found
                     </TableCell>
                   </TableRow>
                 )}
@@ -196,6 +166,34 @@ export default function InvoicesPage() {
             </Table>
           </CardContent>
         </Card>
+
+         <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <div>Showing 0 to 0 of 0 results</div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span>Show:</span>
+              <Select defaultValue="10">
+                <SelectTrigger className="w-[70px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                </SelectContent>
+              </Select>
+              <span>per page</span>
+            </div>
+            <div className="flex gap-1">
+              <Button variant="outline" size="icon" className="h-8 w-8" disabled>
+                <ChevronDown className="h-4 w-4 rotate-90" />
+              </Button>
+              <Button variant="outline" size="icon" className="h-8 w-8" disabled>
+                <ChevronDown className="h-4 w-4 -rotate-90" />
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
       <CreateInvoiceModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </>
