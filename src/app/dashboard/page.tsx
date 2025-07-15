@@ -139,33 +139,6 @@ export default function DashboardPage() {
         />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Firestore Backend Example</CardTitle>
-          <CardDescription>
-            This form demonstrates writing data to your Firestore database using
-            a Genkit flow. (Currently disabled due to build issues).
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex w-full max-w-sm items-center space-x-2">
-            <Input
-              type="text"
-              placeholder="Enter text to save"
-              value={firestoreText}
-              onChange={(e) => setFirestoreText(e.target.value)}
-              disabled={true}
-            />
-            <Button
-              onClick={handleSaveToFirestore}
-              disabled={true}
-            >
-              Save to Firestore
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="shadow-md bg-gradient-to-br from-cyan-50 to-blue-100 border-cyan-200">
           <CardHeader className="flex flex-row items-center justify-between">
