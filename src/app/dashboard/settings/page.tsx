@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -38,6 +39,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import { AccountSettingsForm } from "./components/account-settings-form";
 
 const settingsTabs = [
     { value: "forms", label: "Forms", icon: FileText },
@@ -54,7 +56,7 @@ export default function SettingsPage() {
     <div className="flex flex-col gap-6">
       <h1 className="text-3xl font-bold">Settings</h1>
       
-      <Tabs defaultValue="forms" className="w-full">
+      <Tabs defaultValue="account" className="w-full">
         <TabsList className="grid w-full grid-cols-7">
             {settingsTabs.map(tab => (
                 <TabsTrigger key={tab.value} value={tab.value} className="flex items-center gap-2">
@@ -125,7 +127,9 @@ export default function SettingsPage() {
                 </CardContent>
             </Card>
         </TabsContent>
-        <TabsContent value="account">Account settings will go here.</TabsContent>
+        <TabsContent value="account" className="mt-6">
+          <AccountSettingsForm />
+        </TabsContent>
         <TabsContent value="referrals">Referrals management will go here.</TabsContent>
         <TabsContent value="note_templates">Note templates management will go here.</TabsContent>
         <TabsContent value="ai_llm_settings">AI / LLM settings will go here.</TabsContent>
