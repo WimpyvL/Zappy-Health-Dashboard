@@ -8,7 +8,6 @@ import {
   Search,
   ChevronDown,
   Filter,
-  Download,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -41,10 +40,38 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CreateInvoiceModal } from "./components/create-invoice-modal";
+import { useToast } from "@/hooks/use-toast";
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, getDocs, addDoc, query, orderBy, Timestamp } from "firebase/firestore";
+import { Skeleton } from "@/components/ui/skeleton";
+import { format } from "date-fns";
 
-const mockInvoices: any[] = [
-  // Empty to show the empty state as per design
-];
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyBVV_vq5fjNSASYQndmbRbEtlfyOieFVTs",
+  authDomain: "zappy-health-c1kob.firebaseapp.com",
+  databaseURL: "https://zappy-health-c1kob-default-rtdb.firebaseio.com",
+  projectId: "zappy-health-c1kob",
+  storageBucket: "zappy-health-c1kob.appspot.com",
+  messagingSenderId: "833435237612",
+  appId: "1:833435237612:web:53731373b2ad7568f279c9"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+type Invoice = {
+  id: string;
+  patientName: string;
+  dueDate: string;
+  subscriptionPlan?: string;
+  lineItems: { product: string; description: string; quantity: number; price: number }[];
+  discountAmount?: number;
+  taxRate?: number;
+  status: "Paid" | "Pending" | "Overdue" | "Draft";
+  amount: number;
+};
 
 const StatusBadge = ({ status }: { status: string }) => {
   const statusMap: { [key: string]: string } = {
@@ -61,22 +88,89 @@ const StatusBadge = ({ status }: { status: string }) => {
 };
 
 export default function InvoicesPage() {
+  const [invoices, setInvoices] = React.useState<Invoice[]>([]);
+  const [loading, setLoading] = React.useState(true);
   const [selectedInvoices, setSelectedInvoices] = React.useState<string[]>([]);
   const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const { toast } = useToast();
+
+  const fetchInvoices = async () => {
+    setLoading(true);
+    try {
+      const invoicesCollection = collection(db, "invoices");
+      const invoiceSnapshot = await getDocs(query(invoicesCollection, orderBy("dueDate", "desc")));
+      const invoiceList = invoiceSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          ...data,
+          dueDate: data.dueDate ? format(data.dueDate.toDate(), "MMM dd, yyyy") : "N/A",
+        } as Invoice;
+      });
+      setInvoices(invoiceList);
+    } catch (error) {
+      console.error("Error fetching invoices: ", error);
+      toast({
+        variant: "destructive",
+        title: "Error fetching invoices",
+        description: "Could not retrieve invoice data from the database.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchInvoices();
+  }, []);
+
+  const handleCreateInvoice = async (values: Omit<Invoice, "id" | "status" | "amount">) => {
+    try {
+        const subtotal = values.lineItems.reduce((acc, item) => acc + item.quantity * item.price, 0);
+        const totalAfterDiscount = subtotal - (values.discountAmount || 0);
+        const taxAmount = (totalAfterDiscount > 0 ? totalAfterDiscount : 0) * ((values.taxRate || 0) / 100);
+        const total = totalAfterDiscount + taxAmount;
+
+      await addDoc(collection(db, "invoices"), {
+        ...values,
+        dueDate: Timestamp.fromDate(new Date(values.dueDate)),
+        status: "Pending",
+        amount: total,
+        createdAt: Timestamp.now(),
+      });
+      toast({
+        title: "Invoice Created",
+        description: `A new invoice for ${values.patientName} has been created.`,
+      });
+      fetchInvoices();
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error("Error creating invoice: ", error);
+      toast({
+        variant: "destructive",
+        title: "Error Creating Invoice",
+        description: "An error occurred while creating the invoice.",
+      });
+    }
+  };
 
   const handleSelectAll = (checked: boolean | 'indeterminate') => {
     if (checked === true) {
-      setSelectedInvoices(mockInvoices.map(invoice => invoice.id));
+      setSelectedInvoices(invoices.map(invoice => invoice.id));
     } else {
       setSelectedInvoices([]);
     }
   };
 
   const handleSelect = (id: string) => {
-    setSelectedInvoices(prev => 
+    setSelectedInvoices(prev =>
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
   };
+  
+  const totalAmount = invoices.reduce((acc, invoice) => acc + (invoice.amount || 0), 0);
+  const paidInvoices = invoices.filter(inv => inv.status === 'Paid').length;
+  const pendingInvoices = invoices.filter(inv => inv.status === 'Pending').length;
 
   return (
     <>
@@ -85,10 +179,10 @@ export default function InvoicesPage() {
           <h1 className="text-3xl font-bold">Invoices</h1>
           <div className="flex items-center gap-4">
               <div className="text-sm text-muted-foreground hidden md:block">
-                  Total: <span className="font-semibold">0</span> | 
-                  Paid: <span className="font-semibold">0</span> | 
-                  Pending: <span className="font-semibold">0</span> |
-                  Total Amount: <span className="font-semibold">$0.00</span>
+                  Total: <span className="font-semibold">{invoices.length}</span> |
+                  Paid: <span className="font-semibold">{paidInvoices}</span> |
+                  Pending: <span className="font-semibold">{pendingInvoices}</span> |
+                  Total Amount: <span className="font-semibold">${totalAmount.toFixed(2)}</span>
               </div>
               <Button onClick={() => setIsModalOpen(true)}>
                   <PlusCircle className="mr-2 h-4 w-4" /> Create Invoice
@@ -128,11 +222,11 @@ export default function InvoicesPage() {
                 <TableRow>
                    <TableHead className="w-[40px]">
                     <Checkbox
-                        checked={selectedInvoices.length === mockInvoices.length && mockInvoices.length > 0}
+                        checked={selectedInvoices.length === invoices.length && invoices.length > 0}
                         onCheckedChange={handleSelectAll}
                     />
                   </TableHead>
-                  <TableHead>Date</TableHead>
+                  <TableHead>Due Date</TableHead>
                   <TableHead>Customer</TableHead>
                   <TableHead>Invoice #</TableHead>
                   <TableHead>Product/Plan</TableHead>
@@ -143,8 +237,22 @@ export default function InvoicesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {mockInvoices.length > 0 ? (
-                  mockInvoices.map((invoice) => (
+                {loading ? (
+                  Array.from({ length: 3 }).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><Checkbox disabled/></TableCell>
+                      <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-28" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-12" /></TableCell>
+                      <TableCell><Skeleton className="h-8 w-8" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : invoices.length > 0 ? (
+                  invoices.map((invoice) => (
                     <TableRow key={invoice.id}>
                       <TableCell>
                           <Checkbox
@@ -152,7 +260,28 @@ export default function InvoicesPage() {
                               onCheckedChange={() => handleSelect(invoice.id)}
                           />
                       </TableCell>
-                      {/* Cells with data */}
+                      <TableCell>{invoice.dueDate}</TableCell>
+                      <TableCell>{invoice.patientName}</TableCell>
+                      <TableCell className="font-mono text-xs">{invoice.id.substring(0, 8)}</TableCell>
+                      <TableCell>{invoice.subscriptionPlan || invoice.lineItems[0]?.product}</TableCell>
+                      <TableCell><StatusBadge status={invoice.status} /></TableCell>
+                      <TableCell className="font-medium">${invoice.amount?.toFixed(2)}</TableCell>
+                      <TableCell>${invoice.discountAmount?.toFixed(2) || '0.00'}</TableCell>
+                       <TableCell>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                                <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem>View Details</DropdownMenuItem>
+                                <DropdownMenuItem>Mark as Paid</DropdownMenuItem>
+                                <DropdownMenuItem>Send Reminder</DropdownMenuItem>
+                                <DropdownMenuItem className="text-destructive">Delete</DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
                     </TableRow>
                   ))
                 ) : (
@@ -168,7 +297,7 @@ export default function InvoicesPage() {
         </Card>
 
          <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <div>Showing 0 to 0 of 0 results</div>
+          <div>Showing 1 to {invoices.length} of {invoices.length} results</div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <span>Show:</span>
@@ -185,17 +314,17 @@ export default function InvoicesPage() {
               <span>per page</span>
             </div>
             <div className="flex gap-1">
-              <Button variant="outline" size="icon" className="h-8 w-8" disabled>
+              <Button variant="outline" size="icon" className="h-8 w-8" disabled={invoices.length === 0}>
                 <ChevronDown className="h-4 w-4 rotate-90" />
               </Button>
-              <Button variant="outline" size="icon" className="h-8 w-8" disabled>
+              <Button variant="outline" size="icon" className="h-8 w-8" disabled={invoices.length === 0}>
                 <ChevronDown className="h-4 w-4 -rotate-90" />
               </Button>
             </div>
           </div>
         </div>
       </div>
-      <CreateInvoiceModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <CreateInvoiceModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSubmit={handleCreateInvoice} />
     </>
   );
 }

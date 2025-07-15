@@ -32,6 +32,7 @@ import { Separator } from "@/components/ui/separator";
 interface CreateInvoiceModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSubmit: (values: any) => void;
 }
 
 const formSchema = z.object({
@@ -39,8 +40,8 @@ const formSchema = z.object({
   dueDate: z.date({ required_error: "Due date is required." }),
   subscriptionPlan: z.string().optional(),
   lineItems: z.array(z.object({
-    product: z.string(),
-    description: z.string().max(150, "Description cannot exceed 150 characters."),
+    product: z.string().min(1, "Product is required"),
+    description: z.string().max(150, "Description cannot exceed 150 characters.").optional(),
     quantity: z.preprocess((a) => parseInt(z.string().parse(a), 10), z.number().min(1)),
     price: z.preprocess((a) => parseFloat(z.string().parse(a) || '0'), z.number().min(0)),
   })).min(1, "At least one line item is required."),
@@ -48,7 +49,7 @@ const formSchema = z.object({
   taxRate: z.preprocess((a) => (a === '' ? 0 : parseFloat(z.string().parse(a))), z.number().min(0).max(100).optional()),
 });
 
-export function CreateInvoiceModal({ isOpen, onClose }: CreateInvoiceModalProps) {
+export function CreateInvoiceModal({ isOpen, onClose, onSubmit }: CreateInvoiceModalProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -78,8 +79,8 @@ export function CreateInvoiceModal({ isOpen, onClose }: CreateInvoiceModalProps)
   const taxAmount = (totalAfterDiscount > 0 ? totalAfterDiscount : 0) * (taxRate / 100);
   const total = totalAfterDiscount + taxAmount;
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    console.log("Invoice created:", { ...values, subtotal, taxAmount, total });
+  const handleSubmit = (values: z.infer<typeof formSchema>) => {
+    onSubmit({ ...values, subtotal, taxAmount, total });
     onClose();
     form.reset();
   };
@@ -95,7 +96,7 @@ export function CreateInvoiceModal({ isOpen, onClose }: CreateInvoiceModalProps)
         </DialogHeader>
         <div className="px-6 pb-6 max-h-[70vh] overflow-y-auto">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
                 <h3 className="text-sm font-medium text-muted-foreground">Customer Information</h3>
                  <div className="grid grid-cols-2 gap-4">
                     <FormField
@@ -170,12 +171,12 @@ export function CreateInvoiceModal({ isOpen, onClose }: CreateInvoiceModalProps)
                                 <FormField
                                     control={form.control}
                                     name={`lineItems.${index}.product`}
-                                    render={({ field }) => <FormItem className="col-span-4"><FormControl><Input placeholder="Product/Service" {...field} /></FormControl><Button variant="link" size="sm" className="text-xs p-0 h-auto mt-1">Switch to product list</Button></FormItem>}
+                                    render={({ field }) => <FormItem className="col-span-4"><FormControl><Input placeholder="Product/Service" {...field} /></FormControl><FormMessage /></FormItem>}
                                 />
                                 <FormField
                                     control={form.control}
                                     name={`lineItems.${index}.description`}
-                                    render={({ field }) => <FormItem className="col-span-4"><FormControl><Input placeholder="Description (up to 150 characters)" {...field} /></FormControl></FormItem>}
+                                    render={({ field }) => <FormItem className="col-span-4"><FormControl><Input placeholder="Description (optional)" {...field} /></FormControl></FormItem>}
                                 />
                                 <FormField
                                     control={form.control}
@@ -198,7 +199,7 @@ export function CreateInvoiceModal({ isOpen, onClose }: CreateInvoiceModalProps)
                 
                 <h3 className="text-sm font-medium text-muted-foreground">Discount and Tax</h3>
                 <div className="grid grid-cols-2 gap-4">
-                    <FormField control={form.control} name="discountAmount" render={({ field }) => ( <FormItem><FormLabel>Discount Amount ($)</FormLabel><FormControl><Input type="number" placeholder="0" {...field} /></FormControl></FormItem> )} />
+                    <FormField control={form.control} name="discountAmount" render={({ field }) => ( <FormItem><FormLabel>Discount Amount ($)</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl></FormItem> )} />
                     <FormField control={form.control} name="taxRate" render={({ field }) => ( <FormItem><FormLabel>Tax Rate (%)</FormLabel><FormControl><Input type="number" placeholder="0" {...field} /></FormControl></FormItem> )} />
                 </div>
                 
@@ -232,7 +233,7 @@ export function CreateInvoiceModal({ isOpen, onClose }: CreateInvoiceModalProps)
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" onClick={form.handleSubmit(onSubmit)}>
+          <Button type="submit" onClick={form.handleSubmit(handleSubmit)}>
             Create Invoice
           </Button>
         </DialogFooter>
