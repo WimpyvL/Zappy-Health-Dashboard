@@ -32,6 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { NewMessageModal } from "./components/new-message-modal";
+import { ViewMessageModal } from "./components/view-message-modal";
 
 type Message = {
     id: string;
@@ -40,7 +41,7 @@ type Message = {
     preview: string;
     time: string;
     unread: boolean;
-}
+};
 
 const mockMessages: Message[] = [
     {
@@ -48,7 +49,7 @@ const mockMessages: Message[] = [
         name: "John Doe",
         subject: "Patient Check-in",
         preview: "Thank you for the appointment reminder",
-        time: "1:25 AM",
+        time: "2:00 AM",
         unread: true,
     },
     {
@@ -56,7 +57,7 @@ const mockMessages: Message[] = [
         name: "Jane Smith",
         subject: "Insurance Question",
         preview: "Can you help with my coverage?",
-        time: "12:25 AM",
+        time: "1:00 AM",
         unread: false,
     },
     {
@@ -64,13 +65,20 @@ const mockMessages: Message[] = [
         name: "Bob Johnson",
         subject: "Prescription Refill",
         preview: "I need to refill my medication",
-        time: "11:25 PM",
+        time: "12:00 AM",
         unread: true,
     }
 ];
 
 export default function MessagesPage() {
-  const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const [isNewMessageModalOpen, setIsNewMessageModalOpen] = React.useState(false);
+  const [isViewMessageModalOpen, setIsViewMessageModalOpen] = React.useState(false);
+  const [selectedMessage, setSelectedMessage] = React.useState<Message | null>(null);
+
+  const handleViewMessage = (message: Message) => {
+    setSelectedMessage(message);
+    setIsViewMessageModalOpen(true);
+  };
 
   return (
     <>
@@ -84,7 +92,7 @@ export default function MessagesPage() {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input placeholder="Search conversations..." className="pl-9" />
               </div>
-              <Button onClick={() => setIsModalOpen(true)}>New Message</Button>
+              <Button onClick={() => setIsNewMessageModalOpen(true)}>New Message</Button>
           </div>
 
         <Card>
@@ -102,8 +110,8 @@ export default function MessagesPage() {
               </TableHeader>
               <TableBody>
                 {mockMessages.map((message) => (
-                  <TableRow key={message.id}>
-                    <TableCell>
+                  <TableRow key={message.id} onClick={() => handleViewMessage(message)} className="cursor-pointer">
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <Checkbox />
                     </TableCell>
                     <TableCell>
@@ -152,7 +160,12 @@ export default function MessagesPage() {
           </div>
         </div>
       </div>
-      <NewMessageModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <NewMessageModal isOpen={isNewMessageModalOpen} onClose={() => setIsNewMessageModalOpen(false)} />
+      <ViewMessageModal 
+        isOpen={isViewMessageModalOpen} 
+        onClose={() => setIsViewMessageModalOpen(false)}
+        message={selectedMessage}
+      />
     </>
   );
 }
