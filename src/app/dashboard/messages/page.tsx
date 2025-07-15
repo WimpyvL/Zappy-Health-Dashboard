@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -30,6 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { NewMessageModal } from "./components/new-message-modal";
 
 type Message = {
     id: string;
@@ -68,84 +70,89 @@ const mockMessages: Message[] = [
 ];
 
 export default function MessagesPage() {
+  const [isModalOpen, setIsModalOpen] = React.useState(false);
+
   return (
-    <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between">
-            <h1 className="text-3xl font-bold">Messages</h1>
-        </div>
-
-        <div className="flex items-center gap-4">
-            <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search conversations..." className="pl-9" />
-            </div>
-            <Button>New Message</Button>
-        </div>
-
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[40px]">
-                  <Checkbox />
-                </TableHead>
-                <TableHead>Name</TableHead>
-                <TableHead>Message</TableHead>
-                <TableHead className="text-right">Time</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {mockMessages.map((message) => (
-                <TableRow key={message.id}>
-                  <TableCell>
-                    <Checkbox />
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {message.unread && <span className="h-2 w-2 rounded-full bg-blue-500"></span>}
-                      <span className="font-medium">{message.name}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <span className="font-semibold">{message.subject}</span>
-                    <span className="text-muted-foreground"> - {message.preview}</span>
-                  </TableCell>
-                  <TableCell className="text-right text-muted-foreground text-sm">{message.time}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <div>Showing 1 to {mockMessages.length} of {mockMessages.length} results</div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span>Show:</span>
-            <Select defaultValue="10">
-              <SelectTrigger className="w-[70px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="10">10</SelectItem>
-                <SelectItem value="25">25</SelectItem>
-                <SelectItem value="50">50</SelectItem>
-              </SelectContent>
-            </Select>
-            <span>per page</span>
+    <>
+      <div className="flex flex-col gap-6">
+          <div className="flex items-center justify-between">
+              <h1 className="text-3xl font-bold">Messages</h1>
           </div>
-          <div className="flex gap-1">
-            <Button variant="outline" size="icon" className="h-8 w-8">
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="icon" className="h-8 w-8">
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+
+          <div className="flex items-center gap-4">
+              <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="Search conversations..." className="pl-9" />
+              </div>
+              <Button onClick={() => setIsModalOpen(true)}>New Message</Button>
+          </div>
+
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[40px]">
+                    <Checkbox />
+                  </TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Message</TableHead>
+                  <TableHead className="text-right">Time</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {mockMessages.map((message) => (
+                  <TableRow key={message.id}>
+                    <TableCell>
+                      <Checkbox />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {message.unread && <span className="h-2 w-2 rounded-full bg-blue-500"></span>}
+                        <span className="font-medium">{message.name}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-semibold">{message.subject}</span>
+                      <span className="text-muted-foreground"> - {message.preview}</span>
+                    </TableCell>
+                    <TableCell className="text-right text-muted-foreground text-sm">{message.time}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <div>Showing 1 to {mockMessages.length} of {mockMessages.length} results</div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span>Show:</span>
+              <Select defaultValue="10">
+                <SelectTrigger className="w-[70px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                </SelectContent>
+              </Select>
+              <span>per page</span>
+            </div>
+            <div className="flex gap-1">
+              <Button variant="outline" size="icon" className="h-8 w-8">
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" className="h-8 w-8">
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
-    </div>
+      <NewMessageModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+    </>
   );
 }
