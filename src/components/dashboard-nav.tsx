@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -91,7 +92,11 @@ export function DashboardNav() {
   const pathname = usePathname();
 
   const isActive = (href: string) => {
-    return pathname === href;
+    // Exact match for the dashboard, otherwise startsWith for nested routes
+    if (href === "/dashboard") {
+      return pathname === href;
+    }
+    return pathname.startsWith(href);
   };
 
   return (
