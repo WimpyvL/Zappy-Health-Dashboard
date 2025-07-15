@@ -29,6 +29,7 @@ import { Switch } from "@/components/ui/switch";
 interface CreateFormModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onFormCreated: () => void;
 }
 
 const formSchema = z.object({
@@ -39,7 +40,7 @@ const formSchema = z.object({
   isActive: z.boolean().default(true),
 });
 
-export function CreateFormModal({ isOpen, onClose }: CreateFormModalProps) {
+export function CreateFormModal({ isOpen, onClose, onFormCreated }: CreateFormModalProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -53,7 +54,7 @@ export function CreateFormModal({ isOpen, onClose }: CreateFormModalProps) {
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     console.log("Form values:", values);
-    onClose();
+    onFormCreated();
     form.reset();
   };
 

@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/tabs";
 import { AccountSettingsForm } from "./components/account-settings-form";
 import { CreateFormModal } from "./components/create-form-modal";
+import { FormBuilderSheet } from "./components/form-builder-sheet";
 
 const settingsTabs = [
     { value: "forms", label: "Forms", icon: FileText },
@@ -54,6 +55,13 @@ const settingsTabs = [
 
 export default function SettingsPage() {
   const [isFormModalOpen, setIsFormModalOpen] = React.useState(false);
+  const [isFormBuilderOpen, setIsFormBuilderOpen] = React.useState(false);
+
+  const handleFormCreated = () => {
+    setIsFormModalOpen(false);
+    setIsFormBuilderOpen(true);
+  };
+
   return (
     <>
     <div className="flex flex-col gap-6">
@@ -135,12 +143,13 @@ export default function SettingsPage() {
         </TabsContent>
         <TabsContent value="referrals">Referrals management will go here.</TabsContent>
         <TabsContent value="note_templates">Note templates management will go here.</TabsContent>
-        <TabsContent value="ai_llm_settings">AI / LLM settings will go here.</TabsContent>
+        <TabsContent value="ai_llm_settings">AI / LLM Settings will go here.</TabsContent>
         <TabsContent value="ai_prompts">AI prompts management will go here.</TabsContent>
         <TabsContent value="analytics">Analytics dashboard will go here.</TabsContent>
       </Tabs>
     </div>
-    <CreateFormModal isOpen={isFormModalOpen} onClose={() => setIsFormModalOpen(false)} />
+    <CreateFormModal isOpen={isFormModalOpen} onClose={() => setIsFormModalOpen(false)} onFormCreated={handleFormCreated} />
+    <FormBuilderSheet isOpen={isFormBuilderOpen} onClose={() => setIsFormBuilderOpen(false)} />
     </>
   );
 }
