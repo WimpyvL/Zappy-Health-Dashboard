@@ -2,6 +2,7 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import {
   MoreHorizontal,
   PlusCircle,
@@ -77,7 +78,7 @@ type Message = {
 
 const mockPatients: Patient[] = [
   {
-    id: "pat_1",
+    id: "patient1",
     name: "John Doe",
     email: "john.doe@example.com",
     status: "Active",
@@ -216,7 +217,7 @@ export default function PatientsPage() {
                       <Checkbox />
                     </TableCell>
                     <TableCell>
-                      <div className="font-medium">{patient.name}</div>
+                      <Link href={`/dashboard/patients/${patient.id}`} className="font-medium text-primary hover:underline">{patient.name}</Link>
                       <div className="text-sm text-muted-foreground">
                         {patient.email}
                       </div>
