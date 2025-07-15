@@ -6,7 +6,7 @@
  */
 
 import {ai} from '@/ai/genkit';
-import {runFlow} from 'genkit/flow';
+import {runFlow} from 'genkit';
 import {z} from 'zod';
 import {getFirestore} from 'firebase-admin/firestore';
 
