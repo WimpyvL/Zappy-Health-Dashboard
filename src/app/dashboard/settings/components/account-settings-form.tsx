@@ -35,6 +35,7 @@ import { CalendarIcon, User, Lock, Settings } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { SecuritySettingsForm } from "./security-settings-form";
+import { AccountManagementForm } from "./account-management-form";
 
 const accountFormSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
@@ -248,7 +249,9 @@ export function AccountSettingsForm() {
           <TabsContent value="security" className="mt-6">
             <SecuritySettingsForm />
           </TabsContent>
-          <TabsContent value="account-management">Manage your subscription and billing information.</TabsContent>
+          <TabsContent value="account-management" className="mt-6">
+            <AccountManagementForm />
+          </TabsContent>
         </Tabs>
       </CardContent>
     </Card>
