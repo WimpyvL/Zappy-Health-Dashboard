@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -11,6 +12,8 @@ import {
   ArrowUp,
   ArrowDown,
   XCircle,
+  Sparkles,
+  Edit,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,9 +45,26 @@ const MedicationDosage: React.FC<MedicationDosageProps> = ({ dose, currentDose, 
         variant={currentDose === dose ? "default" : "outline"}
         size="sm"
         onClick={() => onClick(dose)}
-        className="h-8"
+        className="h-8 text-xs"
     >
         {dose}
+    </Button>
+);
+
+const FollowUpButton = ({ label, current, onClick }: { label: string; current: string; onClick: (label: string) => void; }) => (
+    <Button
+        variant={current === label ? "default" : "outline"}
+        size="sm"
+        onClick={() => onClick(label)}
+        className="h-8 text-xs"
+    >
+        {label}
+    </Button>
+);
+
+const EducationButton = ({ label }: { label: string }) => (
+    <Button variant="outline" size="sm" className="h-8 text-xs">
+        {label} <Plus className="ml-2 h-3 w-3" />
     </Button>
 );
 
@@ -60,7 +80,6 @@ export default function EditSessionPage({ params }: { params: { id: string } }) 
         </Button>
         <div>
           <h1 className="text-2xl font-bold">Review Follow-up Visit</h1>
-          <p className="text-muted-foreground">Session ID: {params.id}</p>
         </div>
       </div>
 
@@ -68,19 +87,17 @@ export default function EditSessionPage({ params }: { params: { id: string } }) 
         {/* Left Column */}
         <div className="lg:col-span-3 flex flex-col gap-6">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader>
               <CardTitle>Treatment Progress</CardTitle>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm">
-                  <Save className="mr-2 h-4 w-4" /> Save
-                </Button>
-                <Button variant="ghost" size="sm">
-                  <X className="mr-2 h-4 w-4" /> Cancel
-                </Button>
-              </div>
             </CardHeader>
             <CardContent>
-              <Textarea placeholder="Enter treatment progress notes here..." rows={5} />
+                <div className="border rounded-lg p-4 flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">No treatment progress notes yet.</p>
+                    <div className="flex gap-2">
+                        <Button variant="outline" size="sm"><Sparkles className="h-4 w-4 mr-2" /> AI Compose</Button>
+                        <Button variant="outline" size="sm"><Edit className="h-4 w-4 mr-2" /> Edit</Button>
+                    </div>
+                </div>
             </CardContent>
           </Card>
 
@@ -130,53 +147,51 @@ export default function EditSessionPage({ params }: { params: { id: string } }) 
                         <MedicationDosage key={dose} dose={dose} currentDose={currentDose} onClick={setCurrentDose} />
                     ))}
                 </div>
+                 <div className="mt-4 grid grid-cols-2 gap-4">
+                    <div>
+                    <label className="text-xs font-medium text-muted-foreground">Plan</label>
+                    <Select defaultValue="6m">
+                        <SelectTrigger>
+                        <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                        <SelectItem value="1m">1 month</SelectItem>
+                        <SelectItem value="3m">3 months</SelectItem>
+                        <SelectItem value="6m">6 months</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    </div>
+                    <div>
+                    <label className="text-xs font-medium text-muted-foreground">Approach</label>
+                    <Select defaultValue="escal">
+                        <SelectTrigger>
+                        <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="escal">Escal.</SelectItem>
+                            <SelectItem value="maint">Maint.</SelectItem>
+                            <SelectItem value="de-escal">De-Escal.</SelectItem>
+                        </SelectContent>
+                    </Select>
+                    </div>
+                </div>
+                <div className="mt-2">
+                    <label className="text-xs font-medium text-muted-foreground">Instructions</label>
+                    <div className="relative">
+                        <Input defaultValue="Inject SC once wkly, Rotate sites." className="pr-10" />
+                        <Button variant="ghost" size="icon" className="absolute top-1/2 -translate-y-1/2 right-1 h-7 w-7"><Pencil className="h-4 w-4" /></Button>
+                    </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-sm font-medium">Plan</label>
-                  <Select defaultValue="6m">
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1m">1 month</SelectItem>
-                      <SelectItem value="3m">3 months</SelectItem>
-                      <SelectItem value="6m">6 months</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <label className="text-sm font-medium">Approach</label>
-                  <Select defaultValue="escal">
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="escal">Escal.</SelectItem>
-                        <SelectItem value="maint">Maint.</SelectItem>
-                        <SelectItem value="de-escal">De-Escal.</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <div>
-                <label className="text-sm font-medium">Instructions</label>
-                <div className="relative">
-                    <Textarea defaultValue="• Inject SC once wkly, • Rotate sites." rows={2} />
-                    <Button variant="ghost" size="icon" className="absolute top-1 right-1 h-7 w-7"><Pencil className="h-4 w-4" /></Button>
-                </div>
               </div>
 
               <div className="border-t pt-4">
                 <p className="text-sm font-medium mb-2">Add New Medication</p>
                 <p className="text-xs text-muted-foreground mb-2">Select from common medications or search for others</p>
                 <div className="grid grid-cols-2 gap-2 mb-2">
-                    <Button variant="outline">Semaglutide</Button>
-                    <Button variant="outline">Metformin</Button>
-                    <Button variant="outline">Sildenafil</Button>
-                    <Button variant="outline">Tadalafil</Button>
+                    <Button variant="outline" size="sm">Semaglutide</Button>
+                    <Button variant="outline" size="sm">Metformin</Button>
+                    <Button variant="outline" size="sm">Sildenafil</Button>
+                    <Button variant="outline" size="sm">Tadalafil</Button>
                 </div>
                 <Input placeholder="Search medications..." />
               </div>
@@ -187,21 +202,24 @@ export default function EditSessionPage({ params }: { params: { id: string } }) 
         {/* Right Column */}
         <div className="lg:col-span-2 flex flex-col gap-6">
             <Card>
-                <CardHeader>
-                    <CardTitle>Patient Message</CardTitle>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle>Message to Patient</CardTitle>
+                     <div className="flex gap-2">
+                        <Button variant="outline" size="sm">
+                        <Save className="mr-2 h-4 w-4" /> Save
+                        </Button>
+                        <Button variant="ghost" size="sm">
+                        <X className="mr-2 h-4 w-4" /> Cancel
+                        </Button>
+                    </div>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="space-y-4">
                     <Textarea placeholder="Patient message..." rows={4} />
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardContent className="pt-6">
-                    <div className="mb-4">
-                        <label className="text-sm font-medium">Follow-up</label>
-                        <div className="mt-2 flex gap-2">
+                     <div>
+                        <label className="text-sm font-medium mb-2 block">Follow-up</label>
+                        <div className="flex gap-2">
                             {["2w", "4w", "6w", "Custom"].map(f => (
-                                <Button key={f} variant={currentFollowUp === f ? "default" : "outline"} onClick={() => setCurrentFollowUp(f)}>{f}</Button>
+                                <FollowUpButton key={f} label={f} current={currentFollowUp} onClick={setCurrentFollowUp} />
                             ))}
                         </div>
                     </div>
@@ -218,19 +236,15 @@ export default function EditSessionPage({ params }: { params: { id: string } }) 
                             </SelectContent>
                         </Select>
                     </div>
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardHeader>
-                    <CardTitle>Patient Education</CardTitle>
-                    <p className="text-sm text-muted-foreground">Attach relevant instructions</p>
-                </CardHeader>
-                <CardContent className="flex flex-wrap gap-2">
-                    <Badge variant="outline" className="py-1 px-3">GLP-1 Guide <Plus className="ml-2 h-3 w-3" /></Badge>
-                    <Badge variant="outline" className="py-1 px-3">ED Guide <Plus className="ml-2 h-3 w-3" /></Badge>
-                    <Badge variant="outline" className="py-1 px-3">Diet Plan <Plus className="ml-2 h-3 w-3" /></Badge>
-                    <Button variant="ghost" size="sm" className="text-primary hover:text-primary">More...</Button>
+                     <div>
+                        <label className="text-sm font-medium">Patient Education: Attach relevant instructions</label>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                           <EducationButton label="GLP-1 Guide" />
+                           <EducationButton label="ED Guide" />
+                           <EducationButton label="Diet Plan" />
+                           <Button variant="outline" size="sm" className="h-8 text-xs">More... <ChevronDown className="ml-1 h-3 w-3" /></Button>
+                        </div>
+                    </div>
                 </CardContent>
             </Card>
 
@@ -249,21 +263,26 @@ export default function EditSessionPage({ params }: { params: { id: string } }) 
                 <CardContent>
                     <Textarea 
                         rows={10} 
-                        defaultValue="Weight Management:
+                        className="text-xs leading-5"
+                        defaultValue={`Weight Management:
 • BMI 32.4, A1C 5.6%
 • Semaglutide 0.25mg wkly (6mo)
 • Metformin 500mg daily (6mo)
 • Goal: 15-20 lb loss
 
-ED:"
+ED:`}
                     />
                 </CardContent>
             </Card>
         </div>
       </div>
       
-      <div className="flex justify-between items-center bg-slate-100 p-4 rounded-lg sticky bottom-0">
-          <p className="text-sm text-slate-600">✨ AI-generated content • Review before signing</p>
+      <div className="flex justify-between items-center bg-slate-100 p-4 rounded-lg sticky bottom-0 border-t">
+          <p className="text-sm text-slate-600 flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-purple-500" /> 
+            AI-generated content • Review before signing
+            <Badge variant="outline" className="text-xs ml-2">Auto-saved</Badge>
+          </p>
           <div className="flex gap-2">
             <Button variant="outline">Cancel</Button>
             <Button>Save</Button>
