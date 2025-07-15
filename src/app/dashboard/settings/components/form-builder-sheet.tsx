@@ -46,6 +46,7 @@ import {
   CreditCard,
 } from "lucide-react";
 import { AIGenerateFormModal } from "./ai-generate-form-modal";
+import { ImportFormModal } from "./import-form-modal";
 
 interface FormBuilderSheetProps {
   isOpen: boolean;
@@ -100,6 +101,7 @@ const templateSections = [
 
 export function FormBuilderSheet({ isOpen, onClose }: FormBuilderSheetProps) {
   const [isAIGenModalOpen, setIsAIGenModalOpen] = React.useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = React.useState(false);
 
   return (
     <>
@@ -128,7 +130,7 @@ export function FormBuilderSheet({ isOpen, onClose }: FormBuilderSheetProps) {
                   <h3 className="text-sm font-semibold mb-2">QUICK START</h3>
                   <div className="flex gap-2">
                       <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => setIsAIGenModalOpen(true)}><Sparkles className="h-4 w-4 mr-2" /> AI Gen</Button>
-                      <Button variant="outline" size="sm" className="w-full justify-start"><Import className="h-4 w-4 mr-2" /> Import Form</Button>
+                      <Button variant="outline" size="sm" className="w-full justify-start" onClick={() => setIsImportModalOpen(true)}><Import className="h-4 w-4 mr-2" /> Import Form</Button>
                   </div>
               </div>
               <ScrollArea className="flex-grow">
@@ -199,6 +201,7 @@ export function FormBuilderSheet({ isOpen, onClose }: FormBuilderSheetProps) {
         </SheetContent>
       </Sheet>
       <AIGenerateFormModal isOpen={isAIGenModalOpen} onClose={() => setIsAIGenModalOpen(false)} />
+      <ImportFormModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} />
     </>
   );
 }
