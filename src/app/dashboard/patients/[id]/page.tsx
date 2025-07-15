@@ -38,6 +38,8 @@ import {
   AvatarFallback,
 } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
+import { Textarea } from "@/components/ui/textarea";
 
 const patient = {
     id: "patient1",
@@ -47,6 +49,12 @@ const patient = {
     email: "john.doe@example.com",
     phone: "123-456-7890",
     status: "Active",
+    registrationDate: "Dec 15, 2024",
+    lastLogin: "Today, 12:45 PM",
+    currentPlan: "No active subscription",
+    billingCycle: "No billing info",
+    nextBilling: "Feb 1, 2025",
+    outstandingBalance: 127.50,
 };
 
 const timelineEvents = [
@@ -54,6 +62,13 @@ const timelineEvents = [
     { date: "7/14/2025", title: "Account created", description: "Patient registered in system" },
     { date: "7/8/2025", title: "Initial consultation scheduled", description: "Upcoming appointment scheduled" },
 ];
+
+const activityLog = [
+    { date: "Dec 15, 2024", description: "Account created", user: "System" },
+    { date: "Dec 16, 2024", description: "Subscription activated", user: "System" },
+    { date: "Dec 20, 2024", description: "Payment method updated", user: "Patient" },
+    { date: "Jan 25, 2025", description: "Billing reminder sent", user: "System" },
+]
 
 const activeOrders = [
     { title: "No active medications", description: "Auto-refill • 2 refills remaining • Next: Jan 15", status: "Active", statusColor: "green" },
@@ -75,10 +90,94 @@ const tabs = [
     { name: "Billing", icon: CreditCard },
 ];
 
+function AdminToolsSidebar({ isOpen, onClose, patient }: { isOpen: boolean, onClose: () => void, patient: any }) {
+    return (
+        <Sheet open={isOpen} onOpenChange={onClose}>
+            <SheetContent className="w-[380px] sm:w-[450px] p-0 flex flex-col">
+                <SheetHeader className="p-4 border-b">
+                    <SheetTitle>Admin Tools</SheetTitle>
+                    <SheetDescription>Quick administrative actions and information for {patient.name}.</SheetDescription>
+                </SheetHeader>
+                <div className="flex-1 overflow-y-auto p-4 space-y-6">
+                    {/* Patient Information */}
+                    <div>
+                        <h3 className="text-sm font-semibold text-muted-foreground mb-2">Patient Information</h3>
+                        <Card>
+                            <CardContent className="pt-4 space-y-2 text-sm">
+                                <div className="flex justify-between"><span>Patient ID</span><span className="font-mono text-muted-foreground">{patient.id}</span></div>
+                                <div className="flex justify-between"><span>Registration</span><span>{patient.registrationDate}</span></div>
+                                <div className="flex justify-between"><span>Last Login</span><span>{patient.lastLogin}</span></div>
+                                <div className="flex justify-between items-center">
+                                    <span>Status</span>
+                                    <Badge className="bg-green-100 text-green-800 hover:bg-green-200">Active - Premium</Badge>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {/* Billing & Subscription */}
+                    <div>
+                        <h3 className="text-sm font-semibold text-muted-foreground mb-2">Billing & Subscription</h3>
+                        <Card>
+                            <CardContent className="pt-4 space-y-2 text-sm">
+                                <div className="flex justify-between"><span>Current Plan</span><span className="text-muted-foreground">{patient.currentPlan}</span></div>
+                                <div className="flex justify-between"><span>Billing Cycle</span><span className="text-muted-foreground">{patient.billingCycle}</span></div>
+                                <div className="flex justify-between"><span>Next Billing</span><span>{patient.nextBilling}</span></div>
+                                <div className="flex justify-between items-center">
+                                    <span>Outstanding Balance</span>
+                                    <span className="font-semibold text-destructive">${patient.outstandingBalance.toFixed(2)}</span>
+                                </div>
+                                <Separator className="my-2" />
+                                <div className="flex flex-col gap-2 pt-2">
+                                     <Button variant="outline" size="sm">Manage Billing</Button>
+                                     <Button variant="outline" size="sm">Change Subscription</Button>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
+
+                    {/* System Notes */}
+                    <div>
+                        <h3 className="text-sm font-semibold text-muted-foreground mb-2">System Notes</h3>
+                        <Card>
+                            <CardContent className="pt-4 space-y-2">
+                                <Textarea placeholder="Add administrative notes here..." rows={4} />
+                                <Button size="sm" className="w-full">Save Notes</Button>
+                            </CardContent>
+                        </Card>
+                    </div>
+                    
+                    {/* Activity Log */}
+                    <div>
+                        <h3 className="text-sm font-semibold text-muted-foreground mb-2">Activity Log</h3>
+                         <Card>
+                            <CardContent className="pt-4 space-y-3">
+                                {activityLog.map((log, index) => (
+                                    <div key={index} className="flex items-start text-xs">
+                                        <div className="w-20 text-muted-foreground">{log.date}</div>
+                                        <div>
+                                            <p className="font-medium">{log.description}</p>
+                                            <p className="text-muted-foreground">{log.user}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                                <Button variant="link" size="sm" className="p-0 h-auto">View Full Activity Log</Button>
+                            </CardContent>
+                        </Card>
+                    </div>
+                </div>
+            </SheetContent>
+        </Sheet>
+    )
+}
+
+
 export default function PatientDetailPage({ params }: { params: { id: string } }) {
   const [activeTab, setActiveTab] = React.useState("Overview");
+  const [isAdminPanelOpen, setIsAdminPanelOpen] = React.useState(false);
 
   return (
+    <>
     <div className="flex flex-col gap-6">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -101,7 +200,7 @@ export default function PatientDetailPage({ params }: { params: { id: string } }
             <Button variant="outline" size="sm">New Patient</Button>
             <Button variant="outline" size="sm">+ Tag</Button>
             <div className="ml-4 flex items-center gap-2">
-                <Button variant="secondary" size="sm">Admin</Button>
+                <Button variant="secondary" size="sm" onClick={() => setIsAdminPanelOpen(true)}>Admin</Button>
                 <Button size="sm">Message</Button>
             </div>
         </div>
@@ -218,5 +317,7 @@ export default function PatientDetailPage({ params }: { params: { id: string } }
         </div>
       </div>
     </div>
+    <AdminToolsSidebar isOpen={isAdminPanelOpen} onClose={() => setIsAdminPanelOpen(false)} patient={patient} />
+    </>
   );
 }
