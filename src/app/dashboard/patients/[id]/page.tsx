@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -14,6 +15,7 @@ import {
   ArrowRight,
   Briefcase,
   Sparkles,
+  Package,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
