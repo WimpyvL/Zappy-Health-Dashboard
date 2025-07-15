@@ -22,6 +22,7 @@ import { Separator } from "@/components/ui/separator";
 interface NewMessageModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onCreateConversation: (values: { to: string; subject: string; message: string; }) => void;
 }
 
 const formSchema = z.object({
@@ -45,7 +46,7 @@ const aiTemplates = [
     { label: "AI Care Plan Summary", icon: Bot },
 ];
 
-export function NewMessageModal({ isOpen, onClose }: NewMessageModalProps) {
+export function NewMessageModal({ isOpen, onClose, onCreateConversation }: NewMessageModalProps) {
   const [showTemplates, setShowTemplates] = React.useState(false);
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -53,13 +54,12 @@ export function NewMessageModal({ isOpen, onClose }: NewMessageModalProps) {
     defaultValues: {
       to: "",
       subject: "",
-      message: "Based on our assessment, here’s your personalized care plan: 1) Continue with current treatment protocol, 2) Schedule regular check-ins every 2 weeks, 3) Monitor symptoms and report any changes, 4) Maintain healthy lifestyle habits. We’ll be monitoring your progress closely and adjusting the plan as needed.",
+      message: "",
     }
   });
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    console.log("Sending message:", values);
-    onClose();
+    onCreateConversation(values);
     form.reset();
   };
 
@@ -171,7 +171,7 @@ export function NewMessageModal({ isOpen, onClose }: NewMessageModalProps) {
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" disabled onClick={form.handleSubmit(onSubmit)}>
+          <Button type="submit" onClick={form.handleSubmit(onSubmit)}>
             Send Message
           </Button>
         </DialogFooter>
