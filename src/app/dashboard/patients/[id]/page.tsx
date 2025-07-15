@@ -42,6 +42,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFo
 import { Textarea } from "@/components/ui/textarea";
 import { PatientInfoTab } from "./components/patient-info-tab";
 import { PatientOrdersTab } from "./components/patient-orders-tab";
+import { PatientBillingTab } from "./components/patient-billing-tab";
+import Link from "next/link";
+import { ViewMessageModal } from "../../messages/components/view-message-modal";
 
 const patient = {
     id: "patient1",
@@ -59,27 +62,22 @@ const patient = {
     outstandingBalance: 127.50,
 };
 
-const timelineEvents = [
-    { date: "7/15/2025", title: "Patient profile accessed", description: "Provider reviewed patient information" },
-    { date: "7/14/2025", title: "Account created", description: "Patient registered in system" },
-    { date: "7/8/2025", title: "Initial consultation scheduled", description: "Upcoming appointment scheduled" },
-];
+// This type is used by ViewMessageModal, which expects a message object.
+// We'll adapt the patient object to fit this structure for now.
+type Message = {
+  id: string;
+  name: string;
+  subject: string;
+  preview: string;
+  time: string;
+  unread: boolean;
+};
 
 const activityLog = [
     { date: "Dec 15, 2024", description: "Account created", user: "System" },
     { date: "Dec 16, 2024", description: "Subscription activated", user: "System" },
     { date: "Dec 20, 2024", description: "Payment method updated", user: "Patient" },
     { date: "Jan 25, 2025", description: "Billing reminder sent", user: "System" },
-]
-
-const activeOrders = [
-    { title: "No active medications", description: "Auto-refill • 2 refills remaining • Next: Jan 15", status: "Active", statusColor: "green" },
-    { title: "No additional medications", description: "Sent to CVS Main Street • Today 3:45 PM", status: "Sent", statusColor: "blue" },
-]
-
-const upcomingSessions = [
-    { title: "Weight Management Check-in", time: "Tomorrow • 2:00 PM • Virtual Visit" },
-    { title: "Follow-up Consultation", time: "Feb 15, 2025 • 10:30 AM • Virtual Session" },
 ]
 
 const tabs = [
@@ -175,8 +173,28 @@ function AdminToolsSidebar({ isOpen, onClose, patient }: { isOpen: boolean, onCl
 
 
 export default function PatientDetailPage({ params }: { params: { id: string } }) {
-  const [activeTab, setActiveTab] = React.useState("Orders");
+  const [activeTab, setActiveTab] = React.useState("Billing");
   const [isAdminPanelOpen, setIsAdminPanelOpen] = React.useState(false);
+  const [isMessageModalOpen, setIsMessageModalOpen] = React.useState(false);
+  const [selectedMessage, setSelectedMessage] = React.useState<Message | null>(null);
+
+   const handleOpenMessageModal = (patient: any) => {
+    const messageData: Message = {
+      id: patient.id,
+      name: patient.name,
+      subject: `Conversation with ${patient.name}`,
+      preview: 'Click to view conversation history...',
+      time: new Date().toLocaleTimeString(),
+      unread: false,
+    };
+    setSelectedMessage(messageData);
+    setIsMessageModalOpen(true);
+  };
+
+  const handleCloseMessageModal = () => {
+    setIsMessageModalOpen(false);
+    setSelectedMessage(null);
+  }
 
   return (
     <>
@@ -203,19 +221,19 @@ export default function PatientDetailPage({ params }: { params: { id: string } }
             <Button variant="outline" size="sm">+ Tag</Button>
             <div className="ml-4 flex items-center gap-2">
                 <Button variant="secondary" size="sm" onClick={() => setIsAdminPanelOpen(true)}>Admin</Button>
-                <Button size="sm">Message</Button>
+                <Button size="sm" onClick={() => handleOpenMessageModal(patient)}>Message</Button>
             </div>
         </div>
       </div>
       
       {/* Tabs */}
       <div className="border-b">
-        <nav className="-mb-px flex space-x-6">
+        <nav className="-mb-px flex space-x-6 overflow-x-auto">
           {tabs.map((tab) => (
             <button
               key={tab.name}
               onClick={() => setActiveTab(tab.name)}
-              className={`flex items-center gap-2 py-3 px-1 border-b-2 text-sm font-medium transition-colors
+              className={`flex items-center gap-2 py-3 px-1 border-b-2 text-sm font-medium transition-colors whitespace-nowrap
                 ${activeTab === tab.name
                   ? 'border-primary text-primary'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -232,7 +250,8 @@ export default function PatientDetailPage({ params }: { params: { id: string } }
       <div>
         {activeTab === 'Patient Info' && <PatientInfoTab />}
         {activeTab === 'Orders' && <PatientOrdersTab />}
-        {activeTab !== 'Patient Info' && activeTab !== 'Orders' && (
+        {activeTab === 'Billing' && <PatientBillingTab />}
+        {activeTab !== 'Patient Info' && activeTab !== 'Orders' && activeTab !== 'Billing' && (
              <Card>
                 <CardContent className="h-96 flex items-center justify-center">
                     <p className="text-muted-foreground">{activeTab} content goes here.</p>
@@ -243,6 +262,11 @@ export default function PatientDetailPage({ params }: { params: { id: string } }
 
     </div>
     <AdminToolsSidebar isOpen={isAdminPanelOpen} onClose={() => setIsAdminPanelOpen(false)} patient={patient} />
+    <ViewMessageModal 
+        isOpen={isMessageModalOpen}
+        onClose={handleCloseMessageModal}
+        message={selectedMessage}
+      />
     </>
   );
 }
