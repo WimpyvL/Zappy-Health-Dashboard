@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -34,6 +35,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
+import { DiscountFormModal } from "./components/discount-form-modal";
 
 type Discount = {
   id: string;
@@ -132,7 +134,26 @@ const StatusBadge = ({ status }: { status: Discount["status"] }) => {
 };
 
 export default function DiscountsPage() {
+  const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const [editingDiscount, setEditingDiscount] = React.useState<Discount | null>(null);
+
+  const handleOpenAddModal = () => {
+    setEditingDiscount(null);
+    setIsModalOpen(true);
+  };
+  
+  const handleOpenEditModal = (discount: Discount) => {
+    setEditingDiscount(discount);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingDiscount(null);
+  };
+
   return (
+    <>
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Discount Management</h1>
@@ -142,7 +163,7 @@ export default function DiscountsPage() {
                 Active: <span className="font-semibold">0</span> | 
                 Expired: <span className="font-semibold">0</span>
             </div>
-            <Button>
+            <Button onClick={handleOpenAddModal}>
                 <Plus className="mr-2 h-4 w-4" /> Add Discount
             </Button>
         </div>
@@ -201,7 +222,7 @@ export default function DiscountsPage() {
                   <TableCell>{discount.usage} uses</TableCell>
                   <TableCell>
                     <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenEditModal(discount)}>
                         <Edit className="h-4 w-4" />
                       </Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
@@ -216,5 +237,11 @@ export default function DiscountsPage() {
         </CardContent>
       </Card>
     </div>
+    <DiscountFormModal 
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        discount={editingDiscount}
+    />
+    </>
   );
 }
