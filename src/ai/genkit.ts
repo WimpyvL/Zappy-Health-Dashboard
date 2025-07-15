@@ -1,7 +1,9 @@
 import {genkit} from 'genkit';
 import {googleAI} from '@genkit-ai/googleai';
 import {firebase} from '@genkit-ai/firebase';
-import {defineFlow, runFlow} from 'genkit/flow';
+import {initializeApp} from 'firebase-admin/app';
+
+initializeApp();
 
 export const ai = genkit({
   plugins: [

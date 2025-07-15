@@ -1,15 +1,14 @@
 'use server';
-
-import {ai} from '@/ai/genkit';
-import {defineFlow, runFlow} from 'genkit/flow';
-import {z} from 'zod';
-import {getFirestore} from 'firebase-admin/firestore';
-
 /**
  * @fileoverview A sample flow demonstrating how to write data to Firestore.
  *
  * This flow takes a text input and writes it to a 'documents' collection in Firestore.
  */
+
+import {ai} from '@/ai/genkit';
+import {runFlow} from 'genkit/flow';
+import {z} from 'zod';
+import {getFirestore} from 'firebase-admin/firestore';
 
 export const sampleFirestoreFlow = ai.defineFlow(
   {
@@ -48,5 +47,5 @@ export const sampleFirestoreFlow = ai.defineFlow(
  * @returns An object containing the new document ID and a success message.
  */
 export async function writeDocumentToFirestore(text: string) {
-  return await runFlow(sampleFirestoreFlow, { text });
+  return await runFlow(sampleFirestoreFlow, {text});
 }
