@@ -44,11 +44,31 @@ import {
 } from "@/components/ui/select";
 import { PatientFormModal } from "./components/patient-form-modal";
 import { ViewMessageModal } from "../messages/components/view-message-modal";
+import { useToast } from "@/hooks/use-toast";
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, query, where, orderBy } from "firebase/firestore";
+import { Skeleton } from "@/components/ui/skeleton";
 
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyBVV_vq5fjNSASYQndmbRbEtlfyOieFVTs",
+  authDomain: "zappy-health-c1kob.firebaseapp.com",
+  databaseURL: "https://zappy-health-c1kob-default-rtdb.firebaseio.com",
+  projectId: "zappy-health-c1kob",
+  storageBucket: "zappy-health-c1kob.appspot.com",
+  messagingSenderId: "833435237612",
+  appId: "1:833435237612:web:53731373b2ad7568f279c9"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
 
 type Patient = {
   id: string;
-  name: string;
+  firstName: string;
+  lastName: string;
+  name: string; // Combined name for display
   email: string;
   status: "Active" | "Inactive" | "Pending";
   plan: string;
@@ -76,23 +96,6 @@ type Message = {
   unread: boolean;
 };
 
-const mockPatients: Patient[] = [
-  {
-    id: "patient1",
-    name: "John Doe",
-    email: "john.doe@example.com",
-    status: "Active",
-    plan: "None",
-    lastActive: "N/A",
-    orders: 0,
-    tags: [],
-    phone: "1-555-123-4567",
-    dob: new Date("1990-05-15"),
-    address: "123 Main St, Anytown, USA",
-  },
-  // Add more mock patients here if needed
-];
-
 const FilterDropdown = ({
   label,
   options,
@@ -116,10 +119,44 @@ const FilterDropdown = ({
 );
 
 export default function PatientsPage() {
+  const [patients, setPatients] = React.useState<Patient[]>([]);
+  const [loading, setLoading] = React.useState(true);
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [editingPatient, setEditingPatient] = React.useState<Patient | null>(null);
   const [isMessageModalOpen, setIsMessageModalOpen] = React.useState(false);
   const [selectedMessage, setSelectedMessage] = React.useState<Message | null>(null);
+  const { toast } = useToast();
+
+  const fetchPatients = async () => {
+    setLoading(true);
+    try {
+      const patientsCollection = collection(db, "patients");
+      const patientSnapshot = await getDocs(query(patientsCollection, orderBy("lastName", "asc")));
+      const patientList = patientSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          name: `${data.firstName} ${data.lastName}`,
+          ...data,
+          dob: data.dob?.toDate(), // Convert Firestore Timestamp to Date
+        } as Patient;
+      });
+      setPatients(patientList);
+    } catch (error) {
+      console.error("Error fetching patients: ", error);
+      toast({
+        variant: "destructive",
+        title: "Error fetching patients",
+        description: "Could not retrieve patient data from the database.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchPatients();
+  }, []);
 
   const handleOpenAddModal = () => {
     setEditingPatient(null);
@@ -136,8 +173,37 @@ export default function PatientsPage() {
     setEditingPatient(null);
   };
 
+  const handleFormSubmit = async (values: Omit<Patient, 'id' | 'name'>) => {
+    try {
+      if (editingPatient) {
+        // Update existing patient
+        const patientDoc = doc(db, "patients", editingPatient.id);
+        await updateDoc(patientDoc, values);
+        toast({
+          title: "Patient Updated",
+          description: `${values.firstName} ${values.lastName}'s information has been saved.`,
+        });
+      } else {
+        // Add new patient
+        await addDoc(collection(db, "patients"), values);
+        toast({
+          title: "Patient Added",
+          description: `${values.firstName} ${values.lastName} has been added to the system.`,
+        });
+      }
+      fetchPatients(); // Refresh the list
+      onClose();
+    } catch (error) {
+      console.error("Error saving patient: ", error);
+      toast({
+        variant: "destructive",
+        title: "Error Saving Patient",
+        description: "An error occurred while saving the patient information.",
+      });
+    }
+  };
+
   const handleOpenMessageModal = (patient: Patient) => {
-    // Adapt patient data to the Message type for the modal
     const messageData: Message = {
       id: patient.id,
       name: patient.name,
@@ -162,9 +228,9 @@ export default function PatientsPage() {
           <h1 className="text-3xl font-bold">Patients</h1>
           <div className="flex items-center gap-4">
             <div className="text-sm text-muted-foreground">
-              Total: <span className="font-semibold">{mockPatients.length}</span>{" "}
+              Total: <span className="font-semibold">{patients.length}</span>{" "}
               Showing:{" "}
-              <span className="font-semibold">{mockPatients.length}</span>
+              <span className="font-semibold">{patients.length}</span>
             </div>
             <Button onClick={handleOpenAddModal}>
               <PlusCircle className="h-4 w-4 mr-2" />
@@ -211,7 +277,21 @@ export default function PatientsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {mockPatients.map((patient) => (
+                {loading ? (
+                  Array.from({ length: 5 }).map((_, index) => (
+                    <TableRow key={index}>
+                      <TableCell><Checkbox disabled /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-32 rounded-md" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-16 rounded-md" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-20 rounded-md" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-24 rounded-md" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-12 rounded-md" /></TableCell>
+                      <TableCell><div className="flex gap-2"><Skeleton className="h-8 w-8 rounded-md" /><Skeleton className="h-8 w-8 rounded-md" /></div></TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  patients.map((patient) => (
                   <TableRow key={patient.id}>
                     <TableCell>
                       <Checkbox />
@@ -227,21 +307,21 @@ export default function PatientsPage() {
                         variant={
                           patient.status === "Active" ? "default" : "secondary"
                         }
-                        className="bg-green-100 text-green-800 hover:bg-green-200"
+                        className={patient.status === "Active" ? "bg-green-100 text-green-800 hover:bg-green-200" : "bg-gray-100 text-gray-800"}
                       >
                         <Check className="h-3 w-3 mr-1" />
                         {patient.status}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {patient.tags.length > 0
+                      {patient.tags?.length > 0
                         ? patient.tags.join(", ")
                         : "N/A"}
                     </TableCell>
-                    <TableCell>{patient.plan}</TableCell>
-                    <TableCell>{patient.lastActive}</TableCell>
+                    <TableCell>{patient.plan || 'None'}</TableCell>
+                    <TableCell>{patient.lastActive || 'N/A'}</TableCell>
                     <TableCell>
-                      <div>{patient.orders}</div>
+                      <div>{patient.orders || 0}</div>
                       <div className="text-xs text-muted-foreground">N/A</div>
                       <div className="text-xs text-muted-foreground">N/A</div>
                     </TableCell>
@@ -266,7 +346,7 @@ export default function PatientsPage() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                )))}
               </TableBody>
             </Table>
           </CardContent>
@@ -274,7 +354,7 @@ export default function PatientsPage() {
 
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <div>
-            Showing 1 to {mockPatients.length} of {mockPatients.length} results
+            Showing 1 to {patients.length} of {patients.length} results
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
@@ -306,6 +386,7 @@ export default function PatientsPage() {
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         patient={editingPatient}
+        onSubmit={handleFormSubmit}
       />
        <ViewMessageModal 
         isOpen={isMessageModalOpen}

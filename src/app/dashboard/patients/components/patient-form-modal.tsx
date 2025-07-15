@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -51,6 +52,7 @@ interface PatientFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   patient?: Patient | null;
+  onSubmit: (values: any) => void;
 }
 
 const formSchema = z.object({
@@ -68,7 +70,7 @@ const formSchema = z.object({
   status: z.string().min(1, "Patient status is required"),
 });
 
-export function PatientFormModal({ isOpen, onClose, patient }: PatientFormModalProps) {
+export function PatientFormModal({ isOpen, onClose, patient, onSubmit }: PatientFormModalProps) {
   const isEditMode = !!patient;
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -85,7 +87,7 @@ export function PatientFormModal({ isOpen, onClose, patient }: PatientFormModalP
         lastName: lastName,
         email: patient.email,
         phone: patient.phone || '',
-        dob: patient.dob,
+        dob: patient.dob ? new Date(patient.dob) : undefined,
         address: patient.address || '',
         pharmacy: patient.pharmacy || '',
         insuranceProvider: patient.insuranceProvider || '',
@@ -111,12 +113,6 @@ export function PatientFormModal({ isOpen, onClose, patient }: PatientFormModalP
       });
     }
   }, [patient, isEditMode, form]);
-
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    console.log("Form values:", values);
-    // Handle form submission logic here
-    onClose();
-  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -318,7 +314,7 @@ export function PatientFormModal({ isOpen, onClose, patient }: PatientFormModalP
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Patient Status <span className="text-destructive">*</span></FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a status" />
