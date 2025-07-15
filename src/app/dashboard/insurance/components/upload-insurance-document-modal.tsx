@@ -25,16 +25,44 @@ import {
 interface UploadInsuranceDocumentModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onUpload: (values: any) => void;
 }
 
 export function UploadInsuranceDocumentModal({
   isOpen,
   onClose,
+  onUpload,
 }: UploadInsuranceDocumentModalProps) {
-  const handleUpload = () => {
-    // Handle the upload logic here
-    console.log("Uploading document...");
-    onClose();
+    const [documentTitle, setDocumentTitle] = React.useState('');
+    const [documentType, setDocumentType] = React.useState('policy-document');
+    const [patientName, setPatientName] = React.useState('');
+    const [policyNumber, setPolicyNumber] = React.useState('');
+    const [notes, setNotes] = React.useState('');
+    // We are not handling the file input state here for simplicity,
+    // as it would require more complex state management for a file object.
+
+  const handleUploadClick = () => {
+    // Basic validation
+    if (!documentTitle || !patientName) {
+      // In a real app, you would use a more robust validation library like zod
+      alert("Document Title and Patient Name are required.");
+      return;
+    }
+    
+    onUpload({
+        documentTitle,
+        documentType,
+        patientName,
+        policyNumber,
+        notes,
+    });
+    
+    // Reset form
+    setDocumentTitle('');
+    setDocumentType('policy-document');
+    setPatientName('');
+    setPolicyNumber('');
+    setNotes('');
   };
 
   return (
@@ -56,11 +84,13 @@ export function UploadInsuranceDocumentModal({
             <Input
               id="document-title"
               placeholder="Enter document title"
+              value={documentTitle}
+              onChange={(e) => setDocumentTitle(e.target.value)}
             />
           </div>
           <div className="grid gap-2">
             <Label htmlFor="document-type">Document Type</Label>
-            <Select>
+            <Select value={documentType} onValueChange={setDocumentType}>
               <SelectTrigger id="document-type">
                 <SelectValue placeholder="Policy Document" />
               </SelectTrigger>
@@ -79,6 +109,8 @@ export function UploadInsuranceDocumentModal({
             <Input
               id="patient-name"
               placeholder="Enter patient name"
+              value={patientName}
+              onChange={(e) => setPatientName(e.target.value)}
             />
           </div>
           <div className="grid gap-2">
@@ -86,6 +118,8 @@ export function UploadInsuranceDocumentModal({
             <Input
               id="policy-number"
               placeholder="Enter policy number (optional)"
+              value={policyNumber}
+              onChange={(e) => setPolicyNumber(e.target.value)}
             />
           </div>
           <div className="grid gap-2">
@@ -93,6 +127,8 @@ export function UploadInsuranceDocumentModal({
             <Textarea
               id="notes"
               placeholder="Additional notes (optional)"
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
             />
           </div>
         </div>
@@ -102,7 +138,7 @@ export function UploadInsuranceDocumentModal({
               Cancel
             </Button>
           </DialogClose>
-          <Button type="submit" onClick={handleUpload}>
+          <Button type="submit" onClick={handleUploadClick}>
             Upload Document
           </Button>
         </DialogFooter>

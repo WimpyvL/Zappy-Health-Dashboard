@@ -32,8 +32,43 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { UploadInsuranceDocumentModal } from "./components/upload-insurance-document-modal";
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, getDocs, addDoc, query, orderBy, Timestamp } from "firebase/firestore";
+import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
 
-const mockDocuments: any[] = [];
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyBVV_vq5fjNSASYQndmbRbEtlfyOieFVTs",
+  authDomain: "zappy-health-c1kob.firebaseapp.com",
+  databaseURL: "https://zappy-health-c1kob-default-rtdb.firebaseio.com",
+  projectId: "zappy-health-c1kob",
+  storageBucket: "zappy-health-c1kob.appspot.com",
+  messagingSenderId: "833435237612",
+  appId: "1:833435237612:web:53731373b2ad7568f279c9"
+};
+
+// Initialize Firebase
+let app;
+try {
+  app = initializeApp(firebaseConfig);
+} catch (e) {
+  // app already initialized
+  app = initializeApp(firebaseConfig, "insurance-app");
+}
+const db = getFirestore(app);
+
+
+type Document = {
+  id: string;
+  documentTitle: string;
+  documentType: string;
+  patientName: string;
+  policyNumber?: string;
+  uploadDate: string;
+  status: "Active" | "Pending" | "Expired";
+};
+
 
 const StatusBadge = ({ status }: { status: string }) => {
   const statusMap: { [key: string]: { className: string; label: string } } = {
@@ -52,15 +87,64 @@ const StatusBadge = ({ status }: { status: string }) => {
 };
 
 export default function InsurancePage() {
+    const [documents, setDocuments] = React.useState<Document[]>([]);
     const [loading, setLoading] = React.useState(true);
     const [isUploadModalOpen, setIsUploadModalOpen] = React.useState(false);
+    const { toast } = useToast();
 
+    const fetchDocuments = async () => {
+        setLoading(true);
+        try {
+          const docsCollection = collection(db, "insurance_documents");
+          const docsSnapshot = await getDocs(query(docsCollection, orderBy("uploadDate", "desc")));
+          const docsList = docsSnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+              id: doc.id,
+              ...data,
+              uploadDate: data.uploadDate ? format(data.uploadDate.toDate(), "MMM dd, yyyy") : "N/A",
+            } as Document;
+          });
+          setDocuments(docsList);
+        } catch (error) {
+          console.error("Error fetching insurance documents: ", error);
+          toast({
+            variant: "destructive",
+            title: "Error fetching documents",
+            description: "Could not retrieve insurance document data from the database.",
+          });
+        } finally {
+          setLoading(false);
+        }
+      };
+    
+      React.useEffect(() => {
+        fetchDocuments();
+      }, []);
 
-    React.useEffect(() => {
-        // Simulate loading
-        const timer = setTimeout(() => setLoading(false), 1000);
-        return () => clearTimeout(timer);
-    }, []);
+      const handleUpload = async (values: any) => {
+        try {
+          await addDoc(collection(db, "insurance_documents"), {
+            ...values,
+            status: "Pending", // Default status for new documents
+            uploadDate: Timestamp.now(),
+          });
+          toast({
+            title: "Document Uploaded",
+            description: `Document for ${values.patientName} has been uploaded successfully.`,
+          });
+          fetchDocuments();
+          setIsUploadModalOpen(false);
+        } catch (error) {
+          console.error("Error uploading document: ", error);
+          toast({
+            variant: "destructive",
+            title: "Upload Failed",
+            description: "An error occurred while uploading the document.",
+          });
+        }
+      };
+
 
   return (
     <>
@@ -69,9 +153,9 @@ export default function InsurancePage() {
         <h1 className="text-3xl font-bold">Insurance Documentation</h1>
         <div className="flex items-center gap-4">
           <div className="text-sm text-muted-foreground hidden md:block">
-            Total: <span className="font-semibold">0</span> |
-            Active: <span className="font-semibold">0</span> |
-            Pending: <span className="font-semibold">0</span>
+            Total: <span className="font-semibold">{documents.length}</span> |
+            Active: <span className="font-semibold">{documents.filter(d => d.status === "Active").length}</span> |
+            Pending: <span className="font-semibold">{documents.filter(d => d.status === "Pending").length}</span>
           </div>
           <Button onClick={() => setIsUploadModalOpen(true)}>
             <Plus className="mr-2 h-4 w-4" /> Upload Document
@@ -82,7 +166,7 @@ export default function InsurancePage() {
       <div className="flex items-center gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search insurance documents..." className="pl-9" />
+          <Input placeholder="Search insurance documents by patient or policy #..." className="pl-9" />
         </div>
         <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -121,7 +205,7 @@ export default function InsurancePage() {
                 <TableHead>Type</TableHead>
                 <TableHead>Patient</TableHead>
                 <TableHead>Policy Number</TableHead>
-                <TableHead>Expiry Date</TableHead>
+                <TableHead>Upload Date</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -133,14 +217,14 @@ export default function InsurancePage() {
                     Loading documents...
                   </TableCell>
                 </TableRow>
-              ) : mockDocuments.length > 0 ? (
-                mockDocuments.map((doc) => (
+              ) : documents.length > 0 ? (
+                documents.map((doc) => (
                   <TableRow key={doc.id}>
-                    <TableCell className="font-medium">{doc.name}</TableCell>
-                    <TableCell>{doc.type}</TableCell>
-                    <TableCell>{doc.patient}</TableCell>
-                    <TableCell>{doc.policyNumber}</TableCell>
-                    <TableCell>{doc.expiryDate}</TableCell>
+                    <TableCell className="font-medium">{doc.documentTitle}</TableCell>
+                    <TableCell>{doc.documentType}</TableCell>
+                    <TableCell>{doc.patientName}</TableCell>
+                    <TableCell>{doc.policyNumber || "N/A"}</TableCell>
+                    <TableCell>{doc.uploadDate}</TableCell>
                     <TableCell>
                       <StatusBadge status={doc.status} />
                     </TableCell>
@@ -178,6 +262,7 @@ export default function InsurancePage() {
     <UploadInsuranceDocumentModal
         isOpen={isUploadModalOpen}
         onClose={() => setIsUploadModalOpen(false)}
+        onUpload={handleUpload}
       />
     </>
   );
