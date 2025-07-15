@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -27,18 +27,40 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TaskFormModal } from "./components/task-form-modal";
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, getDocs, addDoc, query, orderBy, Timestamp } from "firebase/firestore";
+import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyBVV_vq5fjNSASYQndmbRbEtlfyOieFVTs",
+  authDomain: "zappy-health-c1kob.firebaseapp.com",
+  databaseURL: "https://zappy-health-c1kob-default-rtdb.firebaseio.com",
+  projectId: "zappy-health-c1kob",
+  storageBucket: "zappy-health-c1kob.appspot.com",
+  messagingSenderId: "833435237612",
+  appId: "1:833435237612:web:53731373b2ad7568f279c9"
+};
+
+// Initialize Firebase
+let app;
+try {
+  app = initializeApp(firebaseConfig);
+} catch (e) {
+  // app already initialized
+  app = initializeApp(firebaseConfig, "tasks-app");
+}
+const db = getFirestore(app);
+
 
 type Task = {
-  id: number;
-  title: string;
+  id: string;
+  task: string;
   assignee: string;
   dueDate: string;
   status: "Pending" | "In Progress" | "Completed";
 };
-
-const tasksData: Task[] = [
-  // No tasks to show the empty state
-];
 
 const statusVariantMap: { [key: string]: "default" | "secondary" | "outline" | "destructive" } = {
     "Pending": "secondary",
@@ -54,12 +76,70 @@ const statusColorMap: { [key: string]: string } = {
 
 
 export default function TasksPage() {
-  const [tasks, setTasks] = useState<Task[]>(tasksData);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const { toast } = useToast();
+
+  const fetchTasks = async () => {
+    setLoading(true);
+    try {
+        const tasksCollection = collection(db, "tasks");
+        const taskSnapshot = await getDocs(query(tasksCollection, orderBy("dueDate", "asc")));
+        const taskList = taskSnapshot.docs.map(doc => {
+            const data = doc.data();
+            return {
+                id: doc.id,
+                dueDate: data.dueDate ? format(data.dueDate.toDate(), "MMM dd, yyyy") : "N/A",
+                ...data,
+            } as Task;
+        });
+        setTasks(taskList);
+    } catch(error) {
+        console.error("Error fetching tasks: ", error);
+        toast({
+            variant: "destructive",
+            title: "Error fetching tasks",
+            description: "Could not retrieve task data from the database.",
+        });
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTasks();
+  }, []);
+
+  const handleCreateTask = async (values: { assignee: string; task: string; dueDate?: Date }) => {
+    try {
+      await addDoc(collection(db, "tasks"), {
+        assignee: values.assignee,
+        task: values.task,
+        status: "Pending",
+        dueDate: values.dueDate ? Timestamp.fromDate(values.dueDate) : Timestamp.now(),
+        createdAt: Timestamp.now(),
+      });
+      toast({
+        title: "Task Created",
+        description: `A new task has been assigned to ${values.assignee}.`,
+      });
+      fetchTasks();
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error("Error creating task: ", error);
+      toast({
+        variant: "destructive",
+        title: "Error Creating Task",
+        description: "An error occurred while creating the task.",
+      });
+    }
+  };
+
 
   const filteredTasks = tasks.filter(task => 
-    task.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    task.task.toLowerCase().includes(searchTerm.toLowerCase()) ||
     task.assignee.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -70,9 +150,9 @@ export default function TasksPage() {
           <h1 className="text-3xl font-bold">Task Management</h1>
           <div className="flex items-center gap-4">
               <div className="text-sm text-muted-foreground hidden md:block">
-                  Total: <span className="font-semibold">0</span> | 
-                  Pending: <span className="font-semibold">0</span> | 
-                  Completed: <span className="font-semibold">0</span>
+                  Total: <span className="font-semibold">{tasks.length}</span> | 
+                  Pending: <span className="font-semibold">{tasks.filter(t => t.status === 'Pending').length}</span> | 
+                  Completed: <span className="font-semibold">{tasks.filter(t => t.status === 'Completed').length}</span>
               </div>
               <Button onClick={() => setIsModalOpen(true)}>
               <Plus className="mr-2 h-4 w-4" /> Add a Task
@@ -119,11 +199,15 @@ export default function TasksPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredTasks.length > 0 ? (
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-48 text-center">Loading tasks...</TableCell>
+                  </TableRow>
+                ) : filteredTasks.length > 0 ? (
                   filteredTasks.map((task) => (
                       <TableRow key={task.id}>
                       <TableCell><Checkbox /></TableCell>
-                      <TableCell className="font-medium">{task.title}</TableCell>
+                      <TableCell className="font-medium">{task.task}</TableCell>
                       <TableCell>
                           <Badge variant={statusVariantMap[task.status]} className={statusColorMap[task.status]}>
                           {task.status}
@@ -162,7 +246,7 @@ export default function TasksPage() {
           </CardContent>
         </Card>
         <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <div>Showing 0 to 0 of 0 results</div>
+          <div>Showing {filteredTasks.length} of {tasks.length} results</div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <span>Show:</span>

@@ -15,31 +15,37 @@ import {
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import { X, User } from "lucide-react";
+import { X, User, Calendar as CalendarIcon } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 
 interface TaskFormModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSubmit: (values: { assignee: string; task: string; dueDate?: Date }) => void;
 }
 
 const formSchema = z.object({
   assignee: z.string().min(1, "Assignee is required"),
   task: z.string().min(1, "Task description is required"),
+  dueDate: z.date().optional(),
 });
 
-export function TaskFormModal({ isOpen, onClose }: TaskFormModalProps) {
+export function TaskFormModal({ isOpen, onClose, onSubmit }: TaskFormModalProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       assignee: "",
       task: "",
+      dueDate: undefined,
     }
   });
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    console.log("Form values:", values);
-    onClose();
+  const handleSubmit = (values: z.infer<typeof formSchema>) => {
+    onSubmit(values);
     form.reset();
   };
 
@@ -54,7 +60,7 @@ export function TaskFormModal({ isOpen, onClose }: TaskFormModalProps) {
         </DialogHeader>
         <div className="px-6 pb-6">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
               <FormField
                 control={form.control}
                 name="assignee"
@@ -90,6 +96,41 @@ export function TaskFormModal({ isOpen, onClose }: TaskFormModalProps) {
                   </FormItem>
                 )}
               />
+
+              <FormField
+                control={form.control}
+                name="dueDate"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Due Date</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "w-full justify-start text-left font-normal",
+                              !field.value && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-4 w-4" />
+                            {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </form>
           </Form>
         </div>
@@ -97,7 +138,7 @@ export function TaskFormModal({ isOpen, onClose }: TaskFormModalProps) {
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" onClick={form.handleSubmit(onSubmit)}>
+          <Button type="submit" onClick={form.handleSubmit(handleSubmit)}>
             Create Task
           </Button>
         </DialogFooter>
