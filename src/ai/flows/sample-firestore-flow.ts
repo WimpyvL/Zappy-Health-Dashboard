@@ -5,6 +5,9 @@
  * This flow takes a text input and writes it to a 'documents' collection in Firestore.
  */
 
+// This flow is temporarily disabled to resolve build issues.
+// We will re-enable it once the Firebase plugin is correctly configured.
+
 import {ai} from '@/ai/genkit';
 import {runFlow} from 'genkit';
 import {z} from 'zod';
@@ -22,19 +25,25 @@ export const sampleFirestoreFlow = ai.defineFlow(
     }),
   },
   async (input) => {
-    const db = getFirestore();
-    const docRef = db.collection('documents').doc();
+    // const db = getFirestore();
+    // const docRef = db.collection('documents').doc();
 
-    await docRef.set({
-      text: input.text,
-      createdAt: new Date().toISOString(),
-    });
+    // await docRef.set({
+    //   text: input.text,
+    //   createdAt: new Date().toISOString(),
+    // });
 
-    console.log(`Document written with ID: ${docRef.id}`);
+    // console.log(`Document written with ID: ${docRef.id}`);
 
+    // return {
+    //   docId: docRef.id,
+    //   message: 'Successfully wrote document to Firestore.',
+    // };
+    
+    console.log('Firestore flow is temporarily disabled.');
     return {
-      docId: docRef.id,
-      message: 'Successfully wrote document to Firestore.',
+      docId: 'disabled',
+      message: 'Firestore integration is temporarily disabled.',
     };
   }
 );

@@ -23,7 +23,7 @@ import {
   ClipboardPlus,
 } from "lucide-react"
 import { useState, useEffect } from "react"
-import { writeDocumentToFirestore } from "@/ai/flows/sample-firestore-flow"
+// import { writeDocumentToFirestore } from "@/ai/flows/sample-firestore-flow" // Temporarily removed
 import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
 
@@ -66,33 +66,39 @@ export default function DashboardPage() {
   }, [])
 
   const handleSaveToFirestore = async () => {
-    if (!firestoreText) {
-      toast({
+    // Temporarily disabled
+    toast({
         variant: "destructive",
-        title: "Error",
-        description: "Please enter some text to save.",
-      })
-      return
-    }
-    setIsSaving(true)
-    try {
-      const result = await writeDocumentToFirestore(firestoreText)
-      console.log("Firestore result:", result)
-      toast({
-        title: "Success",
-        description: `Document saved with ID: ${result.docId}`,
-      })
-      setFirestoreText("")
-    } catch (error) {
-      console.error("Failed to save to Firestore:", error)
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "Failed to save document to Firestore.",
-      })
-    } finally {
-      setIsSaving(false)
-    }
+        title: "Feature Disabled",
+        description: "Firestore integration is temporarily disabled to resolve a build issue.",
+    })
+    // if (!firestoreText) {
+    //   toast({
+    //     variant: "destructive",
+    //     title: "Error",
+    //     description: "Please enter some text to save.",
+    //   })
+    //   return
+    // }
+    // setIsSaving(true)
+    // try {
+    //   const result = await writeDocumentToFirestore(firestoreText)
+    //   console.log("Firestore result:", result)
+    //   toast({
+    //     title: "Success",
+    //     description: `Document saved with ID: ${result.docId}`,
+    //   })
+    //   setFirestoreText("")
+    // } catch (error) {
+    //   console.error("Failed to save to Firestore:", error)
+    //   toast({
+    //     variant: "destructive",
+    //     title: "Error",
+    //     description: "Failed to save document to Firestore.",
+    //   })
+    // } finally {
+    //   setIsSaving(false)
+    // }
   }
 
   return (
@@ -138,7 +144,7 @@ export default function DashboardPage() {
           <CardTitle>Firestore Backend Example</CardTitle>
           <CardDescription>
             This form demonstrates writing data to your Firestore database using
-            a Genkit flow.
+            a Genkit flow. (Currently disabled due to build issues).
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -148,13 +154,13 @@ export default function DashboardPage() {
               placeholder="Enter text to save"
               value={firestoreText}
               onChange={(e) => setFirestoreText(e.target.value)}
-              disabled={isSaving}
+              disabled={true}
             />
             <Button
               onClick={handleSaveToFirestore}
-              disabled={isSaving}
+              disabled={true}
             >
-              {isSaving ? "Saving..." : "Save to Firestore"}
+              Save to Firestore
             </Button>
           </div>
         </CardContent>
