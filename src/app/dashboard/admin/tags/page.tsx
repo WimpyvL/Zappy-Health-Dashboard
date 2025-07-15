@@ -3,11 +3,7 @@
 
 import * as React from "react";
 import {
-  MoreHorizontal,
-  Plus,
-  Search,
-  ChevronDown,
-  Tag,
+  Tag as TagIcon,
   Users,
   Calendar,
   FilePenLine,
@@ -16,6 +12,9 @@ import {
   ChevronsUpDown,
   TrendingUp,
   Filter,
+  Plus,
+  Search,
+  ChevronDown
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -44,6 +43,30 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import { useToast } from "@/hooks/use-toast";
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, getDocs, query, orderBy } from "firebase/firestore";
+import { format } from 'date-fns';
+import { Skeleton } from "@/components/ui/skeleton";
+
+// Firebase configuration
+const firebaseConfig = {
+    apiKey: "AIzaSyBVV_vq5fjNSASYQndmbRbEtlfyOieFVTs",
+    authDomain: "zappy-health-c1kob.firebaseapp.com",
+    databaseURL: "https://zappy-health-c1kob-default-rtdb.firebaseio.com",
+    projectId: "zappy-health-c1kob",
+    storageBucket: "zappy-health-c1kob.appspot.com",
+    messagingSenderId: "833435237612",
+    appId: "1:833435237612:web:53731373b2ad7568f279c9"
+  };
+  
+let app;
+try {
+    app = initializeApp(firebaseConfig, "tags-app");
+} catch (e) {
+    app = initializeApp(firebaseConfig);
+}
+const db = getFirestore(app);
 
 type TagItem = {
   id: string;
@@ -54,16 +77,7 @@ type TagItem = {
   description: string;
 };
 
-const mockTags: TagItem[] = [
-  { id: "1", name: "Urgent", color: "#EF4444", patientCount: 15, createdAt: "Jan 1, 2024", description: "Critical items requiring immediate attention." },
-  { id: "2", name: "Follow-up Required", color: "#EAB308", patientCount: 23, createdAt: "Jan 5, 2024", description: "Patients or tasks needing a follow-up action." },
-  { id: "3", name: "Completed", color: "#22C55E", patientCount: 45, createdAt: "Jan 10, 2024", description: "Tasks or processes that have been successfully finished." },
-  { id: "4", name: "In Progress", color: "#3B82F6", patientCount: 12, createdAt: "Jan 15, 2024", description: "Items currently being worked on." },
-  { id: "5", name: "High Priority", color: "#F97316", patientCount: 8, createdAt: "Jan 20, 2024", description: "Tasks or patients requiring top priority." },
-  { id: "6", name: "Reviewed", color: "#A855F7", patientCount: 30, createdAt: "Jan 25, 2024", description: "Documents or notes that have been reviewed." },
-  { id: "7", name: "Needs Attention", color: "#6366F1", patientCount: 10, createdAt: "Jan 30, 2024", description: "Items that require further investigation or action." },
-];
-
+// Mock data for charts as it requires aggregation
 const tagUsageData = [
     { name: 'Medication Re...', value: 87 },
     { name: 'New Patient', value: 98 },
@@ -103,16 +117,56 @@ const CustomYAxisTick = ({ y, payload }: any) => {
     );
 };
   
-
 export default function TagsPage() {
+  const [tags, setTags] = React.useState<TagItem[]>([]);
+  const [loading, setLoading] = React.useState(true);
   const [isAnalyticsCollapsed, setIsAnalyticsCollapsed] = React.useState(false);
+  const { toast } = useToast();
+
+  const fetchTags = async () => {
+    setLoading(true);
+    try {
+      const tagsCollection = collection(db, "tags");
+      const tagSnapshot = await getDocs(query(tagsCollection, orderBy("name")));
+      
+      // In a real application, patientCount would be calculated with another query or a cloud function.
+      // For now, we mock this part.
+      const tagList = tagSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          name: data.name,
+          color: data.color || '#cccccc',
+          patientCount: Math.floor(Math.random() * 50), // Mock patient count
+          createdAt: data.createdAt ? format(data.createdAt.toDate(), "MMM d, yyyy") : "N/A",
+          description: data.description || 'No description',
+        } as TagItem;
+      });
+      setTags(tagList);
+    } catch (error) {
+      console.error("Error fetching tags: ", error);
+      toast({
+        variant: "destructive",
+        title: "Error fetching tags",
+        description: "Could not retrieve tag data from the database.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchTags();
+  }, []);
+
+  const totalPatientsWithTags = tags.reduce((sum, tag) => sum + tag.patientCount, 0);
 
   return (
     <div className="flex flex-col gap-6">
         <Card>
             <CardHeader className="flex flex-row items-center justify-between">
                 <div className="flex items-center gap-2">
-                    <Tag className="h-5 w-5 text-muted-foreground" />
+                    <TagIcon className="h-5 w-5 text-muted-foreground" />
                     <CardTitle>Tag Analytics</CardTitle>
                 </div>
                 <div className="flex items-center gap-2">
@@ -137,10 +191,10 @@ export default function TagsPage() {
             {!isAnalyticsCollapsed && (
                 <CardContent className="space-y-6">
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                        <StatCard title="Total Tags" value="7" icon={Tag} color="from-blue-400 to-blue-600" />
+                        <StatCard title="Total Tags" value={loading ? "..." : tags.length.toString()} icon={TagIcon} color="from-blue-400 to-blue-600" />
                         <StatCard title="Total Patients" value="1,000" icon={Users} color="from-green-400 to-green-600" />
                         <StatCard title="Avg Tags/Patient" value="2.3" icon={TrendingUp} color="from-purple-400 to-purple-600" />
-                        <StatCard title="Most Used Tag" value="High Priority" icon={Tag} color="from-orange-400 to-orange-600" extra="285 patients" />
+                        <StatCard title="Most Used Tag" value="High Priority" icon={TagIcon} color="from-orange-400 to-orange-600" extra="285 patients" />
                     </div>
                     <div className="grid gap-6 md:grid-cols-2">
                         <Card>
@@ -182,7 +236,7 @@ export default function TagsPage() {
         <CardHeader className="flex items-center justify-between">
             <div className="flex items-center gap-2">
                 <ChevronsUpDown className="h-5 w-5 text-muted-foreground" />
-                <CardTitle>Tags ({mockTags.length} total)</CardTitle>
+                <CardTitle>Tags ({tags.length} total)</CardTitle>
             </div>
             <div className="flex items-center gap-2">
                 <div className="relative w-64">
@@ -208,33 +262,52 @@ export default function TagsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockTags.map((tag) => (
-                <TableRow key={tag.id}>
-                    <TableCell><Checkbox /></TableCell>
-                    <TableCell>
-                        <div className="flex items-center gap-2">
-                            <span className="h-3 w-3 rounded-full" style={{ backgroundColor: tag.color }}></span>
-                            <span className="font-medium">{tag.name}</span>
-                        </div>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">{tag.description}</TableCell>
-                    <TableCell>{tag.patientCount}</TableCell>
-                    <TableCell>{tag.createdAt}</TableCell>
-                    <TableCell>
-                        <div className="flex gap-1">
-                            <Button variant="ghost" size="icon" className="h-8 w-8"><FilePenLine className="h-4 w-4" /></Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
-                        </div>
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                        <TableCell><Checkbox disabled /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-48" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                        <TableCell><Skeleton className="h-8 w-16" /></TableCell>
+                    </TableRow>
+                ))
+              ) : tags.length > 0 ? (
+                tags.map((tag) => (
+                    <TableRow key={tag.id}>
+                        <TableCell><Checkbox /></TableCell>
+                        <TableCell>
+                            <div className="flex items-center gap-2">
+                                <span className="h-3 w-3 rounded-full" style={{ backgroundColor: tag.color }}></span>
+                                <span className="font-medium">{tag.name}</span>
+                            </div>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">{tag.description}</TableCell>
+                        <TableCell>{tag.patientCount}</TableCell>
+                        <TableCell>{tag.createdAt}</TableCell>
+                        <TableCell>
+                            <div className="flex gap-1">
+                                <Button variant="ghost" size="icon" className="h-8 w-8"><FilePenLine className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive"><Trash2 className="h-4 w-4" /></Button>
+                            </div>
+                        </TableCell>
+                    </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                    <TableCell colSpan={6} className="h-48 text-center text-muted-foreground">
+                        No tags found. Click "Add Tag" to create one.
                     </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
       
        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <div>Showing 1 to {mockTags.length} of {mockTags.length} results</div>
+          <div>Showing 1 to {tags.length} of {tags.length} results</div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <span>Show:</span>
