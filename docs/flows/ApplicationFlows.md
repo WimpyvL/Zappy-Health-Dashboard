@@ -152,3 +152,4 @@ graph TD
     C -- AI Processing --> C9[Identify New Consultation Notes];
     C9 --> C10[Send to LLM for Summarization];
     C10 --> C11[Store AI Summary in Database];
+```
