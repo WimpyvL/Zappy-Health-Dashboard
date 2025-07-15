@@ -118,6 +118,7 @@ export default function ProductsPage() {
   const [loading, setLoading] = React.useState(true);
   const [activeCategory, setActiveCategory] = React.useState("All");
   const [activeProductStatus, setActiveProductStatus] = React.useState("All Status");
+  const [activeCategoryFilter, setActiveCategoryFilter] = React.useState("All");
   const [activeCategoryStatus, setActiveCategoryStatus] = React.useState("All Status");
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [editingProduct, setEditingProduct] = React.useState(null);
