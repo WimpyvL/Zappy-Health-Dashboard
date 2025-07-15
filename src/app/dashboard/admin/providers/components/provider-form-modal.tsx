@@ -24,9 +24,21 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { X } from "lucide-react";
 
+interface Provider {
+    id: string;
+    name: string;
+    uuid: string;
+    specialty: string;
+    email: string;
+    phone: string | null;
+    status: "Active" | "Inactive";
+    patientCount: number;
+}
+
 interface ProviderFormModalProps {
   isOpen: boolean;
   onClose: () => void;
+  provider?: Provider | null;
 }
 
 const formSchema = z.object({
@@ -42,31 +54,48 @@ const formSchema = z.object({
   ),
 });
 
-export function ProviderFormModal({ isOpen, onClose }: ProviderFormModalProps) {
+export function ProviderFormModal({ isOpen, onClose, provider }: ProviderFormModalProps) {
+  const isEditMode = !!provider;
+
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      fullName: "",
-      specialty: "",
-      email: "",
-      phone: "",
-      address: "",
-      status: "Active",
-      patientCount: 0,
-    }
   });
+
+  React.useEffect(() => {
+    if (isEditMode && provider) {
+      form.reset({
+        fullName: provider.name,
+        specialty: provider.specialty,
+        email: provider.email,
+        phone: provider.phone || "",
+        address: "", // Address not in mock, default to empty
+        status: provider.status,
+        patientCount: provider.patientCount,
+      });
+    } else {
+      form.reset({
+        fullName: "",
+        specialty: "",
+        email: "",
+        phone: "",
+        address: "",
+        status: "Active",
+        patientCount: 0,
+      });
+    }
+  }, [provider, isEditMode, form, isOpen]);
+
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
     console.log("Form values:", values);
     onClose();
-    form.reset();
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="sm:max-w-md p-0" hideCloseButton>
         <DialogHeader className="p-6 pb-4 flex flex-row items-center justify-between">
-          <DialogTitle className="text-lg font-semibold">Add New Provider</DialogTitle>
+          <DialogTitle className="text-lg font-semibold">{isEditMode ? "Edit Provider" : "Add New Provider"}</DialogTitle>
           <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
               <X className="h-4 w-4" />
           </Button>
@@ -94,7 +123,7 @@ export function ProviderFormModal({ isOpen, onClose }: ProviderFormModalProps) {
                     render={({ field }) => (
                     <FormItem>
                         <FormLabel>Specialty <span className="text-destructive">*</span></FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                             <SelectTrigger>
                             <SelectValue placeholder="Select Specialty" />
@@ -161,7 +190,7 @@ export function ProviderFormModal({ isOpen, onClose }: ProviderFormModalProps) {
                     render={({ field }) => (
                     <FormItem>
                         <FormLabel>Status <span className="text-destructive">*</span></FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                             <SelectTrigger>
                             <SelectValue placeholder="Select Status" />
@@ -198,7 +227,7 @@ export function ProviderFormModal({ isOpen, onClose }: ProviderFormModalProps) {
             Cancel
           </Button>
           <Button type="submit" onClick={form.handleSubmit(onSubmit)}>
-            Create Provider
+            {isEditMode ? "Save Changes" : "Create Provider"}
           </Button>
         </DialogFooter>
       </DialogContent>

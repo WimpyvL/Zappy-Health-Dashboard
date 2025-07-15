@@ -106,11 +106,28 @@ const FilterDropdown = ({
 export default function ProvidersPage() {
     const [loading, setLoading] = React.useState(true);
     const [isModalOpen, setIsModalOpen] = React.useState(false);
+    const [editingProvider, setEditingProvider] = React.useState<Provider | null>(null);
 
     React.useEffect(() => {
         const timer = setTimeout(() => setLoading(false), 1000);
         return () => clearTimeout(timer);
     }, []);
+
+    const handleOpenAddModal = () => {
+        setEditingProvider(null);
+        setIsModalOpen(true);
+    };
+    
+    const handleOpenEditModal = (provider: Provider) => {
+        setEditingProvider(provider);
+        setIsModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setEditingProvider(null);
+    };
+
 
   return (
     <>
@@ -123,7 +140,7 @@ export default function ProvidersPage() {
               Active: <span className="font-semibold">2</span> |
               Patients: <span className="font-semibold">0</span>
             </div>
-            <Button onClick={() => setIsModalOpen(true)}>
+            <Button onClick={handleOpenAddModal}>
               <Plus className="mr-2 h-4 w-4" /> Add Provider
             </Button>
           </div>
@@ -199,7 +216,7 @@ export default function ProvidersPage() {
                       <TableCell>{provider.patientCount}</TableCell>
                       <TableCell>
                         <div className="flex gap-1">
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenEditModal(provider)}>
                             <Edit className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
@@ -249,7 +266,11 @@ export default function ProvidersPage() {
           </div>
         </div>
       </div>
-      <ProviderFormModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <ProviderFormModal 
+        isOpen={isModalOpen} 
+        onClose={handleCloseModal}
+        provider={editingProvider} 
+      />
     </>
   );
 }
