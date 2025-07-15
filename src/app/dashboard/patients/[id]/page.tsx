@@ -43,6 +43,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { PatientInfoTab } from "./components/patient-info-tab";
 import { PatientOrdersTab } from "./components/patient-orders-tab";
 import { PatientBillingTab } from "./components/patient-billing-tab";
+import { PatientNotesTab } from "./components/patient-notes-tab";
 import Link from "next/link";
 import { ViewMessageModal } from "../../messages/components/view-message-modal";
 
@@ -173,7 +174,7 @@ function AdminToolsSidebar({ isOpen, onClose, patient }: { isOpen: boolean, onCl
 
 
 export default function PatientDetailPage({ params }: { params: { id: string } }) {
-  const [activeTab, setActiveTab] = React.useState("Billing");
+  const [activeTab, setActiveTab] = React.useState("Notes");
   const [isAdminPanelOpen, setIsAdminPanelOpen] = React.useState(false);
   const [isMessageModalOpen, setIsMessageModalOpen] = React.useState(false);
   const [selectedMessage, setSelectedMessage] = React.useState<Message | null>(null);
@@ -251,7 +252,8 @@ export default function PatientDetailPage({ params }: { params: { id: string } }
         {activeTab === 'Patient Info' && <PatientInfoTab />}
         {activeTab === 'Orders' && <PatientOrdersTab />}
         {activeTab === 'Billing' && <PatientBillingTab />}
-        {activeTab !== 'Patient Info' && activeTab !== 'Orders' && activeTab !== 'Billing' && (
+        {activeTab === 'Notes' && <PatientNotesTab />}
+        {activeTab !== 'Patient Info' && activeTab !== 'Orders' && activeTab !== 'Billing' && activeTab !== 'Notes' && (
              <Card>
                 <CardContent className="h-96 flex items-center justify-center">
                     <p className="text-muted-foreground">{activeTab} content goes here.</p>
