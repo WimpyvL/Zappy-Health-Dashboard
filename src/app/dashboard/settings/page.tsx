@@ -40,6 +40,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { AccountSettingsForm } from "./components/account-settings-form";
+import { CreateFormModal } from "./components/create-form-modal";
 
 const settingsTabs = [
     { value: "forms", label: "Forms", icon: FileText },
@@ -52,11 +53,13 @@ const settingsTabs = [
 ];
 
 export default function SettingsPage() {
+  const [isFormModalOpen, setIsFormModalOpen] = React.useState(false);
   return (
+    <>
     <div className="flex flex-col gap-6">
       <h1 className="text-3xl font-bold">Settings</h1>
       
-      <Tabs defaultValue="account" className="w-full">
+      <Tabs defaultValue="forms" className="w-full">
         <TabsList className="grid w-full grid-cols-7">
             {settingsTabs.map(tab => (
                 <TabsTrigger key={tab.value} value={tab.value} className="flex items-center gap-2">
@@ -78,7 +81,7 @@ export default function SettingsPage() {
                             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input placeholder="Search forms" className="pl-9" />
                         </div>
-                        <Button>
+                        <Button onClick={() => setIsFormModalOpen(true)}>
                             <Plus className="mr-2 h-4 w-4" /> Create New Form
                         </Button>
                     </div>
@@ -118,7 +121,7 @@ export default function SettingsPage() {
                                     <div className="flex flex-col items-center gap-2">
                                         <FolderOpen className="h-12 w-12 text-gray-400" />
                                         <span>No forms found.</span>
-                                        <Button variant="link" className="p-0 h-auto">Create your first form</Button>
+                                        <Button variant="link" className="p-0 h-auto" onClick={() => setIsFormModalOpen(true)}>Create your first form</Button>
                                     </div>
                                 </TableCell>
                             </TableRow>
@@ -137,5 +140,7 @@ export default function SettingsPage() {
         <TabsContent value="analytics">Analytics dashboard will go here.</TabsContent>
       </Tabs>
     </div>
+    <CreateFormModal isOpen={isFormModalOpen} onClose={() => setIsFormModalOpen(false)} />
+    </>
   );
 }
