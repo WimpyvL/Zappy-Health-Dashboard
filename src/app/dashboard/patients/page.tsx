@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -41,6 +42,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { PatientFormModal } from "./components/patient-form-modal";
+import { ViewMessageModal } from "../messages/components/view-message-modal";
+
 
 type Patient = {
   id: string;
@@ -59,6 +62,17 @@ type Patient = {
   policyNumber?: string;
   groupNumber?: string;
   insuranceHolder?: string;
+};
+
+// This type is used by ViewMessageModal, which expects a message object.
+// We'll adapt the patient object to fit this structure for now.
+type Message = {
+  id: string;
+  name: string;
+  subject: string;
+  preview: string;
+  time: string;
+  unread: boolean;
 };
 
 const mockPatients: Patient[] = [
@@ -103,6 +117,8 @@ const FilterDropdown = ({
 export default function PatientsPage() {
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [editingPatient, setEditingPatient] = React.useState<Patient | null>(null);
+  const [isMessageModalOpen, setIsMessageModalOpen] = React.useState(false);
+  const [selectedMessage, setSelectedMessage] = React.useState<Message | null>(null);
 
   const handleOpenAddModal = () => {
     setEditingPatient(null);
@@ -118,6 +134,25 @@ export default function PatientsPage() {
     setIsModalOpen(false);
     setEditingPatient(null);
   };
+
+  const handleOpenMessageModal = (patient: Patient) => {
+    // Adapt patient data to the Message type for the modal
+    const messageData: Message = {
+      id: patient.id,
+      name: patient.name,
+      subject: `Conversation with ${patient.name}`,
+      preview: 'Click to view conversation history...',
+      time: new Date().toLocaleTimeString(),
+      unread: false,
+    };
+    setSelectedMessage(messageData);
+    setIsMessageModalOpen(true);
+  };
+
+  const handleCloseMessageModal = () => {
+    setIsMessageModalOpen(false);
+    setSelectedMessage(null);
+  }
 
   return (
     <>
@@ -223,6 +258,7 @@ export default function PatientsPage() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
+                          onClick={() => handleOpenMessageModal(patient)}
                         >
                           <MessageSquare className="h-4 w-4" />
                         </Button>
@@ -269,6 +305,11 @@ export default function PatientsPage() {
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         patient={editingPatient}
+      />
+       <ViewMessageModal 
+        isOpen={isMessageModalOpen}
+        onClose={handleCloseMessageModal}
+        message={selectedMessage}
       />
     </>
   );
