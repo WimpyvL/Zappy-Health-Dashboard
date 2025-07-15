@@ -7,7 +7,6 @@ import {
   SheetContent,
   SheetHeader,
   SheetTitle,
-  SheetFooter,
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,7 +17,12 @@ import {
 } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import {
   Square,
   Type,
@@ -36,7 +40,10 @@ import {
   Import,
   Sparkles,
   FolderOpen,
-  Plus
+  Plus,
+  HeartPulse,
+  Shield,
+  CreditCard,
 } from "lucide-react";
 
 interface FormBuilderSheetProps {
@@ -58,6 +65,37 @@ const formElements = [
     { icon: User, label: "Name" },
     { icon: MapPin, label: "Address" },
 ];
+
+const templateSections = [
+    {
+        icon: User,
+        title: "Personal Information",
+        description: "Basic contact and personal details.",
+        fields: ["Full Name", "Email Address", "Phone Number", "Date of Birth", "Home Address"],
+        action: "Add Personal Information Block"
+    },
+    {
+        icon: HeartPulse,
+        title: "Medical History",
+        description: "Patient medical background information.",
+        fields: ["Do you have any pre-existing medical conditions?", "Please list any pre-existing conditions", "Are you currently taking any medications?", "Please list all current medications"],
+        action: "Add Medical History Block"
+    },
+    {
+        icon: Shield,
+        title: "Insurance Information",
+        description: "Health insurance details.",
+        fields: ["Insurance Provider", "Policy Number", "Group Number", "Relationship to Subscriber"],
+        action: "Add Insurance Information Block"
+    },
+    {
+        icon: CreditCard,
+        title: "Payment Information",
+        description: "Subscription and payment details.",
+        fields: ["Select Payment Plan", "Payment Method"],
+        action: "Add Payment Information Block"
+    }
+]
 
 export function FormBuilderSheet({ isOpen, onClose }: FormBuilderSheetProps) {
   return (
@@ -90,7 +128,7 @@ export function FormBuilderSheet({ isOpen, onClose }: FormBuilderSheetProps) {
                  </div>
             </div>
             <ScrollArea className="flex-grow">
-              <Tabs defaultValue="basic" className="p-4">
+              <Tabs defaultValue="templates" className="p-4">
                 <TabsList className="grid grid-cols-2 mb-4">
                     <TabsTrigger value="basic">Basic Fields</TabsTrigger>
                     <TabsTrigger value="templates">Templates</TabsTrigger>
@@ -106,7 +144,29 @@ export function FormBuilderSheet({ isOpen, onClose }: FormBuilderSheetProps) {
                   </div>
                 </TabsContent>
                 <TabsContent value="templates">
-                    <p className="text-sm text-muted-foreground">Template library coming soon.</p>
+                    <Accordion type="single" collapsible className="w-full">
+                        {templateSections.map((section, index) => (
+                            <AccordionItem value={`item-${index}`} key={index}>
+                                <AccordionTrigger className="text-sm font-medium hover:no-underline">
+                                    <div className="flex items-center gap-2">
+                                        <section.icon className="h-4 w-4" />
+                                        {section.title}
+                                    </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="bg-white p-3 rounded-md border">
+                                    <p className="text-xs text-muted-foreground mb-2">{section.description}</p>
+                                    <p className="text-xs font-semibold mb-1">Includes {section.fields.length} Fields:</p>
+                                    <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-0.5">
+                                        {section.fields.map(field => <li key={field}>{field}</li>)}
+                                    </ul>
+                                    <Button size="sm" className="w-full mt-3 text-xs">
+                                        <Plus className="h-3 w-3 mr-1" />
+                                        {section.action}
+                                    </Button>
+                                </AccordionContent>
+                            </AccordionItem>
+                        ))}
+                    </Accordion>
                 </TabsContent>
               </Tabs>
             </ScrollArea>
