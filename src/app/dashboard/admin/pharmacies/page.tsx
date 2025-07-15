@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -7,7 +8,9 @@ import {
   Search,
   ChevronDown,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Edit,
+  Trash2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -39,28 +42,133 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { PharmacyFormModal } from "./components/pharmacy-form-modal";
+import { useToast } from "@/hooks/use-toast";
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, query, orderBy } from "firebase/firestore";
+import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const mockPharmacies: any[] = [];
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyBVV_vq5fjNSASYQndmbRbEtlfyOieFVTs",
+  authDomain: "zappy-health-c1kob.firebaseapp.com",
+  databaseURL: "https://zappy-health-c1kob-default-rtdb.firebaseio.com",
+  projectId: "zappy-health-c1kob",
+  storageBucket: "zappy-health-c1kob.appspot.com",
+  messagingSenderId: "833435237612",
+  appId: "1:833435237612:web:53731373b2ad7568f279c9"
+};
+
+// Initialize Firebase
+let app;
+try {
+  app = initializeApp(firebaseConfig, "pharmacies-app");
+} catch (e) {
+  app = initializeApp(firebaseConfig);
+}
+const db = getFirestore(app);
+
+type Pharmacy = {
+  id: string;
+  name: string;
+  type: "Compounding" | "Retail";
+  status: "Active" | "Inactive";
+  prescriptions: number;
+};
 
 export default function PharmacyPage() {
+    const [pharmacies, setPharmacies] = React.useState<Pharmacy[]>([]);
     const [loading, setLoading] = React.useState(true);
+    const [isModalOpen, setIsModalOpen] = React.useState(false);
+    const [editingPharmacy, setEditingPharmacy] = React.useState<Pharmacy | null>(null);
+    const { toast } = useToast();
 
+    const fetchPharmacies = async () => {
+        setLoading(true);
+        try {
+          const pharmaciesCollection = collection(db, "pharmacies");
+          const pharmacySnapshot = await getDocs(query(pharmaciesCollection, orderBy("name", "asc")));
+          const pharmacyList = pharmacySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+          } as Pharmacy));
+          setPharmacies(pharmacyList);
+        } catch (error) {
+          console.error("Error fetching pharmacies: ", error);
+          toast({
+            variant: "destructive",
+            title: "Error fetching pharmacies",
+            description: "Could not retrieve pharmacy data from the database.",
+          });
+        } finally {
+          setLoading(false);
+        }
+    };
+    
     React.useEffect(() => {
-        const timer = setTimeout(() => setLoading(false), 1000);
-        return () => clearTimeout(timer);
+        fetchPharmacies();
     }, []);
 
+    const handleOpenAddModal = () => {
+        setEditingPharmacy(null);
+        setIsModalOpen(true);
+    };
+
+    const handleOpenEditModal = (pharmacy: Pharmacy) => {
+        setEditingPharmacy(pharmacy);
+        setIsModalOpen(true);
+    };
+
+    const handleCloseModal = () => {
+        setIsModalOpen(false);
+        setEditingPharmacy(null);
+    };
+
+    const handleFormSubmit = async (values: Omit<Pharmacy, 'id' | 'prescriptions'>) => {
+        try {
+            if (editingPharmacy) {
+                const pharmacyDoc = doc(db, "pharmacies", editingPharmacy.id);
+                await updateDoc(pharmacyDoc, values);
+                toast({
+                    title: "Pharmacy Updated",
+                    description: `${values.name}'s information has been saved.`,
+                });
+            } else {
+                await addDoc(collection(db, "pharmacies"), {
+                    ...values,
+                    prescriptions: 0, // Default for new pharmacies
+                });
+                toast({
+                    title: "Pharmacy Added",
+                    description: `${values.name} has been added to the system.`,
+                });
+            }
+            fetchPharmacies();
+            handleCloseModal();
+        } catch (error) {
+            console.error("Error saving pharmacy: ", error);
+            toast({
+                variant: "destructive",
+                title: "Error Saving Pharmacy",
+                description: "An error occurred while saving the pharmacy information.",
+            });
+        }
+    };
+
+
   return (
+    <>
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Pharmacy Management</h1>
         <div className="flex items-center gap-4">
           <div className="text-sm text-muted-foreground hidden md:block">
-            Total: <span className="font-semibold">0</span> |
-            Active: <span className="font-semibold">0</span> |
-            Prescriptions: <span className="font-semibold">0</span>
+            Total: <span className="font-semibold">{pharmacies.length}</span> |
+            Active: <span className="font-semibold">{pharmacies.filter(p => p.status === 'Active').length}</span> |
+            Prescriptions: <span className="font-semibold">{pharmacies.reduce((acc, p) => acc + (p.prescriptions || 0), 0)}</span>
           </div>
-          <Button>
+          <Button onClick={handleOpenAddModal}>
             <Plus className="mr-2 h-4 w-4" /> Add Pharmacy
           </Button>
         </div>
@@ -112,44 +220,46 @@ export default function PharmacyPage() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow>
-                  <TableCell colSpan={6} className="h-48 text-center text-muted-foreground">
-                    Loading pharmacies...
-                  </TableCell>
-                </TableRow>
-              ) : mockPharmacies.length > 0 ? (
-                mockPharmacies.map((pharmacy) => (
+                Array.from({ length: 3 }).map((_, index) => (
+                    <TableRow key={index}>
+                        <TableCell><Checkbox disabled /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-32"/></TableCell>
+                        <TableCell><Skeleton className="h-6 w-28 rounded-full" /></TableCell>
+                        <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-8"/></TableCell>
+                        <TableCell><div className="flex gap-1"><Skeleton className="h-8 w-8"/><Skeleton className="h-8 w-8"/></div></TableCell>
+                    </TableRow>
+                ))
+              ) : pharmacies.length > 0 ? (
+                pharmacies.map((pharmacy) => (
                   <TableRow key={pharmacy.id}>
                     <TableCell>
                       <Checkbox />
                     </TableCell>
                     <TableCell className="font-medium">{pharmacy.name}</TableCell>
-                    <TableCell>{pharmacy.type}</TableCell>
-                    <TableCell>{pharmacy.status}</TableCell>
-                    <TableCell>{pharmacy.prescriptions}</TableCell>
                     <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
+                        <Badge variant="outline">{pharmacy.type}</Badge>
+                    </TableCell>
+                    <TableCell>
+                        <Badge className={pharmacy.status === 'Active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'}>{pharmacy.status}</Badge>
+                    </TableCell>
+                    <TableCell>{pharmacy.prescriptions || 0}</TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenEditModal(pharmacy)}>
+                            <Edit className="h-4 w-4" />
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem>View Details</DropdownMenuItem>
-                          <DropdownMenuItem>Edit Pharmacy</DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive">
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
               ) : (
                 <TableRow>
                   <TableCell colSpan={6} className="h-48 text-center text-muted-foreground">
-                    No pharmacies found matching your search criteria.
+                    No pharmacies found. Use the "Add Pharmacy" button to create one.
                   </TableCell>
                 </TableRow>
               )}
@@ -159,7 +269,7 @@ export default function PharmacyPage() {
       </Card>
       
       <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <div>Showing 0 to 0 of 0 results</div>
+        <div>Showing 1 to {pharmacies.length} of {pharmacies.length} results</div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <span>Show:</span>
@@ -186,5 +296,13 @@ export default function PharmacyPage() {
         </div>
       </div>
     </div>
+    <PharmacyFormModal 
+        isOpen={isModalOpen} 
+        onClose={handleCloseModal}
+        pharmacy={editingPharmacy}
+        onSubmit={handleFormSubmit}
+    />
+    </>
   );
 }
+
