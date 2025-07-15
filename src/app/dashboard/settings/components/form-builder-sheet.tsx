@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -123,7 +122,7 @@ export function FormBuilderSheet({ isOpen, onClose }: FormBuilderSheetProps) {
             <div className="p-4 border-b">
                  <h3 className="text-sm font-semibold mb-2">QUICK START</h3>
                  <div className="flex gap-2">
-                    <Button variant="outline" size="sm" className="w-full justify-start"><Sparkles className="h-4 w-4 mr-2" /> Generate with AI</Button>
+                    <Button variant="outline" size="sm" className="w-full justify-start"><Sparkles className="h-4 w-4 mr-2" /> AI Gen</Button>
                     <Button variant="outline" size="sm" className="w-full justify-start"><Import className="h-4 w-4 mr-2" /> Import Form</Button>
                  </div>
             </div>
