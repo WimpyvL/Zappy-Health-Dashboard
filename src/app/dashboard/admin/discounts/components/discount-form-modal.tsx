@@ -39,12 +39,17 @@ type Discount = {
     status: "Active" | "Inactive" | "Expired";
     validity: string;
     usage: number;
+    validFrom?: { toDate: () => Date };
+    validUntil?: { toDate: () => Date };
+    minPurchase?: number;
+    usageLimit?: string;
   };
 
 interface DiscountFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   discount?: Discount | null;
+  onSubmit: (values: any) => void;
 }
 
 const formSchema = z.object({
@@ -66,7 +71,7 @@ const formSchema = z.object({
   status: z.string().min(1, "Status is required"),
 });
 
-export function DiscountFormModal({ isOpen, onClose, discount }: DiscountFormModalProps) {
+export function DiscountFormModal({ isOpen, onClose, discount, onSubmit }: DiscountFormModalProps) {
   const isEditMode = !!discount;
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -81,10 +86,10 @@ export function DiscountFormModal({ isOpen, onClose, discount }: DiscountFormMod
         type: discount.type,
         value: discount.value,
         description: discount.description,
-        validFrom: discount.validity === "No expiration" ? new Date() : new Date(discount.validity),
-        validUntil: undefined, // Needs logic for parsing
-        minPurchase: 0, // Mocked
-        usageLimit: "Unlimited", // Mocked
+        validFrom: discount.validFrom ? discount.validFrom.toDate() : new Date(),
+        validUntil: discount.validUntil ? discount.validUntil.toDate() : undefined,
+        minPurchase: discount.minPurchase || 0,
+        usageLimit: discount.usageLimit || "Unlimited",
         status: discount.status,
       });
     } else {
@@ -104,9 +109,8 @@ export function DiscountFormModal({ isOpen, onClose, discount }: DiscountFormMod
   }, [discount, isEditMode, form, isOpen]);
 
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    console.log("Form values:", values);
-    onClose();
+  const handleFormSubmit = (values: z.infer<typeof formSchema>) => {
+    onSubmit(values);
   };
 
   return (
@@ -120,7 +124,7 @@ export function DiscountFormModal({ isOpen, onClose, discount }: DiscountFormMod
         </DialogHeader>
         <div className="px-6 py-4">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
                     <div className="space-y-4">
                         <FormField
@@ -294,7 +298,7 @@ export function DiscountFormModal({ isOpen, onClose, discount }: DiscountFormMod
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" onClick={form.handleSubmit(onSubmit)}>
+          <Button type="submit" onClick={form.handleSubmit(handleFormSubmit)}>
             {isEditMode ? "Save Changes" : "Create Discount"}
           </Button>
         </DialogFooter>
