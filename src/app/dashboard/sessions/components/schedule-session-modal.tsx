@@ -32,6 +32,7 @@ import { Textarea } from "@/components/ui/textarea";
 interface ScheduleSessionModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSubmit: (values: any) => void;
 }
 
 const formSchema = z.object({
@@ -48,14 +49,29 @@ const formSchema = z.object({
   notes: z.string().optional(),
 });
 
-export function ScheduleSessionModal({ isOpen, onClose }: ScheduleSessionModalProps) {
+export function ScheduleSessionModal({ isOpen, onClose, onSubmit }: ScheduleSessionModalProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
+    defaultValues: {
+        patient: "",
+        sessionType: "initial",
+        servicePlan: "",
+        provider: "",
+        dateTime: new Date(),
+        preConsultationForm: "",
+        notes: "",
+    }
   });
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    console.log("Form values:", values);
-    onClose();
+  const handleSubmit = (values: z.infer<typeof formSchema>) => {
+    onSubmit({
+        patientName: values.patient, // This needs to be adapted to fetch actual name
+        type: values.sessionType,
+        plan: values.servicePlan,
+        provider: values.provider,
+        date: values.dateTime,
+        status: "Scheduled",
+    });
   };
 
   return (
@@ -69,7 +85,7 @@ export function ScheduleSessionModal({ isOpen, onClose }: ScheduleSessionModalPr
         </DialogHeader>
         <div className="p-6 pt-0 max-h-[80vh] overflow-y-auto">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
               <FormField
                 control={form.control}
                 name="patient"
@@ -248,7 +264,7 @@ export function ScheduleSessionModal({ isOpen, onClose }: ScheduleSessionModalPr
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" onClick={form.handleSubmit(onSubmit)}>
+          <Button type="submit" onClick={form.handleSubmit(handleSubmit)}>
             Schedule Session
           </Button>
         </DialogFooter>

@@ -8,7 +8,6 @@ import {
   Search,
   ChevronDown,
 } from "lucide-react";
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,20 +40,39 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ScheduleSessionModal } from "./components/schedule-session-modal";
+import { useToast } from "@/hooks/use-toast";
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, getDocs, addDoc, query, orderBy } from "firebase/firestore";
+import Link from "next/link";
+import { Skeleton } from "@/components/ui/skeleton";
+import { format } from "date-fns";
 
-const mockSessions = [
-  {
-    id: "ses_1",
-    patientName: "N/A",
-    patientId: "patient39820e57-9041-454e-a962-246d432b6972",
-    patientEmail: "example.com",
-    type: "check-in",
-    date: "Jul 14, 2025",
-    plan: "N/A",
-    provider: "N/A",
-    status: "Scheduled",
-  },
-];
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyBVV_vq5fjNSASYQndmbRbEtlfyOieFVTs",
+  authDomain: "zappy-health-c1kob.firebaseapp.com",
+  databaseURL: "https://zappy-health-c1kob-default-rtdb.firebaseio.com",
+  projectId: "zappy-health-c1kob",
+  storageBucket: "zappy-health-c1kob.appspot.com",
+  messagingSenderId: "833435237612",
+  appId: "1:833435237612:web:53731373b2ad7568f279c9"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+type Session = {
+  id: string;
+  patientName: string;
+  patientId: string;
+  patientEmail: string;
+  type: string;
+  date: string;
+  plan: string;
+  provider: string;
+  status: "Scheduled" | "Completed" | "Canceled";
+};
 
 const FilterDropdown = ({
   label,
@@ -79,7 +97,62 @@ const FilterDropdown = ({
 );
 
 export default function SessionsPage() {
+  const [sessions, setSessions] = React.useState<Session[]>([]);
+  const [loading, setLoading] = React.useState(true);
   const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const { toast } = useToast();
+
+  const fetchSessions = async () => {
+    setLoading(true);
+    try {
+      const sessionsCollection = collection(db, "sessions");
+      const sessionSnapshot = await getDocs(query(sessionsCollection, orderBy("date", "desc")));
+      const sessionList = sessionSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          date: data.date ? format(data.date.toDate(), "MMM dd, yyyy") : "N/A",
+          ...data,
+        } as Session;
+      });
+      setSessions(sessionList);
+    } catch (error) {
+      console.error("Error fetching sessions: ", error);
+      toast({
+        variant: "destructive",
+        title: "Error fetching sessions",
+        description: "Could not retrieve session data from the database.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchSessions();
+  }, []);
+
+  const handleCreateSession = async (values: any) => {
+    try {
+      await addDoc(collection(db, "sessions"), {
+          ...values,
+          date: values.dateTime, // assuming dateTime is the field from form
+      });
+      toast({
+        title: "Session Scheduled",
+        description: `A new session has been scheduled for ${values.patient}.`,
+      });
+      fetchSessions();
+      setIsModalOpen(false);
+    } catch (error) {
+       console.error("Error creating session: ", error);
+       toast({
+        variant: "destructive",
+        title: "Error Scheduling Session",
+        description: "An error occurred while creating the session.",
+      });
+    }
+  };
 
   return (
     <>
@@ -88,10 +161,12 @@ export default function SessionsPage() {
           <h1 className="text-3xl font-bold">Sessions</h1>
           <div className="flex items-center gap-4">
             <div className="text-sm text-muted-foreground">
-              Total: <span className="font-semibold">1</span> Active: <span className="font-semibold">1</span> Completed: <span className="font-semibold">0</span>
+              Total: <span className="font-semibold">{sessions.length}</span> | 
+              Active: <span className="font-semibold">{sessions.filter(s => s.status === 'Scheduled').length}</span> | 
+              Completed: <span className="font-semibold">{sessions.filter(s => s.status === 'Completed').length}</span>
             </div>
             <Button onClick={() => setIsModalOpen(true)}>
-              <Plus className="h-4 w-4" />
+              <Plus className="h-4 w-4" /> Add Session
             </Button>
              <div className="flex items-center space-x-2">
               <Switch id="batch-mode" />
@@ -130,54 +205,65 @@ export default function SessionsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {mockSessions.map((session) => (
-                  <TableRow key={session.id}>
-                    <TableCell>
-                      <div className="font-medium">{session.patientName}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {session.patientId}
-                      </div>
-                       <div className="text-sm text-muted-foreground">
-                        {session.patientEmail}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                       <Badge variant="outline">{session.type}</Badge>
-                    </TableCell>
-                     <TableCell>{session.date}</TableCell>
-                    <TableCell>{session.plan}</TableCell>
-                    <TableCell>{session.provider}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className="bg-cyan-100 text-cyan-800 hover:bg-cyan-200">
-                        {session.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem>View Details</DropdownMenuItem>
-                          <DropdownMenuItem>Reschedule</DropdownMenuItem>
-                          <DropdownMenuItem className="text-destructive">
-                            Cancel Session
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {loading ? (
+                    Array.from({ length: 3 }).map((_, index) => (
+                        <TableRow key={index}>
+                            <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                            <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                            <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                            <TableCell><Skeleton className="h-5 w-28" /></TableCell>
+                            <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                            <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                            <TableCell><Skeleton className="h-8 w-8" /></TableCell>
+                        </TableRow>
+                    ))
+                ) : (
+                    sessions.map((session) => (
+                        <TableRow key={session.id}>
+                            <TableCell>
+                            <Link href={`/dashboard/patients/${session.patientId}`} className="font-medium text-primary hover:underline">{session.patientName || 'N/A'}</Link>
+                            <div className="text-sm text-muted-foreground">
+                                {session.patientEmail || session.patientId}
+                            </div>
+                            </TableCell>
+                            <TableCell>
+                            <Badge variant="outline">{session.type}</Badge>
+                            </TableCell>
+                            <TableCell>{session.date}</TableCell>
+                            <TableCell>{session.plan || 'N/A'}</TableCell>
+                            <TableCell>{session.provider || 'N/A'}</TableCell>
+                            <TableCell>
+                            <Badge variant={session.status === 'Scheduled' ? 'secondary' : 'default'} className={session.status === 'Scheduled' ? 'bg-cyan-100 text-cyan-800 hover:bg-cyan-200' : 'bg-green-100 text-green-800'}>
+                                {session.status}
+                            </Badge>
+                            </TableCell>
+                            <TableCell>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                <DropdownMenuItem asChild><Link href={`/dashboard/sessions/${session.id}`}>View Details</Link></DropdownMenuItem>
+                                <DropdownMenuItem>Reschedule</DropdownMenuItem>
+                                <DropdownMenuItem className="text-destructive">
+                                    Cancel Session
+                                </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                            </TableCell>
+                        </TableRow>
+                        ))
+                )}
               </TableBody>
             </Table>
           </CardContent>
         </Card>
 
         <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <div>Showing 1 to {mockSessions.length} of {mockSessions.length} sessions</div>
+          <div>Showing 1 to {sessions.length} of {sessions.length} sessions</div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <span>Show:</span>
@@ -207,6 +293,7 @@ export default function SessionsPage() {
       <ScheduleSessionModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
+        onSubmit={handleCreateSession}
       />
     </>
   );
