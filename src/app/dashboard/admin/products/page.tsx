@@ -38,6 +38,7 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import { ProductFormModal } from "./components/product-form-modal";
 
 const mockProducts = [
   {
@@ -127,6 +128,23 @@ export default function ProductsPage() {
   const [activeProductStatus, setActiveProductStatus] = React.useState("All Status");
   const [activeCategoryStatus, setActiveCategoryStatus] = React.useState("All Status");
   const [activeCategoryFilter, setActiveCategoryFilter] = React.useState("All");
+  const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const [editingProduct, setEditingProduct] = React.useState(null);
+
+  const handleOpenAddModal = () => {
+    setEditingProduct(null);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEditModal = (product: any) => {
+    setEditingProduct(product);
+    setIsModalOpen(true);
+  };
+  
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setEditingProduct(null);
+  };
 
   const productCategories = ["All", "Hair", "Mental Health", "Prescriptions", "Supplements", "Telehealth", "Women's Health"];
   const productStatuses = ["All Status", "Active", "Draft"];
@@ -134,10 +152,11 @@ export default function ProductsPage() {
   const categoryStatuses = ["All Status", "Active", "Draft"];
 
   return (
+    <>
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Products &amp; Subscriptions</h1>
-        <Button>
+        <Button onClick={handleOpenAddModal}>
           <Plus className="mr-2 h-4 w-4" /> Add New
         </Button>
       </div>
@@ -219,7 +238,7 @@ export default function ProductsPage() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenEditModal(product)}>
                             <FilePenLine className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
@@ -322,5 +341,11 @@ export default function ProductsPage() {
 
       </Tabs>
     </div>
+    <ProductFormModal 
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        product={editingProduct}
+    />
+    </>
   );
 }
