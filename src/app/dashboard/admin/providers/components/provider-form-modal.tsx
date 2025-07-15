@@ -39,6 +39,7 @@ interface ProviderFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   provider?: Provider | null;
+  onSubmit: (values: any) => void;
 }
 
 const formSchema = z.object({
@@ -54,7 +55,7 @@ const formSchema = z.object({
   ),
 });
 
-export function ProviderFormModal({ isOpen, onClose, provider }: ProviderFormModalProps) {
+export function ProviderFormModal({ isOpen, onClose, provider, onSubmit }: ProviderFormModalProps) {
   const isEditMode = !!provider;
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -86,9 +87,8 @@ export function ProviderFormModal({ isOpen, onClose, provider }: ProviderFormMod
   }, [provider, isEditMode, form, isOpen]);
 
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    console.log("Form values:", values);
-    onClose();
+  const handleFormSubmit = (values: z.infer<typeof formSchema>) => {
+    onSubmit(values);
   };
 
   return (
@@ -102,7 +102,7 @@ export function ProviderFormModal({ isOpen, onClose, provider }: ProviderFormMod
         </DialogHeader>
         <div className="px-6 pb-6">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
@@ -226,7 +226,7 @@ export function ProviderFormModal({ isOpen, onClose, provider }: ProviderFormMod
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" onClick={form.handleSubmit(onSubmit)}>
+          <Button type="submit" onClick={form.handleSubmit(handleFormSubmit)}>
             {isEditMode ? "Save Changes" : "Create Provider"}
           </Button>
         </DialogFooter>
@@ -234,3 +234,5 @@ export function ProviderFormModal({ isOpen, onClose, provider }: ProviderFormMod
     </Dialog>
   );
 }
+
+    

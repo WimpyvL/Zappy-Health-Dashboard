@@ -46,6 +46,30 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ProviderFormModal } from "./components/provider-form-modal";
+import { useToast } from "@/hooks/use-toast";
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, query, orderBy, Timestamp } from "firebase/firestore";
+import { Skeleton } from "@/components/ui/skeleton";
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyBVV_vq5fjNSASYQndmbRbEtlfyOieFVTs",
+  authDomain: "zappy-health-c1kob.firebaseapp.com",
+  databaseURL: "https://zappy-health-c1kob-default-rtdb.firebaseio.com",
+  projectId: "zappy-health-c1kob",
+  storageBucket: "zappy-health-c1kob.appspot.com",
+  messagingSenderId: "833435237612",
+  appId: "1:833435237612:web:53731373b2ad7568f279c9"
+};
+
+// Initialize Firebase
+let app;
+try {
+  app = initializeApp(firebaseConfig, "providers-app");
+} catch (e) {
+  app = initializeApp(firebaseConfig);
+}
+const db = getFirestore(app);
 
 type Provider = {
   id: string;
@@ -57,29 +81,6 @@ type Provider = {
   status: "Active" | "Inactive";
   patientCount: number;
 };
-
-const mockProviders: Provider[] = [
-  {
-    id: "prov_1",
-    name: "Dr. Sarah Johnson",
-    uuid: "0e5ae29a-21c1-47d8-bd76-0dab3170367b",
-    specialty: "Internal Medicine",
-    email: "sarah.johnson@example.com",
-    phone: null,
-    status: "Active",
-    patientCount: 0,
-  },
-  {
-    id: "prov_2",
-    name: "Dr. John Smith",
-    uuid: "fce715cc-355a-4173-a173-6331fbbe5dc2",
-    specialty: "Cardiology",
-    email: "john.smith@example.com",
-    phone: null,
-    status: "Active",
-    patientCount: 0,
-  },
-];
 
 const FilterDropdown = ({
     label,
@@ -104,13 +105,36 @@ const FilterDropdown = ({
   );
 
 export default function ProvidersPage() {
+    const [providers, setProviders] = React.useState<Provider[]>([]);
     const [loading, setLoading] = React.useState(true);
     const [isModalOpen, setIsModalOpen] = React.useState(false);
     const [editingProvider, setEditingProvider] = React.useState<Provider | null>(null);
+    const { toast } = useToast();
 
+    const fetchProviders = async () => {
+        setLoading(true);
+        try {
+          const providersCollection = collection(db, "providers");
+          const providerSnapshot = await getDocs(query(providersCollection, orderBy("name", "asc")));
+          const providerList = providerSnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+          } as Provider));
+          setProviders(providerList);
+        } catch (error) {
+          console.error("Error fetching providers: ", error);
+          toast({
+            variant: "destructive",
+            title: "Error fetching providers",
+            description: "Could not retrieve provider data from the database.",
+          });
+        } finally {
+          setLoading(false);
+        }
+    };
+    
     React.useEffect(() => {
-        const timer = setTimeout(() => setLoading(false), 1000);
-        return () => clearTimeout(timer);
+        fetchProviders();
     }, []);
 
     const handleOpenAddModal = () => {
@@ -128,6 +152,44 @@ export default function ProvidersPage() {
         setEditingProvider(null);
     };
 
+    const handleFormSubmit = async (values: any) => {
+        const providerData = {
+          name: values.fullName,
+          specialty: values.specialty,
+          email: values.email,
+          phone: values.phone,
+          status: values.status,
+          patientCount: values.patientCount,
+          // address is not in Provider type, handle as needed
+        };
+    
+        try {
+          if (editingProvider) {
+            const providerDoc = doc(db, "providers", editingProvider.id);
+            await updateDoc(providerDoc, providerData);
+            toast({
+              title: "Provider Updated",
+              description: `${values.fullName}'s information has been saved.`,
+            });
+          } else {
+            await addDoc(collection(db, "providers"), { ...providerData, uuid: crypto.randomUUID() });
+            toast({
+              title: "Provider Added",
+              description: `${values.fullName} has been added to the system.`,
+            });
+          }
+          fetchProviders();
+          handleCloseModal();
+        } catch (error) {
+          console.error("Error saving provider: ", error);
+          toast({
+            variant: "destructive",
+            title: "Error Saving Provider",
+            description: "An error occurred while saving the provider information.",
+          });
+        }
+    };
+
 
   return (
     <>
@@ -136,9 +198,9 @@ export default function ProvidersPage() {
           <h1 className="text-3xl font-bold">Provider Management</h1>
           <div className="flex items-center gap-4">
             <div className="text-sm text-muted-foreground hidden md:block">
-              Total: <span className="font-semibold">2</span> |
-              Active: <span className="font-semibold">2</span> |
-              Patients: <span className="font-semibold">0</span>
+              Total: <span className="font-semibold">{providers.length}</span> |
+              Active: <span className="font-semibold">{providers.filter(p => p.status === 'Active').length}</span> |
+              Patients: <span className="font-semibold">{providers.reduce((acc, p) => acc + p.patientCount, 0)}</span>
             </div>
             <Button onClick={handleOpenAddModal}>
               <Plus className="mr-2 h-4 w-4" /> Add Provider
@@ -177,13 +239,19 @@ export default function ProvidersPage() {
               </TableHeader>
               <TableBody>
                 {loading ? (
-                  <TableRow>
-                      <TableCell colSpan={7} className="h-48 text-center text-muted-foreground">
-                          Loading providers...
-                      </TableCell>
-                  </TableRow>
-                ) : mockProviders.length > 0 ? (
-                  mockProviders.map((provider) => (
+                  Array.from({ length: 2 }).map((_, index) => (
+                    <TableRow key={index}>
+                        <TableCell><Checkbox disabled /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-32"/></TableCell>
+                        <TableCell><Skeleton className="h-6 w-28 rounded-full" /></TableCell>
+                        <TableCell><div className="space-y-1"><Skeleton className="h-4 w-40"/><Skeleton className="h-4 w-24"/></div></TableCell>
+                        <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-8"/></TableCell>
+                        <TableCell><div className="flex gap-1"><Skeleton className="h-8 w-8"/><Skeleton className="h-8 w-8"/></div></TableCell>
+                    </TableRow>
+                  ))
+                ) : providers.length > 0 ? (
+                  providers.map((provider) => (
                     <TableRow key={provider.id}>
                       <TableCell>
                         <Checkbox />
@@ -207,11 +275,11 @@ export default function ProvidersPage() {
                           </div>
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                               <Phone className="h-3.5 w-3.5" />
-                              No phone
+                              {provider.phone || 'No phone'}
                           </div>
                       </TableCell>
                       <TableCell>
-                        <Badge className="bg-green-100 text-green-800 hover:bg-green-200">{provider.status}</Badge>
+                        <Badge className={provider.status === 'Active' ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-gray-100 text-gray-800 hover:bg-gray-200'}>{provider.status}</Badge>
                       </TableCell>
                       <TableCell>{provider.patientCount}</TableCell>
                       <TableCell>
@@ -239,7 +307,7 @@ export default function ProvidersPage() {
         </Card>
 
         <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <div>Showing 1 to {mockProviders.length} of {mockProviders.length} results</div>
+          <div>Showing 1 to {providers.length} of {providers.length} results</div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <span>Show:</span>
@@ -269,8 +337,10 @@ export default function ProvidersPage() {
       <ProviderFormModal 
         isOpen={isModalOpen} 
         onClose={handleCloseModal}
-        provider={editingProvider} 
+        provider={editingProvider}
       />
     </>
   );
 }
+
+    
