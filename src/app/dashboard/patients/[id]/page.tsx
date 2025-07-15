@@ -41,6 +41,7 @@ import { Separator } from "@/components/ui/separator";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { PatientInfoTab } from "./components/patient-info-tab";
+import { PatientOrdersTab } from "./components/patient-orders-tab";
 
 const patient = {
     id: "patient1",
@@ -174,7 +175,7 @@ function AdminToolsSidebar({ isOpen, onClose, patient }: { isOpen: boolean, onCl
 
 
 export default function PatientDetailPage({ params }: { params: { id: string } }) {
-  const [activeTab, setActiveTab] = React.useState("Patient Info");
+  const [activeTab, setActiveTab] = React.useState("Orders");
   const [isAdminPanelOpen, setIsAdminPanelOpen] = React.useState(false);
 
   return (
@@ -230,7 +231,8 @@ export default function PatientDetailPage({ params }: { params: { id: string } }
       {/* Content based on active tab */}
       <div>
         {activeTab === 'Patient Info' && <PatientInfoTab />}
-        {activeTab !== 'Patient Info' && (
+        {activeTab === 'Orders' && <PatientOrdersTab />}
+        {activeTab !== 'Patient Info' && activeTab !== 'Orders' && (
              <Card>
                 <CardContent className="h-96 flex items-center justify-center">
                     <p className="text-muted-foreground">{activeTab} content goes here.</p>
