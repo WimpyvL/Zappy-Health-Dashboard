@@ -8,7 +8,8 @@ import {
   TriangleAlert,
   BookMarked,
   Search,
-  SlidersHorizontal,
+  Plus,
+  FolderOpen
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -28,6 +29,14 @@ import {
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Separator } from "@/components/ui/separator";
 
+const EmptyState = () => (
+    <div className="text-center py-12 text-muted-foreground">
+        <FolderOpen className="mx-auto h-12 w-12 text-gray-400" />
+        <p className="mt-4">No resources found in this category.</p>
+        <p className="text-sm">Start by creating new content.</p>
+    </div>
+);
+
 export default function EducationalResourcesPage() {
   const [activeTab, setActiveTab] = React.useState("product_info");
   const [activeStatus, setActiveStatus] = React.useState("all status");
@@ -43,7 +52,10 @@ export default function EducationalResourcesPage() {
           <h1 className="text-xl font-semibold text-gray-500">Product & Treatment Education</h1>
           <p className="text-3xl font-bold">Educational Resources</p>
         </div>
-        <Button>Create New Content</Button>
+        <Button>
+          <Plus className="mr-2 h-4 w-4" />
+          Create New Content
+        </Button>
       </div>
 
       <Card>
@@ -100,36 +112,16 @@ export default function EducationalResourcesPage() {
             </TabsList>
             
             <TabsContent value="product_info" className="mt-6">
-               <Alert variant="destructive">
-                <TriangleAlert className="h-4 w-4" />
-                <AlertDescription>
-                Error loading resources: Error fetching educational resources: relation "public.educational_resources" does not exist
-                </AlertDescription>
-              </Alert>
+               <EmptyState />
             </TabsContent>
-            <TabsContent value="treatment_guides">
-                <Alert variant="destructive">
-                    <TriangleAlert className="h-4 w-4" />
-                    <AlertDescription>
-                    Error loading resources: Error fetching educational resources: relation "public.educational_resources" does not exist
-                    </AlertDescription>
-                </Alert>
+            <TabsContent value="treatment_guides" className="mt-6">
+                <EmptyState />
             </TabsContent>
-            <TabsContent value="side_effect_management">
-                <Alert variant="destructive">
-                    <TriangleAlert className="h-4 w-4" />
-                    <AlertDescription>
-                    Error loading resources: Error fetching educational resources: relation "public.educational_resources" does not exist
-                    </AlertDescription>
-                </Alert>
+            <TabsContent value="side_effect_management" className="mt-6">
+                <EmptyState />
             </TabsContent>
-            <TabsContent value="condition_info">
-                <Alert variant="destructive">
-                    <TriangleAlert className="h-4 w-4" />
-                    <AlertDescription>
-                    Error loading resources: Error fetching educational resources: relation "public.educational_resources" does not exist
-                    </AlertDescription>
-                </Alert>
+            <TabsContent value="condition_info" className="mt-6">
+                <EmptyState />
             </TabsContent>
           </Tabs>
         </CardContent>
