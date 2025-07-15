@@ -30,6 +30,7 @@ interface ProductFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   product?: any | null; // Use a proper type for product
+  onSubmit: (values: any) => void;
 }
 
 const formSchema = z.object({
@@ -49,7 +50,7 @@ const formSchema = z.object({
 
 const categories = ["Weight Management", "ED", "Hair", "Skin", "General Health"];
 
-export function ProductFormModal({ isOpen, onClose, product }: ProductFormModalProps) {
+export function ProductFormModal({ isOpen, onClose, product, onSubmit }: ProductFormModalProps) {
   const isEditMode = !!product;
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -75,7 +76,7 @@ export function ProductFormModal({ isOpen, onClose, product }: ProductFormModalP
         description: product.description || '',
         price: product.price,
         stripePriceId: product.stripePriceId || '',
-        isActive: product.status === 'Active',
+        isActive: product.status === 'Active' || product.isActive, // Handle both status and isActive
         requiresPrescription: product.requiresPrescription || false,
         isProgram: product.isProgram || false,
         associatedServices: product.associatedServices?.join(', ') || ''
@@ -94,12 +95,6 @@ export function ProductFormModal({ isOpen, onClose, product }: ProductFormModalP
     });
     }
   }, [product, isEditMode, form, isOpen]);
-
-
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    console.log("Form values:", values);
-    onClose();
-  };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>

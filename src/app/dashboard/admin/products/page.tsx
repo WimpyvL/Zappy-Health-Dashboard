@@ -39,58 +39,48 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { ProductFormModal } from "./components/product-form-modal";
+import { useToast } from "@/hooks/use-toast";
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, query, orderBy, Timestamp } from "firebase/firestore";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const mockProducts = [
-  {
-    id: "prod_1",
-    name: "Magnesium Glycinate",
-    sku: "MAG-GLY-400",
-    category: "Supplements",
-    price: 28.99,
-    status: "Unknown",
-  },
-  {
-    id: "prod_2",
-    name: "Multivitamin Women",
-    sku: "MULTI-WOM",
-    category: "Supplements",
-    price: 39.99,
-    status: "Unknown",
-  },
-  {
-    id: "prod_3",
-    name: "Omega-3 Fish Oil",
-    sku: "OMEGA3-1000",
-    category: "Supplements",
-    price: 34.99,
-    status: "Unknown",
-  },
-  {
-    id: "prod_4",
-    name: "Probiotic Complex",
-    sku: "PROB-COMP",
-    category: "Supplements",
-    price: 44.99,
-    status: "Unknown",
-  },
-  {
-    id: "prod_5",
-    name: "Vitamin D3 5000 IU",
-    sku: "VIT-D3-5000",
-    category: "Supplements",
-    price: 24.99,
-    status: "Unknown",
-  },
-];
+// Your web app's Firebase configuration
+const firebaseConfig = {
+    apiKey: "AIzaSyBVV_vq5fjNSASYQndmbRbEtlfyOieFVTs",
+    authDomain: "zappy-health-c1kob.firebaseapp.com",
+    databaseURL: "https://zappy-health-c1kob-default-rtdb.firebaseio.com",
+    projectId: "zappy-health-c1kob",
+    storageBucket: "zappy-health-c1kob.appspot.com",
+    messagingSenderId: "833435237612",
+    appId: "1:833435237612:web:53731373b2ad7568f279c9"
+  };
+  
+  // Initialize Firebase
+  let app;
+  try {
+    app = initializeApp(firebaseConfig, "products-app");
+  } catch (e) {
+    app = initializeApp(firebaseConfig);
+  }
+  const db = getFirestore(app);
 
-const mockCategories = [
-    { id: "", name: "Telehealth", description: "Virtual healthcare consultations", products: 0, status: "Unknown" },
-    { id: "", name: "Prescriptions", description: "Prescription medications and refills", products: 0, status: "Unknown" },
-    { id: "", name: "Lab Tests", description: "Laboratory testing and diagnostics", products: 0, status: "Unknown" },
-    { id: "", name: "Supplements", description: "Nutritional supplements and vitamins", products: 0, status: "Unknown" },
-    { id: "", name: "Mental Health", description: "Mental health and wellness services", products: 0, status: "Unknown" },
-    { id: "", name: "Women's Health", description: "Women's healthcare services", products: 0, status: "Unknown" },
-]
+type Product = {
+    id: string;
+    name: string;
+    sku: string;
+    category: string;
+    price: number;
+    status: string;
+    isActive: boolean;
+};
+
+type Category = {
+    id: string;
+    name: string;
+    description: string;
+    products: number;
+    status: string;
+};
 
 const FilterButton = ({
   label,
@@ -111,25 +101,52 @@ const FilterButton = ({
   </Button>
 );
 
-const StatusBadge = ({ status }: { status: string }) => {
-    let className = "bg-gray-100 text-gray-800";
-    if (status === "Unknown") {
-        className = "bg-yellow-100 text-yellow-800 border border-yellow-200";
-    } else if (status === "Active") {
+const StatusBadge = ({ status, isActive }: { status: string; isActive?: boolean }) => {
+    const finalStatus = status === 'Unknown' ? (isActive ? 'Active' : 'Draft') : status;
+    let className = "bg-gray-100 text-gray-800 border border-gray-200";
+    if (finalStatus === "Active") {
         className = "bg-green-100 text-green-800 border border-green-200";
-    } else if (status === "Draft") {
+    } else if (finalStatus === "Draft") {
         className = "bg-gray-100 text-gray-800 border border-gray-200";
     }
-    return <Badge className={className}>{status}</Badge>;
+    return <Badge className={`${className} hover:${className}`}>{finalStatus}</Badge>;
 };
 
 export default function ProductsPage() {
+  const [products, setProducts] = React.useState<Product[]>([]);
+  const [categories, setCategories] = React.useState<Category[]>([]);
+  const [loading, setLoading] = React.useState(true);
   const [activeCategory, setActiveCategory] = React.useState("All");
   const [activeProductStatus, setActiveProductStatus] = React.useState("All Status");
   const [activeCategoryStatus, setActiveCategoryStatus] = React.useState("All Status");
-  const [activeCategoryFilter, setActiveCategoryFilter] = React.useState("All");
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [editingProduct, setEditingProduct] = React.useState(null);
+  const { toast } = useToast();
+
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+        const productsCollection = collection(db, "products");
+        const productsSnapshot = await getDocs(query(productsCollection, orderBy("name", "asc")));
+        const productList = productsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
+        setProducts(productList);
+
+        const categoriesCollection = collection(db, "categories");
+        const categoriesSnapshot = await getDocs(query(categoriesCollection, orderBy("name", "asc")));
+        const categoryList = categoriesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data(), products: 0 } as Category));
+        setCategories(categoryList);
+
+    } catch (error) {
+        console.error("Error fetching data: ", error);
+        toast({ variant: "destructive", title: "Error", description: "Could not retrieve data from the database." });
+    } finally {
+        setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchData();
+  }, []);
 
   const handleOpenAddModal = () => {
     setEditingProduct(null);
@@ -145,6 +162,26 @@ export default function ProductsPage() {
     setIsModalOpen(false);
     setEditingProduct(null);
   };
+
+  const handleFormSubmit = async (values: any) => {
+    try {
+      if (editingProduct) {
+        // @ts-ignore
+        const productDoc = doc(db, "products", editingProduct.id);
+        await updateDoc(productDoc, values);
+        toast({ title: "Product Updated", description: `${values.name} has been saved.` });
+      } else {
+        await addDoc(collection(db, "products"), { ...values, createdAt: Timestamp.now() });
+        toast({ title: "Product Added", description: `${values.name} has been created.` });
+      }
+      fetchData();
+      handleCloseModal();
+    } catch (error) {
+      console.error("Error saving product: ", error);
+      toast({ variant: "destructive", title: "Error Saving Product" });
+    }
+  };
+
 
   const productCategories = ["All", "Hair", "Mental Health", "Prescriptions", "Supplements", "Telehealth", "Women's Health"];
   const productStatuses = ["All Status", "Active", "Draft"];
@@ -227,14 +264,25 @@ export default function ProductsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {mockProducts.map((product) => (
+                  {loading ? (
+                    Array.from({length: 5}).map((_, i) => (
+                      <TableRow key={i}>
+                        <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                        <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                        <TableCell><div className="flex gap-2"><Skeleton className="h-8 w-8" /><Skeleton className="h-8 w-8" /></div></TableCell>
+                      </TableRow>
+                    ))
+                  ) : products.map((product) => (
                     <TableRow key={product.id}>
                       <TableCell className="font-medium">{product.name}</TableCell>
                       <TableCell>{product.sku}</TableCell>
                       <TableCell>{product.category}</TableCell>
                       <TableCell>${product.price.toFixed(2)}</TableCell>
                       <TableCell>
-                        <StatusBadge status={product.status} />
+                        <StatusBadge status={product.status} isActive={product.isActive}/>
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
@@ -253,7 +301,7 @@ export default function ProductsPage() {
             </CardContent>
             <CardFooter>
                  <div className="text-sm text-muted-foreground">
-                    {mockProducts.length} products found
+                    {products.length} products found
                  </div>
             </CardFooter>
           </Card>
@@ -307,8 +355,19 @@ export default function ProductsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {mockCategories.map((category) => (
-                    <TableRow key={category.name}>
+                  {loading ? (
+                    Array.from({length: 5}).map((_, i) => (
+                      <TableRow key={i}>
+                        <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-48" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+                        <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                        <TableCell><div className="flex gap-2"><Skeleton className="h-8 w-8" /><Skeleton className="h-8 w-8" /></div></TableCell>
+                      </TableRow>
+                    ))
+                  ) : categories.map((category) => (
+                    <TableRow key={category.id}>
                       <TableCell className="font-medium">{category.name}</TableCell>
                       <TableCell>{category.description}</TableCell>
                       <TableCell>{category.id}</TableCell>
@@ -333,7 +392,7 @@ export default function ProductsPage() {
             </CardContent>
             <CardFooter>
                 <div className="text-sm text-muted-foreground">
-                    {mockCategories.length} categories found
+                    {categories.length} categories found
                 </div>
             </CardFooter>
           </Card>
@@ -345,6 +404,7 @@ export default function ProductsPage() {
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         product={editingProduct}
+        onSubmit={handleFormSubmit}
     />
     </>
   );
