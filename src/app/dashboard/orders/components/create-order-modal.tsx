@@ -27,21 +27,22 @@ import { X } from "lucide-react";
 interface CreateOrderModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSubmit: (values: any) => void;
 }
 
 const formSchema = z.object({
-  patient: z.string().min(1, "Patient is required"),
+  patientId: z.string().min(1, "Patient is required"),
   medication: z.string().min(1, "Medication/Product is required"),
   pharmacy: z.string().min(1, "Pharmacy is required"),
   linkedSession: z.string().optional(),
   notes: z.string().optional(),
 });
 
-export function CreateOrderModal({ isOpen, onClose }: CreateOrderModalProps) {
+export function CreateOrderModal({ isOpen, onClose, onSubmit }: CreateOrderModalProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-        patient: "",
+        patientId: "",
         medication: "",
         pharmacy: "",
         linkedSession: "",
@@ -49,9 +50,8 @@ export function CreateOrderModal({ isOpen, onClose }: CreateOrderModalProps) {
     }
   });
 
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    console.log("Form values:", values);
-    onClose();
+  const handleSubmit = (values: z.infer<typeof formSchema>) => {
+    onSubmit(values);
     form.reset();
   };
 
@@ -66,10 +66,10 @@ export function CreateOrderModal({ isOpen, onClose }: CreateOrderModalProps) {
         </DialogHeader>
         <div className="px-6 pb-6">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
               <FormField
                 control={form.control}
-                name="patient"
+                name="patientId"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Patient <span className="text-destructive">*</span></FormLabel>
@@ -80,8 +80,9 @@ export function CreateOrderModal({ isOpen, onClose }: CreateOrderModalProps) {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="patient1">John Doe</SelectItem>
-                        <SelectItem value="patient2">Jane Smith</SelectItem>
+                        {/* This should be populated with real patient data */}
+                        <SelectItem value="patient1_id">John Doe</SelectItem>
+                        <SelectItem value="patient2_id">Jane Smith</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -102,8 +103,9 @@ export function CreateOrderModal({ isOpen, onClose }: CreateOrderModalProps) {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="med1">Semaglutide</SelectItem>
-                        <SelectItem value="med2">Metformin</SelectItem>
+                         {/* This should be populated with real product data */}
+                        <SelectItem value="Semaglutide">Semaglutide</SelectItem>
+                        <SelectItem value="Metformin">Metformin</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -124,8 +126,9 @@ export function CreateOrderModal({ isOpen, onClose }: CreateOrderModalProps) {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="pharm1">CVS Main Street</SelectItem>
-                        <SelectItem value="pharm2">Walgreens Downtown</SelectItem>
+                        {/* This should be populated with real pharmacy data */}
+                        <SelectItem value="CVS Main Street">CVS Main Street</SelectItem>
+                        <SelectItem value="Walgreens Downtown">Walgreens Downtown</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -146,6 +149,7 @@ export function CreateOrderModal({ isOpen, onClose }: CreateOrderModalProps) {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        {/* This should be populated with real session data */}
                         <SelectItem value="session1">Session on Jul 14, 2025</SelectItem>
                         <SelectItem value="session2">Session on Jul 10, 2025</SelectItem>
                       </SelectContent>
@@ -175,7 +179,7 @@ export function CreateOrderModal({ isOpen, onClose }: CreateOrderModalProps) {
           <Button type="button" variant="outline" onClick={onClose}>
             Cancel
           </Button>
-          <Button type="submit" onClick={form.handleSubmit(onSubmit)}>
+          <Button type="submit" onClick={form.handleSubmit(handleSubmit)}>
             Create Order
           </Button>
         </DialogFooter>

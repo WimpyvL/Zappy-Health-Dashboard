@@ -16,8 +16,6 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import {
   DropdownMenu,
@@ -44,10 +42,38 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { CreateOrderModal } from "./components/create-order-modal";
+import { useToast } from "@/hooks/use-toast";
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, getDocs, addDoc, query, orderBy, Timestamp } from "firebase/firestore";
+import { Skeleton } from "@/components/ui/skeleton";
+import { format } from "date-fns";
 
-const mockOrders: any[] = [
-  // No mock orders to show the empty state
-];
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyBVV_vq5fjNSASYQndmbRbEtlfyOieFVTs",
+  authDomain: "zappy-health-c1kob.firebaseapp.com",
+  databaseURL: "https://zappy-health-c1kob-default-rtdb.firebaseio.com",
+  projectId: "zappy-health-c1kob",
+  storageBucket: "zappy-health-c1kob.appspot.com",
+  messagingSenderId: "833435237612",
+  appId: "1:833435237612:web:53731373b2ad7568f279c9"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+type Order = {
+  id: string;
+  patientName?: string; // This might need a join or separate fetch
+  patientId: string;
+  orderDate: string;
+  medication: string;
+  status: "Processing" | "Shipped" | "Delivered" | "Canceled";
+  linkedSession?: string;
+  pharmacy?: string;
+  tracking?: string;
+};
 
 const OrderStatusBadge = ({ status }: { status: string }) => {
   const variantMap: { [key: string]: "default" | "secondary" | "destructive" | "outline" } = {
@@ -71,7 +97,63 @@ const OrderStatusBadge = ({ status }: { status: string }) => {
 };
 
 export default function OrdersPage() {
+  const [orders, setOrders] = React.useState<Order[]>([]);
+  const [loading, setLoading] = React.useState(true);
   const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const { toast } = useToast();
+
+  const fetchOrders = async () => {
+    setLoading(true);
+    try {
+      const ordersCollection = collection(db, "orders");
+      const orderSnapshot = await getDocs(query(ordersCollection, orderBy("orderDate", "desc")));
+      const orderList = orderSnapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          orderDate: data.orderDate ? format(data.orderDate.toDate(), "MMM dd, yyyy") : "N/A",
+          ...data,
+        } as Order;
+      });
+      setOrders(orderList);
+    } catch (error) {
+      console.error("Error fetching orders: ", error);
+      toast({
+        variant: "destructive",
+        title: "Error fetching orders",
+        description: "Could not retrieve order data from the database.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  const handleCreateOrder = async (values: Omit<Order, 'id' | 'orderDate'>) => {
+    try {
+      await addDoc(collection(db, "orders"), {
+        ...values,
+        orderDate: Timestamp.now(),
+        status: "Processing",
+      });
+      toast({
+        title: "Order Created",
+        description: `A new order for patient ID ${values.patientId} has been created.`,
+      });
+      fetchOrders();
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error("Error creating order: ", error);
+      toast({
+        variant: "destructive",
+        title: "Error Creating Order",
+        description: "An error occurred while creating the order.",
+      });
+    }
+  };
 
   return (
     <>
@@ -80,10 +162,9 @@ export default function OrdersPage() {
           <h1 className="text-3xl font-bold">Orders</h1>
           <div className="flex items-center gap-4">
             <div className="text-sm text-muted-foreground hidden md:block">
-              Total: <span className="font-semibold">0</span> |
-              Pending: <span className="font-semibold">0</span> |
-              Processing: <span className="font-semibold">0</span> |
-              Shipped: <span className="font-semibold">0</span>
+              Total: <span className="font-semibold">{orders.length}</span> |
+              Processing: <span className="font-semibold">{orders.filter(o => o.status === 'Processing').length}</span> |
+              Shipped: <span className="font-semibold">{orders.filter(o => o.status === 'Shipped').length}</span>
             </div>
             <Button onClick={() => setIsModalOpen(true)}>
               <PlusCircle className="h-4 w-4 mr-2" />
@@ -139,16 +220,30 @@ export default function OrdersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {mockOrders.length > 0 ? (
-                  mockOrders.map((order) => (
+                {loading ? (
+                  Array.from({ length: 3 }).map((_, index) => (
+                    <TableRow key={index}>
+                      <TableCell><Checkbox disabled /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-28" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-8 w-8" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : orders.length > 0 ? (
+                  orders.map((order) => (
                     <TableRow key={order.id}>
                       <TableCell>
                         <Checkbox />
                       </TableCell>
                       <TableCell>
-                        <div className="font-medium">{order.patientName}</div>
+                        <div className="font-medium">{order.patientName || order.patientId}</div>
                         <div className="text-sm text-muted-foreground">
-                          {order.patientEmail}
+                          {/* Patient Email would go here */}
                         </div>
                       </TableCell>
                       <TableCell>{order.orderDate}</TableCell>
@@ -157,7 +252,7 @@ export default function OrdersPage() {
                         <OrderStatusBadge status={order.status} />
                       </TableCell>
                       <TableCell>{order.linkedSession || 'N/A'}</TableCell>
-                      <TableCell>{order.pharmacy}</TableCell>
+                      <TableCell>{order.pharmacy || 'N/A'}</TableCell>
                       <TableCell>{order.tracking || 'N/A'}</TableCell>
                       <TableCell>
                         <DropdownMenu>
@@ -191,7 +286,7 @@ export default function OrdersPage() {
         </Card>
 
         <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <div>Showing 0 to 0 of 0 results</div>
+          <div>Showing 1 to {orders.length} of {orders.length} results</div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <span>Show:</span>
@@ -208,17 +303,17 @@ export default function OrdersPage() {
               <span>per page</span>
             </div>
             <div className="flex gap-1">
-              <Button variant="outline" size="icon" className="h-8 w-8" disabled>
+              <Button variant="outline" size="icon" className="h-8 w-8" disabled={orders.length === 0}>
                 <ChevronDown className="h-4 w-4 rotate-90" />
               </Button>
-              <Button variant="outline" size="icon" className="h-8 w-8" disabled>
+              <Button variant="outline" size="icon" className="h-8 w-8" disabled={orders.length === 0}>
                 <ChevronDown className="h-4 w-4 -rotate-90" />
               </Button>
             </div>
           </div>
         </div>
       </div>
-      <CreateOrderModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <CreateOrderModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSubmit={handleCreateOrder} />
     </>
   );
 }
