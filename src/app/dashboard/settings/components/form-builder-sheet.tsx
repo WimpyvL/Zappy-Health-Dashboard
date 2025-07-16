@@ -16,7 +16,6 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
 import {
   Accordion,
   AccordionContent,
@@ -36,14 +35,10 @@ import {
   Phone,
   User,
   MapPin,
-  FileText,
   Import,
   Sparkles,
   FolderOpen,
   Plus,
-  HeartPulse,
-  Shield,
-  CreditCard,
 } from "lucide-react";
 import { AIGenerateFormModal } from "./ai-generate-form-modal";
 import { ImportFormModal } from "./import-form-modal";
@@ -82,18 +77,18 @@ interface FormBuilderSheetProps {
 }
 
 const formElements = [
-    { icon: Type, label: "Short Text" },
-    { icon: Square, label: "Paragraph" },
-    { icon: Hash, label: "Number" },
-    { icon: List, label: "Multiple Choice" },
-    { icon: CheckSquare, label: "Checkboxes" },
-    { icon: ChevronDown, label: "Dropdown" },
-    { icon: Calendar, label: "Date" },
-    { icon: Clock, label: "Time" },
-    { icon: Mail, label: "Email" },
-    { icon: Phone, label: "Phone" },
-    { icon: User, label: "Name" },
-    { icon: MapPin, label: "Address" },
+    { type: "text", icon: Type, label: "Short Text" },
+    { type: "textarea", icon: Square, label: "Paragraph" },
+    { type: "number", icon: Hash, label: "Number" },
+    { type: "radio", icon: List, label: "Multiple Choice" },
+    { type: "checkbox", icon: CheckSquare, label: "Checkboxes" },
+    { type: "select", icon: ChevronDown, label: "Dropdown" },
+    { type: "date", icon: Calendar, label: "Date" },
+    { type: "time", icon: Clock, label: "Time" },
+    { type: "email", icon: Mail, label: "Email" },
+    { type: "tel", icon: Phone, label: "Phone" },
+    { type: "name", icon: User, label: "Name" },
+    { type: "address", icon: MapPin, label: "Address" },
 ];
 
 export function FormBuilderSheet({ isOpen, onClose, initialData }: FormBuilderSheetProps) {
@@ -129,7 +124,7 @@ export function FormBuilderSheet({ isOpen, onClose, initialData }: FormBuilderSh
         const newSchema = JSON.parse(JSON.stringify(prevSchema));
         const currentPage = newSchema.pages[activePageIndex];
 
-        const existingElementIds = new Set(currentPage.elements.map(el => el.id));
+        const existingElementIds = new Set(currentPage.elements.map((el: FormElement) => el.id));
         const elementsToAdd = block.elements.filter(el => !existingElementIds.has(el.id));
 
         if (elementsToAdd.length === 0) {
@@ -151,6 +146,52 @@ export function FormBuilderSheet({ isOpen, onClose, initialData }: FormBuilderSh
         return newSchema;
     });
   };
+  
+  const handleDragStart = (e: React.DragEvent<HTMLButtonElement>, fieldType: string) => {
+    e.dataTransfer.setData("application/json", JSON.stringify({ type: "field", fieldType }));
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+  };
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const data = JSON.parse(e.dataTransfer.getData("application/json"));
+
+    if (data.type === 'field') {
+      const fieldType = data.fieldType;
+      const fieldTemplate = formElements.find(el => el.type === fieldType);
+      
+      if (!fieldTemplate) return;
+
+      const newElement: FormElement = {
+        id: `${fieldType}_${Date.now()}`,
+        type: fieldType,
+        label: fieldTemplate.label,
+        required: false,
+        placeholder: `Enter ${fieldTemplate.label.toLowerCase()}`,
+        ...( (fieldType === 'radio' || fieldType === 'checkbox' || fieldType === 'select') && {
+          options: [
+            { id: 'opt1', value: 'option1', label: 'Option 1' },
+            { id: 'opt2', value: 'option2', label: 'Option 2' },
+          ]
+        })
+      };
+
+      setFormSchema(prevSchema => {
+        const newSchema = JSON.parse(JSON.stringify(prevSchema));
+        const currentPage = newSchema.pages[activePageIndex];
+        currentPage.elements.push(newElement);
+        return newSchema;
+      });
+      
+      toast({
+        title: "Field Added",
+        description: `A new "${fieldTemplate.label}" field was added to the form.`
+      })
+    }
+  };
 
   const addPage = () => {
     setFormSchema(prevSchema => {
@@ -161,7 +202,7 @@ export function FormBuilderSheet({ isOpen, onClose, initialData }: FormBuilderSh
         elements: []
       };
       const updatedSchema = { ...prevSchema, pages: [...prevSchema.pages, newPage] };
-      setActivePageIndex(updatedSchema.pages.length - 1); // Switch to the new page
+      setActivePageIndex(updatedSchema.pages.length - 1);
       return updatedSchema;
     });
   };
@@ -173,8 +214,8 @@ export function FormBuilderSheet({ isOpen, onClose, initialData }: FormBuilderSh
             title: formSchema.title,
             description: formSchema.description,
             contentType: "form_template",
-            category: "custom", // Or derive from somewhere
-            contentBody: formSchema, // Store the entire schema
+            category: "custom",
+            contentBody: formSchema,
             status: "Draft",
             author: "admin",
             createdAt: Timestamp.now(),
@@ -239,7 +280,13 @@ export function FormBuilderSheet({ isOpen, onClose, initialData }: FormBuilderSh
                   <TabsContent value="basic">
                     <div className="grid grid-cols-2 gap-2">
                       {formElements.map((el) => (
-                        <Button key={el.label} variant="outline" className="h-16 flex-col gap-1 items-start justify-start p-2 font-normal text-left bg-white">
+                        <Button 
+                          key={el.label} 
+                          variant="outline" 
+                          className="h-16 flex-col gap-1 items-start justify-start p-2 font-normal text-left bg-white cursor-grab active:cursor-grabbing"
+                          draggable="true"
+                          onDragStart={(e) => handleDragStart(e, el.type)}
+                        >
                           <el.icon className="h-5 w-5 mb-1" />
                           <span className="text-xs">{el.label}</span>
                         </Button>
@@ -276,7 +323,11 @@ export function FormBuilderSheet({ isOpen, onClose, initialData }: FormBuilderSh
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 bg-slate-100 flex flex-col overflow-hidden">
+            <main 
+              className="flex-1 bg-slate-100 flex flex-col overflow-hidden"
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+            >
               <header className="p-4 border-b bg-white flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     {formSchema.pages.map((page, index) => (

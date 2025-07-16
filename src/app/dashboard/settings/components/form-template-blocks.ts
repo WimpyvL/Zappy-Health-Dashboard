@@ -1,6 +1,6 @@
 
 import { User, HeartPulse, Shield, CreditCard } from "lucide-react";
-import type { FormElement, FormPage } from "@/lib/form-validator";
+import type { FormElement } from "@/lib/form-validator";
 
 interface TemplateBlock {
     title: string;
@@ -50,7 +50,7 @@ export const templateSections = [
         icon: User,
         title: "Personal Information",
         description: "Basic contact and personal details.",
-        fields: ["Full Name", "Email Address", "Phone Number", "Date of Birth"],
+        fields: ["First Name", "Last Name", "Email", "Phone", "Date of Birth"],
         action: "Add Personal Information Block",
         blockName: "personalInfo" as keyof typeof templateBlocks,
     },
