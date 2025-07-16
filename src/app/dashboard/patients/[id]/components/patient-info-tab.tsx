@@ -4,12 +4,12 @@
 import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { User, Heart, FileText, CreditCard, Upload } from "lucide-react";
+import { User, Heart, FileText, Upload } from "lucide-react";
 
-const InfoField = ({ label, value }: { label: string, value: string }) => (
+const InfoField = ({ label, value }: { label: string, value: string | undefined }) => (
   <div>
     <p className="text-xs text-muted-foreground font-semibold uppercase">{label}</p>
-    <p className="text-sm font-medium">{value}</p>
+    <p className="text-sm font-medium">{value || '-'}</p>
   </div>
 );
 
@@ -26,7 +26,15 @@ const DocumentUploadItem = ({ title, description }: { title: string, description
   </div>
 );
 
-export function PatientInfoTab() {
+interface PatientInfoTabProps {
+    patient: any;
+}
+
+export function PatientInfoTab({ patient }: PatientInfoTabProps) {
+  if (!patient) {
+    return <div>Loading patient information...</div>;
+  }
+  
   return (
     <div className="space-y-6">
       {/* Personal Information */}
@@ -40,11 +48,11 @@ export function PatientInfoTab() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
-            <InfoField label="Full Name" value="Jane Smith" />
-            <InfoField label="Date of Birth" value="mm/dd/yyyy" />
-            <InfoField label="Email" value="jane.smith@example.com" />
-            <InfoField label="Phone" value="098-765-4321" />
-            <InfoField label="Address" value="-" />
+            <InfoField label="Full Name" value={patient.name} />
+            <InfoField label="Date of Birth" value={patient.dob ? patient.dob.toLocaleDateString() : 'N/A'} />
+            <InfoField label="Email" value={patient.email} />
+            <InfoField label="Phone" value={patient.phone} />
+            <InfoField label="Address" value={patient.address} />
           </div>
         </CardContent>
       </Card>
@@ -62,13 +70,13 @@ export function PatientInfoTab() {
            <div className="space-y-1">
                 <label className="text-xs font-semibold uppercase text-muted-foreground">Known Allergies</label>
                 <div className="p-3 border rounded-md min-h-[60px] text-sm">
-                    No known allergies
+                    {patient.allergies || "No known allergies"}
                 </div>
             </div>
              <div className="space-y-1">
                 <label className="text-xs font-semibold uppercase text-muted-foreground">Current Medications</label>
                 <div className="p-3 border rounded-md min-h-[60px] text-sm">
-                    No current medications
+                    {patient.medications?.join(', ') || "No current medications"}
                 </div>
             </div>
         </CardContent>
@@ -84,8 +92,8 @@ export function PatientInfoTab() {
         </CardHeader>
         <CardContent>
             <div className="grid md:grid-cols-3 gap-6">
-                <InfoField label="Insurance Provider" value="-" />
-                <InfoField label="Policy Number" value="-" />
+                <InfoField label="Insurance Provider" value={patient.insuranceProvider} />
+                <InfoField label="Policy Number" value={patient.policyNumber} />
                 <div>
                     <p className="text-xs text-muted-foreground font-semibold uppercase">Verification Status</p>
                     <div className="flex items-center gap-2 mt-1">
@@ -103,40 +111,8 @@ export function PatientInfoTab() {
             </div>
         </CardContent>
       </Card>
-
-      {/* Subscription & Orders */}
-      <Card className="bg-yellow-50/50">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div className="flex items-center gap-3">
-            <CreditCard className="w-5 h-5 text-muted-foreground" />
-            <CardTitle className="text-lg">Subscription & Orders</CardTitle>
-          </div>
-          <Button>Pay Balance</Button>
-        </CardHeader>
-        <CardContent>
-            <div className="bg-blue-100/60 p-4 rounded-lg flex items-center justify-between">
-                <div>
-                    <h4 className="font-semibold">No active subscription</h4>
-                    <p className="text-xs text-muted-foreground">Started: Dec 1, 2024 • Next billing: Feb 1, 2025</p>
-                </div>
-                <div className="text-right">
-                    <p className="text-sm font-semibold">No pricing info</p>
-                    <p className="text-xs text-muted-foreground">$127.50 due</p>
-                </div>
-            </div>
-
-            <div className="mt-6">
-                <h4 className="font-semibold text-sm mb-2">Active Orders</h4>
-                <div className="border rounded-lg p-4 text-center">
-                    <p className="text-sm text-muted-foreground">No active orders found in database</p>
-                </div>
-                <div className="mt-2 flex justify-end">
-                    <Button variant="outline" size="sm">New Order</Button>
-                </div>
-            </div>
-        </CardContent>
-      </Card>
-
     </div>
   );
 }
+
+    

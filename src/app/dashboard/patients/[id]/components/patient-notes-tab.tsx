@@ -1,7 +1,7 @@
 
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -16,23 +16,69 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Search, Plus, Filter, FolderOpen, MoreVertical, MessageSquare, User, Clock } from "lucide-react";
+import { Search, Plus, Filter, FolderOpen } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { getFirestore, collection, query, where, getDocs, orderBy } from "firebase/firestore";
+import { initializeApp } from "firebase/app";
+import { Skeleton } from "@/components/ui/skeleton";
+import { format } from 'date-fns';
 
-// Mock data for notes, can be replaced with real data later
-const mockNotes: any[] = [
-  // No notes, so we will show the empty state.
-];
+const firebaseConfig = {
+    apiKey: "AIzaSyBVV_vq5fjNSASYQndmbRbEtlfyOieFVTs",
+    authDomain: "zappy-health-c1kob.firebaseapp.com",
+    databaseURL: "https://zappy-health-c1kob-default-rtdb.firebaseio.com",
+    projectId: "zappy-health-c1kob",
+    storageBucket: "zappy-health-c1kob.appspot.com",
+    messagingSenderId: "833435237612",
+    appId: "1:833435237612:web:53731373b2ad7568f279c9"
+};
 
+let app;
+try {
+  app = initializeApp(firebaseConfig, "patient-notes-app");
+} catch (e) {
+  app = initializeApp(firebaseConfig);
+}
+const db = getFirestore(app);
 
-export function PatientNotesTab() {
+interface PatientNotesTabProps {
+  patientId: string;
+}
+
+export function PatientNotesTab({ patientId }: PatientNotesTabProps) {
+  const [notes, setNotes] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchNotes = async () => {
+      if (!patientId) return;
+      setLoading(true);
+      try {
+        const q = query(
+          collection(db, "notes"), 
+          where("patientId", "==", patientId),
+          orderBy("createdAt", "desc")
+        );
+        const querySnapshot = await getDocs(q);
+        const notesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setNotes(notesData);
+      } catch (error) {
+        console.error("Error fetching notes: ", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchNotes();
+  }, [patientId]);
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
         <div className="flex items-center gap-3">
           <CardTitle className="text-lg flex items-center gap-2">
             Clinical Notes 
-            <Badge variant="secondary">{mockNotes.length}</Badge>
+            <Badge variant="secondary">{notes.length}</Badge>
           </CardTitle>
         </div>
         <div className="flex items-center gap-2">
@@ -60,9 +106,23 @@ export function PatientNotesTab() {
         </div>
       </CardHeader>
       <CardContent>
-        {mockNotes.length > 0 ? (
+        {loading ? (
+             <div className="h-80 flex flex-col items-center justify-center text-center text-muted-foreground bg-gray-50 rounded-lg">
+                <Skeleton className="h-16 w-16 rounded-full" />
+                <Skeleton className="h-6 w-48 mt-4 rounded-md" />
+                <Skeleton className="h-4 w-64 mt-2 rounded-md" />
+            </div>
+        ) : notes.length > 0 ? (
           <div className="space-y-4">
-            {/* Note items would be mapped here */}
+            {notes.map(note => (
+                <div key={note.id} className="p-4 border rounded-md">
+                    <h3 className="font-semibold">{note.title}</h3>
+                    <p className="text-sm text-muted-foreground">
+                        By {note.author} on {format(note.createdAt.toDate(), 'MMM dd, yyyy')}
+                    </p>
+                    <p className="text-sm mt-2">{note.content}</p>
+                </div>
+            ))}
           </div>
         ) : (
           <div className="h-80 flex flex-col items-center justify-center text-center text-muted-foreground bg-gray-50 rounded-lg">
@@ -75,3 +135,5 @@ export function PatientNotesTab() {
     </Card>
   );
 }
+
+    

@@ -1,7 +1,7 @@
 
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -19,8 +19,56 @@ import {
 } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { CreditCard, FileStack, History, Plus } from "lucide-react";
+import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
+import { initializeApp } from "firebase/app";
+import { Skeleton } from "@/components/ui/skeleton";
+import { format } from 'date-fns';
 
-export function PatientBillingTab() {
+const firebaseConfig = {
+    apiKey: "AIzaSyBVV_vq5fjNSASYQndmbRbEtlfyOieFVTs",
+    authDomain: "zappy-health-c1kob.firebaseapp.com",
+    databaseURL: "https://zappy-health-c1kob-default-rtdb.firebaseio.com",
+    projectId: "zappy-health-c1kob",
+    storageBucket: "zappy-health-c1kob.appspot.com",
+    messagingSenderId: "833435237612",
+    appId: "1:833435237612:web:53731373b2ad7568f279c9"
+};
+
+let app;
+try {
+  app = initializeApp(firebaseConfig, "patient-billing-app");
+} catch (e) {
+  app = initializeApp(firebaseConfig);
+}
+const db = getFirestore(app);
+
+interface PatientBillingTabProps {
+  patientId: string;
+}
+
+export function PatientBillingTab({ patientId }: PatientBillingTabProps) {
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchBillingData = async () => {
+      if (!patientId) return;
+      setLoading(true);
+      try {
+        const q = query(collection(db, "invoices"), where("patientId", "==", patientId));
+        const querySnapshot = await getDocs(q);
+        const invoicesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setInvoices(invoicesData);
+      } catch (error) {
+        console.error("Error fetching billing data: ", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBillingData();
+  }, [patientId]);
+  
   return (
     <div className="space-y-6">
       {/* Billing Summary Card */}
@@ -80,11 +128,27 @@ export function PatientBillingTab() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              <TableRow>
-                <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
-                  No invoices to display.
-                </TableCell>
-              </TableRow>
+              {loading ? (
+                <TableRow>
+                    <TableCell colSpan={5}><Skeleton className="h-5 w-full" /></TableCell>
+                </TableRow>
+              ) : invoices.length > 0 ? (
+                invoices.map(invoice => (
+                    <TableRow key={invoice.id}>
+                        <TableCell className="font-mono">{invoice.id.substring(0,8)}</TableCell>
+                        <TableCell>{format(invoice.dueDate.toDate(), 'MMM dd, yyyy')}</TableCell>
+                        <TableCell>${invoice.amount.toFixed(2)}</TableCell>
+                        <TableCell>{invoice.status}</TableCell>
+                        <TableCell>...</TableCell>
+                    </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                    <TableCell colSpan={5} className="text-center h-24 text-muted-foreground">
+                    No invoices to display.
+                    </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>
@@ -122,3 +186,5 @@ export function PatientBillingTab() {
     </div>
   );
 }
+
+    

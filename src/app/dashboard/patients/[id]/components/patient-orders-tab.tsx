@@ -1,7 +1,7 @@
 
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -17,8 +17,62 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Briefcase, Pill } from "lucide-react";
+import { getFirestore, collection, query, where, getDocs, orderBy } from "firebase/firestore";
+import { initializeApp } from "firebase/app";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Table, TableBody, TableCell, TableHeader, TableHead, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { format } from 'date-fns';
 
-export function PatientOrdersTab() {
+const firebaseConfig = {
+    apiKey: "AIzaSyBVV_vq5fjNSASYQndmbRbEtlfyOieFVTs",
+    authDomain: "zappy-health-c1kob.firebaseapp.com",
+    databaseURL: "https://zappy-health-c1kob-default-rtdb.firebaseio.com",
+    projectId: "zappy-health-c1kob",
+    storageBucket: "zappy-health-c1kob.appspot.com",
+    messagingSenderId: "833435237612",
+    appId: "1:833435237612:web:53731373b2ad7568f279c9"
+};
+
+let app;
+try {
+  app = initializeApp(firebaseConfig, "patient-orders-app");
+} catch (e) {
+  app = initializeApp(firebaseConfig);
+}
+const db = getFirestore(app);
+
+interface PatientOrdersTabProps {
+  patientId: string;
+}
+
+export function PatientOrdersTab({ patientId }: PatientOrdersTabProps) {
+  const [orders, setOrders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchOrders = async () => {
+      if (!patientId) return;
+      setLoading(true);
+      try {
+        const q = query(collection(db, "orders"), where("patientId", "==", patientId), orderBy("orderDate", "desc"));
+        const querySnapshot = await getDocs(q);
+        const ordersData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setOrders(ordersData);
+      } catch (error) {
+        console.error("Error fetching orders: ", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchOrders();
+  }, [patientId]);
+
+  const activePrescriptions = orders.filter(
+    (order) => order.orderType === "prescription" && order.status !== "Canceled"
+  );
+  
   return (
     <div className="space-y-6">
       <Card>
@@ -31,49 +85,29 @@ export function PatientOrdersTab() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-            <div>
-              <label htmlFor="filter-medication" className="text-sm font-medium">Filter by Medication</label>
-              <Select>
-                <SelectTrigger id="filter-medication">
-                  <SelectValue placeholder="All Medications" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Medications</SelectItem>
-                  {/* Options will be populated dynamically */}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label htmlFor="filter-pharmacy" className="text-sm font-medium">Filter by Pharmacy</label>
-              <Select>
-                <SelectTrigger id="filter-pharmacy">
-                  <SelectValue placeholder="All Pharmacies" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Pharmacies</SelectItem>
-                  {/* Options will be populated dynamically */}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <label htmlFor="filter-status" className="text-sm font-medium">Filter by Order Status</label>
-              <Select>
-                <SelectTrigger id="filter-status">
-                  <SelectValue placeholder="All Statuses" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="processing">Processing</SelectItem>
-                  <SelectItem value="shipped">Shipped</SelectItem>
-                  <SelectItem value="delivered">Delivered</SelectItem>
-                  <SelectItem value="canceled">Canceled</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <Select><SelectTrigger><SelectValue placeholder="All Medications" /></SelectTrigger><SelectContent><SelectItem value="all">All Medications</SelectItem></SelectContent></Select>
+            <Select><SelectTrigger><SelectValue placeholder="All Pharmacies" /></SelectTrigger><SelectContent><SelectItem value="all">All Pharmacies</SelectItem></SelectContent></Select>
+            <Select><SelectTrigger><SelectValue placeholder="All Statuses" /></SelectTrigger><SelectContent><SelectItem value="all">All Statuses</SelectItem></SelectContent></Select>
           </div>
-          <div className="text-center text-muted-foreground py-8">
-            Loading orders...
-          </div>
+          {loading ? (
+             <div className="text-center text-muted-foreground py-8">Loading orders...</div>
+          ) : orders.length > 0 ? (
+            <Table>
+                <TableHeader><TableRow><TableHead>Order ID</TableHead><TableHead>Date</TableHead><TableHead>Medication</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                <TableBody>
+                    {orders.map(order => (
+                        <TableRow key={order.id}>
+                            <TableCell className="font-mono">{order.id.substring(0,8)}</TableCell>
+                            <TableCell>{format(order.orderDate.toDate(), 'MMM dd, yyyy')}</TableCell>
+                            <TableCell>{order.medication}</TableCell>
+                            <TableCell><Badge>{order.status}</Badge></TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+          ) : (
+            <div className="text-center text-muted-foreground py-8">No orders found for this patient.</div>
+          )}
         </CardContent>
       </Card>
 
@@ -85,11 +119,28 @@ export function PatientOrdersTab() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="text-center text-muted-foreground py-8">
-            Loading prescriptions...
-          </div>
+            {loading ? (
+                <div className="text-center text-muted-foreground py-8">Loading prescriptions...</div>
+            ) : activePrescriptions.length > 0 ? (
+                <Table>
+                    <TableHeader><TableRow><TableHead>Medication</TableHead><TableHead>Status</TableHead><TableHead>Refills</TableHead></TableRow></TableHeader>
+                    <TableBody>
+                        {activePrescriptions.map(rx => (
+                            <TableRow key={rx.id}>
+                                <TableCell>{rx.medication}</TableCell>
+                                <TableCell><Badge>{rx.status}</Badge></TableCell>
+                                <TableCell>{rx.refillsRemaining || 'N/A'}</TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            ) : (
+                <div className="text-center text-muted-foreground py-8">No active prescriptions found.</div>
+            )}
         </CardContent>
       </Card>
     </div>
   );
 }
+
+    
