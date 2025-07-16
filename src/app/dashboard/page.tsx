@@ -9,7 +9,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import {
   Users,
   Calendar,
@@ -27,17 +26,43 @@ import { useToast } from "@/hooks/use-toast"
 import { useRouter } from 'next/navigation'
 import { TaskFormModal } from "./tasks/components/task-form-modal"
 import { CreateOrderModal } from "./orders/components/create-order-modal"
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, getDocs, query, where, Timestamp } from "firebase/firestore";
+import { Skeleton } from "@/components/ui/skeleton"
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyBVV_vq5fjNSASYQndmbRbEtlfyOieFVTs",
+  authDomain: "zappy-health-c1kob.firebaseapp.com",
+  databaseURL: "https://zappy-health-c1kob-default-rtdb.firebaseio.com",
+  projectId: "zappy-health-c1kob",
+  storageBucket: "zappy-health-c1kob.appspot.com",
+  messagingSenderId: "833435237612",
+  appId: "1:833435237612:web:53731373b2ad7568f279c9"
+};
+
+// Initialize Firebase
+let app;
+try {
+  app = initializeApp(firebaseConfig, "dashboard-app");
+} catch (e) {
+  app = initializeApp(firebaseConfig);
+}
+const db = getFirestore(app);
+
 
 const StatCard = ({
   title,
   value,
   description,
   icon: Icon,
+  loading,
 }: {
   title: string
   value: string
   description: string
   icon: React.ElementType
+  loading?: boolean
 }) => (
   <Card className="shadow-sm hover:shadow-lg transition-shadow duration-300">
     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -47,25 +72,79 @@ const StatCard = ({
       <Icon className="h-5 w-5 text-muted-foreground" />
     </CardHeader>
     <CardContent>
-      <div className="text-3xl font-bold">{value}</div>
-      <p className="text-xs text-muted-foreground mt-1">{description}</p>
+      {loading ? (
+        <>
+          <Skeleton className="h-8 w-1/2 mb-2 rounded" />
+          <Skeleton className="h-4 w-3/4 rounded" />
+        </>
+      ) : (
+        <>
+          <div className="text-3xl font-bold">{value}</div>
+          <p className="text-xs text-muted-foreground mt-1">{description}</p>
+        </>
+      )}
     </CardContent>
   </Card>
 )
 
 export default function DashboardPage() {
   const [currentTime, setCurrentTime] = useState("")
+  const [stats, setStats] = useState({
+    totalPatients: 0,
+    upcomingSessions: 0,
+    pendingOrders: 0,
+    newConsultations: 0,
+  });
+  const [loadingStats, setLoadingStats] = useState(true);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const router = useRouter();
   const { toast } = useToast()
 
   useEffect(() => {
+    const fetchDashboardStats = async () => {
+      setLoadingStats(true);
+      try {
+        const patientsCollection = collection(db, "patients");
+        const patientsSnapshot = await getDocs(patientsCollection);
+        
+        const sessionsCollection = collection(db, "sessions");
+        const upcomingSessionsQuery = query(sessionsCollection, where("date", ">=", Timestamp.now()));
+        const upcomingSessionsSnapshot = await getDocs(upcomingSessionsQuery);
+        
+        const ordersCollection = collection(db, "orders");
+        const pendingOrdersQuery = query(ordersCollection, where("status", "in", ["Processing", "Pending"]));
+        const pendingOrdersSnapshot = await getDocs(pendingOrdersQuery);
+
+        const newConsultationsQuery = query(sessionsCollection, where("status", "in", ["Scheduled", "Pending"]));
+        const newConsultationsSnapshot = await getDocs(newConsultationsQuery);
+
+        setStats({
+          totalPatients: patientsSnapshot.size,
+          upcomingSessions: upcomingSessionsSnapshot.size,
+          pendingOrders: pendingOrdersSnapshot.size,
+          newConsultations: newConsultationsSnapshot.size,
+        });
+
+      } catch (error) {
+        console.error("Error fetching dashboard stats: ", error);
+        toast({
+          variant: "destructive",
+          title: "Error loading dashboard data",
+          description: "Could not retrieve summary data from the database.",
+        });
+      } finally {
+        setLoadingStats(false);
+      }
+    };
+
+    fetchDashboardStats();
+
     const timer = setInterval(() => {
       setCurrentTime(new Date().toLocaleTimeString())
     }, 1000)
     return () => clearInterval(timer)
-  }, [])
+  }, [toast])
 
   const handleRefreshSessions = () => {
     toast({
@@ -108,27 +187,31 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Total Patients"
-          value="10"
+          value={stats.totalPatients.toString()}
           description="+2 since last week"
           icon={Users}
+          loading={loadingStats}
         />
         <StatCard
           title="Upcoming Sessions"
-          value="4"
+          value={stats.upcomingSessions.toString()}
           description="No sessions today"
           icon={Calendar}
+          loading={loadingStats}
         />
         <StatCard
           title="Pending Orders"
-          value="0"
-          description="No pending orders"
+          value={stats.pendingOrders.toString()}
+          description="Awaiting processing"
           icon={Package}
+          loading={loadingStats}
         />
         <StatCard
           title="New Consultations"
-          value="0"
-          description="All caught up!"
+          value={stats.newConsultations.toString()}
+          description="Pending review"
           icon={MessageSquarePlus}
+          loading={loadingStats}
         />
       </div>
 
