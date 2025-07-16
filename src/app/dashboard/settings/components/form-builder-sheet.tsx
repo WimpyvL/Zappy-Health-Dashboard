@@ -47,6 +47,11 @@ import {
 } from "lucide-react";
 import { AIGenerateFormModal } from "./ai-generate-form-modal";
 import { ImportFormModal } from "./import-form-modal";
+import { FormRenderer } from "@/components/ui/form-renderer";
+import { templateBlocks, templateSections } from "./form-template-blocks";
+import type { FormSchema, FormPage, FormElement } from "@/lib/form-validator";
+import { useToast } from "@/hooks/use-toast";
+
 
 interface FormBuilderSheetProps {
   isOpen: boolean;
@@ -68,47 +73,55 @@ const formElements = [
     { icon: MapPin, label: "Address" },
 ];
 
-const templateSections = [
-    {
-        icon: User,
-        title: "Personal Information",
-        description: "Basic contact and personal details.",
-        fields: ["Full Name", "Email Address", "Phone Number", "Date of Birth", "Home Address"],
-        action: "Add Personal Information Block"
-    },
-    {
-        icon: HeartPulse,
-        title: "Medical History",
-        description: "Patient medical background information.",
-        fields: ["Do you have any pre-existing medical conditions?", "Please list any pre-existing conditions", "Are you currently taking any medications?", "Please list all current medications"],
-        action: "Add Medical History Block"
-    },
-    {
-        icon: Shield,
-        title: "Insurance Information",
-        description: "Health insurance details.",
-        fields: ["Insurance Provider", "Policy Number", "Group Number", "Relationship to Subscriber"],
-        action: "Add Insurance Information Block"
-    },
-    {
-        icon: CreditCard,
-        title: "Payment Information",
-        description: "Subscription and payment details.",
-        fields: ["Select Payment Plan", "Payment Method"],
-        action: "Add Payment Information Block"
-    }
-]
-
 export function FormBuilderSheet({ isOpen, onClose }: FormBuilderSheetProps) {
   const [isAIGenModalOpen, setIsAIGenModalOpen] = React.useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = React.useState(false);
+  const [formSchema, setFormSchema] = React.useState<FormSchema>({
+    title: "Untitled Form",
+    description: "A new form created in the builder.",
+    pages: [{ id: "page1", title: "Page 1", elements: [] }],
+  });
+  const { toast } = useToast();
+
+  const addBlockToForm = (blockName: keyof typeof templateBlocks) => {
+    const block = templateBlocks[blockName];
+    if (!block) return;
+
+    setFormSchema(prevSchema => {
+        const newSchema = { ...prevSchema };
+        const currentPage = newSchema.pages[0]; // Assuming single page for now
+
+        // Avoid adding duplicate elements
+        const existingElementIds = new Set(currentPage.elements.map(el => el.id));
+        const elementsToAdd = block.elements.filter(el => !existingElementIds.has(el.id));
+
+        if (elementsToAdd.length === 0) {
+            toast({
+                title: "Block Already Added",
+                description: `All fields from the "${block.title}" block are already in the form.`,
+                variant: "default",
+            });
+            return prevSchema;
+        }
+
+        currentPage.elements.push(...elementsToAdd);
+        
+        toast({
+            title: "Block Added",
+            description: `The "${block.title}" block has been added to your form.`,
+        });
+
+        return newSchema;
+    });
+  };
+
 
   return (
     <>
       <Sheet open={isOpen} onOpenChange={onClose}>
         <SheetContent className="w-full sm:w-full sm:max-w-none p-0 flex flex-col h-screen" side="right">
           <SheetHeader className="p-4 border-b flex-row justify-between items-center bg-background">
-            <SheetTitle className="text-lg">Form Builder: good</SheetTitle>
+            <SheetTitle className="text-lg">Form Builder: {formSchema.title}</SheetTitle>
             <div className="flex gap-2">
               <Button variant="outline" onClick={onClose}>Cancel</Button>
               <Button>Create Form</Button>
@@ -117,7 +130,7 @@ export function FormBuilderSheet({ isOpen, onClose }: FormBuilderSheetProps) {
 
           <div className="flex-grow flex overflow-hidden">
             {/* Left Sidebar */}
-            <aside className="w-80 border-r bg-slate-50 flex flex-col">
+            <aside className="w-96 border-r bg-slate-50 flex flex-col">
               <div className="p-4 border-b">
                   <Tabs defaultValue="fields">
                       <TabsList className="grid w-full grid-cols-2">
@@ -165,7 +178,7 @@ export function FormBuilderSheet({ isOpen, onClose }: FormBuilderSheetProps) {
                                       <ul className="text-xs text-muted-foreground list-disc pl-4 space-y-0.5">
                                           {section.fields.map(field => <li key={field}>{field}</li>)}
                                       </ul>
-                                      <Button size="sm" className="w-full mt-3 text-xs">
+                                      <Button size="sm" className="w-full mt-3 text-xs" onClick={() => addBlockToForm(section.blockName)}>
                                           <Plus className="h-3 w-3 mr-1" />
                                           {section.action}
                                       </Button>
@@ -187,21 +200,24 @@ export function FormBuilderSheet({ isOpen, onClose }: FormBuilderSheetProps) {
                   <Button variant="outline" size="sm"><Plus className="h-4 w-4 mr-2" /> Add Page</Button>
               </header>
               <ScrollArea className="flex-grow p-8">
-                <div className="bg-white rounded-lg p-6 min-h-[60vh] flex flex-col items-center justify-center border-2 border-dashed">
-                  <h2 className="text-xl font-semibold mb-4">Page 1</h2>
-                  <div className="text-center text-muted-foreground">
-                      <FolderOpen className="h-16 w-16 mx-auto text-gray-300" />
-                      <p className="mt-4">No form elements added yet.</p>
-                      <p className="text-sm">Click on an element type from the left sidebar to add it to your form.</p>
-                  </div>
-                </div>
+                {formSchema.pages[0].elements.length === 0 ? (
+                    <div className="bg-white rounded-lg p-6 min-h-[60vh] flex flex-col items-center justify-center border-2 border-dashed">
+                        <div className="text-center text-muted-foreground">
+                            <FolderOpen className="h-16 w-16 mx-auto text-gray-300" />
+                            <p className="mt-4 font-semibold">Start building your form</p>
+                            <p className="text-sm">Drag & drop fields from the left panel or use a template to get started.</p>
+                        </div>
+                    </div>
+                ) : (
+                    <FormRenderer schema={formSchema} />
+                )}
               </ScrollArea>
             </main>
           </div>
         </SheetContent>
       </Sheet>
       <AIGenerateFormModal isOpen={isAIGenModalOpen} onClose={() => setIsAIGenModalOpen(false)} />
-      <ImportFormModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} />
+      <ImportFormModal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} onFormImported={() => {}} />
     </>
   );
 }
