@@ -117,7 +117,7 @@ export function FormBuilderSheet({ isOpen, onClose }: FormBuilderSheetProps) {
 
           <div className="flex-grow flex overflow-hidden">
             {/* Left Sidebar */}
-            <aside className="w-64 border-r bg-slate-50 flex flex-col">
+            <aside className="w-80 border-r bg-slate-50 flex flex-col">
               <div className="p-4 border-b">
                   <Tabs defaultValue="fields">
                       <TabsList className="grid w-full grid-cols-2">
