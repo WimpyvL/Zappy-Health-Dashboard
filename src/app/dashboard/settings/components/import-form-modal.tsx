@@ -85,23 +85,23 @@ export function ImportFormModal({ isOpen, onClose }: ImportFormModalProps) {
                     <TabsTrigger value="live-preview" disabled={!validationResult?.isValid}><Code className="h-4 w-4 mr-2" />Live Preview</TabsTrigger>
                 </TabsList>
                 <TabsContent value="import" className="mt-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="md:col-span-2">
                             <p className="text-sm text-muted-foreground mb-2">Paste your form JSON below or <Button variant="link" className="p-0 h-auto" onClick={loadExample}>load an example</Button>.</p>
                             <Textarea 
                                 placeholder="Paste your form JSON here..." 
                                 value={jsonString}
                                 onChange={handleJsonChange}
-                                rows={15}
+                                rows={25}
                                 className={cn(
                                     "font-mono text-xs",
                                     validationResult && (validationResult.isValid ? "border-green-500" : "border-red-500")
                                 )}
                             />
                         </div>
-                        <div>
+                        <div className="md:col-span-1">
                             <h3 className="text-sm font-semibold mb-2">Validation Results</h3>
-                            <ScrollArea className="h-[340px] border rounded-md p-3 bg-slate-50">
+                            <ScrollArea className="h-[525px] border rounded-md p-3 bg-slate-50">
                                 {validationResult ? (
                                     validationResult.isValid ? (
                                         <div className="text-green-600 flex items-center">
