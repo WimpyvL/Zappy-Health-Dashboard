@@ -26,14 +26,17 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, X } from "lucide-react";
+import { CalendarIcon, X, Sparkles } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useToast } from "@/hooks/use-toast";
 
 interface CreateContentModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onSubmit: (values: z.infer<typeof formSchema>) => void;
+  isSubmitting: boolean;
 }
 
 const formSchema = z.object({
@@ -47,7 +50,7 @@ const formSchema = z.object({
   author: z.string().min(1, "Author is required"),
 });
 
-export function CreateContentModal({ isOpen, onClose }: CreateContentModalProps) {
+export function CreateContentModal({ isOpen, onClose, onSubmit, isSubmitting }: CreateContentModalProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -60,12 +63,6 @@ export function CreateContentModal({ isOpen, onClose }: CreateContentModalProps)
         author: "admin",
     },
   });
-
-  const onSubmit = (values: z.infer<typeof formSchema>) => {
-    console.log("Form values:", values);
-    onClose();
-    form.reset();
-  };
 
   const handleSaveAsDraft = () => {
     form.setValue("status", "Draft");
@@ -259,15 +256,15 @@ export function CreateContentModal({ isOpen, onClose }: CreateContentModalProps)
           </Form>
         </div>
         <DialogFooter className="p-6 pt-4 border-t">
-          <Button type="button" variant="outline" onClick={onClose}>
+          <Button type="button" variant="outline" onClick={onClose} disabled={isSubmitting}>
             Cancel
           </Button>
           <div className="flex-grow" />
-          <Button type="button" variant="secondary" onClick={handleSaveAsDraft}>
-            Save as Draft
+          <Button type="button" variant="secondary" onClick={handleSaveAsDraft} disabled={isSubmitting}>
+            {isSubmitting ? "Saving..." : "Save as Draft"}
           </Button>
-          <Button type="button" onClick={handlePublish}>
-            Publish
+          <Button type="button" onClick={handlePublish} disabled={isSubmitting}>
+            {isSubmitting ? "Publishing..." : "Publish"}
           </Button>
         </DialogFooter>
       </DialogContent>
