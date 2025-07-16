@@ -46,7 +46,7 @@ import { PatientFormModal } from "./components/patient-form-modal";
 import { ViewMessageModal } from "../messages/components/view-message-modal";
 import { useToast } from "@/hooks/use-toast";
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, query, orderBy } from "firebase/firestore";
+import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, query, orderBy, Timestamp } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Your web app's Firebase configuration
@@ -185,7 +185,7 @@ export default function PatientsPage() {
         });
       } else {
         // Add new patient
-        await addDoc(collection(db, "patients"), values);
+        await addDoc(collection(db, "patients"), { ...values, status: 'Active' });
         toast({
           title: "Patient Added",
           description: `${values.firstName} ${values.lastName} has been added to the system.`,
