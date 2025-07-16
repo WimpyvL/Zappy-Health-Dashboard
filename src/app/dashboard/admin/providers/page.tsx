@@ -15,7 +15,17 @@ import {
   ChevronLeft,
   ChevronRight
 } from "lucide-react";
-
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+  } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -48,7 +58,7 @@ import {
 import { ProviderFormModal } from "./components/provider-form-modal";
 import { useToast } from "@/hooks/use-toast";
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, query, orderBy, Timestamp } from "firebase/firestore";
+import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, query, orderBy, deleteDoc } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Your web app's Firebase configuration
@@ -111,7 +121,7 @@ export default function ProvidersPage() {
     const [editingProvider, setEditingProvider] = React.useState<Provider | null>(null);
     const { toast } = useToast();
 
-    const fetchProviders = async () => {
+    const fetchProviders = React.useCallback(async () => {
         setLoading(true);
         try {
           const providersCollection = collection(db, "providers");
@@ -131,11 +141,11 @@ export default function ProvidersPage() {
         } finally {
           setLoading(false);
         }
-    };
+    }, [toast]);
     
     React.useEffect(() => {
         fetchProviders();
-    }, []);
+    }, [fetchProviders]);
 
     const handleOpenAddModal = () => {
         setEditingProvider(null);
@@ -187,6 +197,24 @@ export default function ProvidersPage() {
             title: "Error Saving Provider",
             description: "An error occurred while saving the provider information.",
           });
+        }
+    };
+
+    const handleDeleteProvider = async (providerId: string) => {
+        try {
+            await deleteDoc(doc(db, "providers", providerId));
+            toast({
+                title: "Provider Deleted",
+                description: "The provider has been successfully deleted.",
+            });
+            fetchProviders();
+        } catch (error) {
+            console.error("Error deleting provider: ", error);
+            toast({
+                variant: "destructive",
+                title: "Error Deleting Provider",
+                description: "An error occurred while deleting the provider.",
+            });
         }
     };
 
@@ -287,9 +315,25 @@ export default function ProvidersPage() {
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenEditModal(provider)}>
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                                    <Trash2 className="h-4 w-4" />
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This action cannot be undone. This will permanently delete the provider: <span className="font-semibold">{provider.name}</span>.
+                                </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeleteProvider(provider.id)}>Delete</AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -338,9 +382,9 @@ export default function ProvidersPage() {
         isOpen={isModalOpen} 
         onClose={handleCloseModal}
         provider={editingProvider}
+        onSubmit={handleFormSubmit}
       />
     </>
   );
 }
 
-    

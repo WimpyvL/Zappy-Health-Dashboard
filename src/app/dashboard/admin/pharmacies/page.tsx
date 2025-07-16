@@ -12,7 +12,17 @@ import {
   Edit,
   Trash2,
 } from "lucide-react";
-
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+  } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -45,7 +55,7 @@ import {
 import { PharmacyFormModal } from "./components/pharmacy-form-modal";
 import { useToast } from "@/hooks/use-toast";
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, query, orderBy } from "firebase/firestore";
+import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, query, orderBy, deleteDoc } from "firebase/firestore";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -84,7 +94,7 @@ export default function PharmacyPage() {
     const [editingPharmacy, setEditingPharmacy] = React.useState<Pharmacy | null>(null);
     const { toast } = useToast();
 
-    const fetchPharmacies = async () => {
+    const fetchPharmacies = React.useCallback(async () => {
         setLoading(true);
         try {
           const pharmaciesCollection = collection(db, "pharmacies");
@@ -104,11 +114,11 @@ export default function PharmacyPage() {
         } finally {
           setLoading(false);
         }
-    };
+    }, [toast]);
     
     React.useEffect(() => {
         fetchPharmacies();
-    }, []);
+    }, [fetchPharmacies]);
 
     const handleOpenAddModal = () => {
         setEditingPharmacy(null);
@@ -152,6 +162,24 @@ export default function PharmacyPage() {
                 variant: "destructive",
                 title: "Error Saving Pharmacy",
                 description: "An error occurred while saving the pharmacy information.",
+            });
+        }
+    };
+
+    const handleDeletePharmacy = async (pharmacyId: string) => {
+        try {
+            await deleteDoc(doc(db, "pharmacies", pharmacyId));
+            toast({
+                title: "Pharmacy Deleted",
+                description: "The pharmacy has been successfully deleted.",
+            });
+            fetchPharmacies();
+        } catch (error) {
+            console.error("Error deleting pharmacy: ", error);
+            toast({
+                variant: "destructive",
+                title: "Error Deleting Pharmacy",
+                description: "An error occurred while deleting the pharmacy.",
             });
         }
     };
@@ -249,9 +277,25 @@ export default function PharmacyPage() {
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenEditModal(pharmacy)}>
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                           <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  This action cannot be undone. This will permanently delete the pharmacy: <span className="font-semibold">{pharmacy.name}</span>.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => handleDeletePharmacy(pharmacy.id)}>Delete</AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -295,7 +339,6 @@ export default function PharmacyPage() {
           </div>
         </div>
       </div>
-    </div>
     <PharmacyFormModal 
         isOpen={isModalOpen} 
         onClose={handleCloseModal}
@@ -305,4 +348,3 @@ export default function PharmacyPage() {
     </>
   );
 }
-

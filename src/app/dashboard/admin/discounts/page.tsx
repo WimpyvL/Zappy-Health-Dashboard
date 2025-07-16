@@ -12,7 +12,17 @@ import {
   Percent,
   CircleDollarSign
 } from "lucide-react";
-
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+  } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -38,7 +48,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { DiscountFormModal } from "./components/discount-form-modal";
 import { useToast } from "@/hooks/use-toast";
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, query, orderBy, Timestamp } from "firebase/firestore";
+import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, query, orderBy, Timestamp, deleteDoc } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Your web app's Firebase configuration
@@ -117,7 +127,7 @@ export default function DiscountsPage() {
   const [editingDiscount, setEditingDiscount] = React.useState<Discount | null>(null);
   const { toast } = useToast();
 
-  const fetchDiscounts = async () => {
+  const fetchDiscounts = React.useCallback(async () => {
     setLoading(true);
     try {
         const discountsCollection = collection(db, "discounts");
@@ -141,11 +151,11 @@ export default function DiscountsPage() {
     } finally {
         setLoading(false);
     }
-  };
+  }, [toast]);
 
   React.useEffect(() => {
     fetchDiscounts();
-  }, []);
+  }, [fetchDiscounts]);
 
   const handleOpenAddModal = () => {
     setEditingDiscount(null);
@@ -208,6 +218,24 @@ export default function DiscountsPage() {
             title: "Error Saving Discount",
             description: "An error occurred while saving the discount.",
         });
+    }
+  };
+
+  const handleDeleteDiscount = async (discountId: string) => {
+    try {
+      await deleteDoc(doc(db, "discounts", discountId));
+      toast({
+        title: "Discount Deleted",
+        description: "The discount has been successfully deleted.",
+      });
+      fetchDiscounts();
+    } catch (error) {
+      console.error("Error deleting discount: ", error);
+      toast({
+        variant: "destructive",
+        title: "Error Deleting Discount",
+        description: "An error occurred while deleting the discount.",
+      });
     }
   };
 
@@ -306,9 +334,25 @@ export default function DiscountsPage() {
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => handleOpenEditModal(discount)}>
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action cannot be undone. This will permanently delete the discount: <span className="font-semibold">{discount.name}</span>.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={() => handleDeleteDiscount(discount.id)}>Delete</AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </div>
                   </TableCell>
                 </TableRow>
@@ -329,6 +373,7 @@ export default function DiscountsPage() {
         isOpen={isModalOpen}
         onClose={handleCloseModal}
         discount={editingDiscount}
+        onSubmit={handleFormSubmit}
     />
     </>
   );

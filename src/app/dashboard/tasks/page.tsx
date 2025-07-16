@@ -21,14 +21,25 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+  } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, MoreHorizontal, Search, ChevronDown } from "lucide-react";
+import { Plus, MoreHorizontal, Search, ChevronDown, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TaskFormModal } from "./components/task-form-modal";
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, getDocs, addDoc, query, orderBy, Timestamp } from "firebase/firestore";
+import { getFirestore, collection, getDocs, addDoc, query, orderBy, Timestamp, doc, deleteDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 
@@ -46,10 +57,10 @@ const firebaseConfig = {
 // Initialize Firebase
 let app;
 try {
-  app = initializeApp(firebaseConfig);
+  app = initializeApp(firebaseConfig, "tasks-app");
 } catch (e) {
   // app already initialized
-  app = initializeApp(firebaseConfig, "tasks-app");
+  app = initializeApp(firebaseConfig);
 }
 const db = getFirestore(app);
 
@@ -134,6 +145,24 @@ export default function TasksPage() {
         title: "Error Creating Task",
         description: "An error occurred while creating the task.",
       });
+    }
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    try {
+        await deleteDoc(doc(db, "tasks", taskId));
+        toast({
+            title: "Task Deleted",
+            description: "The task has been successfully deleted.",
+        });
+        fetchTasks();
+    } catch(error) {
+        console.error("Error deleting task: ", error);
+        toast({
+            variant: "destructive",
+            title: "Error Deleting Task",
+            description: "Could not delete the task.",
+        });
     }
   };
 
@@ -226,9 +255,25 @@ export default function TasksPage() {
                           <DropdownMenuContent align="end">
                               <DropdownMenuItem>Edit Task</DropdownMenuItem>
                               <DropdownMenuItem>Mark as Completed</DropdownMenuItem>
-                              <DropdownMenuItem className="text-destructive">
-                              Delete Task
-                              </DropdownMenuItem>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <DropdownMenuItem onSelect={(e) => e.preventDefault()} className="text-destructive">
+                                    <Trash2 className="mr-2 h-4 w-4" /> Delete Task
+                                  </DropdownMenuItem>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This action cannot be undone. This will permanently delete this task.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => handleDeleteTask(task.id)}>Delete</AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
                           </DropdownMenuContent>
                           </DropdownMenu>
                       </TableCell>
@@ -273,7 +318,7 @@ export default function TasksPage() {
           </div>
         </div>
       </div>
-      <TaskFormModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+      <TaskFormModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSubmit={handleCreateTask} />
     </>
   );
 }
