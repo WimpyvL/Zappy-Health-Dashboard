@@ -24,16 +24,42 @@ import {
   import { FormRenderer } from "@/components/ui/form-renderer";
   import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { getFirestore, collection, addDoc, Timestamp } from "firebase/firestore";
+import { initializeApp } from "firebase/app";
+
+// Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyBVV_vq5fjNSASYQndmbRbEtlfyOieFVTs",
+  authDomain: "zappy-health-c1kob.firebaseapp.com",
+  databaseURL: "https://zappy-health-c1kob-default-rtdb.firebaseio.com",
+  projectId: "zappy-health-c1kob",
+  storageBucket: "zappy-health-c1kob.appspot.com",
+  messagingSenderId: "833435237612",
+  appId: "1:833435237612:web:53731373b2ad7568f279c9"
+};
+
+// Initialize Firebase
+let app;
+try {
+  app = initializeApp(firebaseConfig, "import-form-app");
+} catch (e) {
+  app = initializeApp(firebaseConfig);
+}
+const db = getFirestore(app);
 
 
 interface ImportFormModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onFormImported: () => void;
 }
 
-export function ImportFormModal({ isOpen, onClose }: ImportFormModalProps) {
+export function ImportFormModal({ isOpen, onClose, onFormImported }: ImportFormModalProps) {
   const [jsonString, setJsonString] = React.useState("");
   const [validationResult, setValidationResult] = React.useState<ValidationResult | null>(null);
+  const [isImporting, setIsImporting] = React.useState(false);
+  const { toast } = useToast();
 
   const handleJsonChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newJsonString = e.target.value;
@@ -59,6 +85,49 @@ export function ImportFormModal({ isOpen, onClose }: ImportFormModalProps) {
     const exampleString = JSON.stringify(exampleFormJson, null, 2);
     setJsonString(exampleString);
     setValidationResult(validateFormSchema(exampleFormJson));
+  };
+
+  const handleImport = async () => {
+    if (!validationResult?.isValid || !validationResult.formSchema) {
+        toast({
+            variant: "destructive",
+            title: "Validation Error",
+            description: "Cannot import an invalid form schema.",
+        });
+        return;
+    }
+    
+    setIsImporting(true);
+    try {
+        await addDoc(collection(db, "resources"), {
+            title: validationResult.formSchema.title,
+            description: validationResult.formSchema.description,
+            contentType: "form_template",
+            category: "imported",
+            contentBody: JSON.stringify(validationResult.formSchema, null, 2),
+            status: "Draft",
+            author: "admin",
+            createdAt: Timestamp.now(),
+            updatedAt: Timestamp.now(),
+        });
+
+        toast({
+            title: "Form Imported Successfully",
+            description: `The form "${validationResult.formSchema.title}" has been added to the system.`,
+        });
+        onFormImported();
+        onClose();
+
+    } catch (error) {
+        console.error("Error importing form:", error);
+        toast({
+            variant: "destructive",
+            title: "Import Failed",
+            description: "An error occurred while saving the form. Please check the console for details.",
+        });
+    } finally {
+        setIsImporting(false);
+    }
   };
 
   return (
@@ -138,7 +207,7 @@ export function ImportFormModal({ isOpen, onClose }: ImportFormModalProps) {
                 </TabsContent>
                  <TabsContent value="live-preview">
                     {validationResult?.isValid && validationResult.formSchema ? (
-                        <Card className="max-h-[400px] overflow-y-auto">
+                        <Card className="max-h-[550px] overflow-y-auto">
                             <CardContent className="p-6">
                                 <FormRenderer schema={validationResult.formSchema} />
                             </CardContent>
@@ -152,8 +221,10 @@ export function ImportFormModal({ isOpen, onClose }: ImportFormModalProps) {
             </Tabs>
         </div>
         <DialogFooter className="p-6 pt-4 border-t">
-          <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-          <Button disabled={!validationResult?.isValid}>Import Form</Button>
+          <Button type="button" variant="outline" onClick={onClose} disabled={isImporting}>Cancel</Button>
+          <Button onClick={handleImport} disabled={!validationResult?.isValid || isImporting}>
+            {isImporting ? "Importing..." : "Import Form"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
