@@ -208,6 +208,15 @@ export function FormBuilderSheet({ isOpen, onClose, initialData }: FormBuilderSh
   };
 
   const createForm = async () => {
+    if (!formSchema.title || formSchema.pages.every(p => p.elements.length === 0)) {
+        toast({
+            variant: "destructive",
+            title: "Cannot Create Form",
+            description: "Please provide a title and add at least one field to your form.",
+        });
+        return;
+    }
+
     setIsCreating(true);
     try {
         await addDoc(collection(db, "resources"), {
@@ -215,7 +224,7 @@ export function FormBuilderSheet({ isOpen, onClose, initialData }: FormBuilderSh
             description: formSchema.description,
             contentType: "form_template",
             category: "custom",
-            contentBody: formSchema,
+            contentBody: formSchema, // Saving the schema object
             status: "Draft",
             author: "admin",
             createdAt: Timestamp.now(),
