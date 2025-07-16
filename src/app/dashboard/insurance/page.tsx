@@ -32,32 +32,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { UploadInsuranceDocumentModal } from "./components/upload-insurance-document-modal";
-import { initializeApp } from "firebase/app";
-import { getFirestore, collection, getDocs, addDoc, query, orderBy, Timestamp } from "firebase/firestore";
+import { collection, getDocs, addDoc, query, orderBy, Timestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyBVV_vq5fjNSASYQndmbRbEtlfyOieFVTs",
-  authDomain: "zappy-health-c1kob.firebaseapp.com",
-  databaseURL: "https://zappy-health-c1kob-default-rtdb.firebaseio.com",
-  projectId: "zappy-health-c1kob",
-  storageBucket: "zappy-health-c1kob.appspot.com",
-  messagingSenderId: "833435237612",
-  appId: "1:833435237612:web:53731373b2ad7568f279c9"
-};
-
-// Initialize Firebase
-let app;
-try {
-  app = initializeApp(firebaseConfig);
-} catch (e) {
-  // app already initialized
-  app = initializeApp(firebaseConfig, "insurance-app");
-}
-const db = getFirestore(app);
-
+import { db } from "@/lib/firebase/client";
 
 type Document = {
   id: string;

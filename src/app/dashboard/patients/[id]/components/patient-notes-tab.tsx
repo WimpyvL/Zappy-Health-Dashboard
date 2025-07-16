@@ -18,28 +18,10 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Search, Plus, Filter, FolderOpen } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
-import { getFirestore, collection, query, where, getDocs, orderBy } from "firebase/firestore";
-import { initializeApp } from "firebase/app";
+import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from 'date-fns';
-
-const firebaseConfig = {
-    apiKey: "AIzaSyBVV_vq5fjNSASYQndmbRbEtlfyOieFVTs",
-    authDomain: "zappy-health-c1kob.firebaseapp.com",
-    databaseURL: "https://zappy-health-c1kob-default-rtdb.firebaseio.com",
-    projectId: "zappy-health-c1kob",
-    storageBucket: "zappy-health-c1kob.appspot.com",
-    messagingSenderId: "833435237612",
-    appId: "1:833435237612:web:53731373b2ad7568f279c9"
-};
-
-let app;
-try {
-  app = initializeApp(firebaseConfig, "patient-notes-app");
-} catch (e) {
-  app = initializeApp(firebaseConfig);
-}
-const db = getFirestore(app);
+import { db } from "@/lib/firebase/client";
 
 interface PatientNotesTabProps {
   patientId: string;
@@ -135,5 +117,3 @@ export function PatientNotesTab({ patientId }: PatientNotesTabProps) {
     </Card>
   );
 }
-
-    

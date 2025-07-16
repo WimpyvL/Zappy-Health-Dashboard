@@ -45,24 +45,9 @@ import {
 import { PatientFormModal } from "./components/patient-form-modal";
 import { ViewMessageModal } from "../messages/components/view-message-modal";
 import { useToast } from "@/hooks/use-toast";
-import { initializeApp } from "firebase/app";
-import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, query, orderBy, Timestamp } from "firebase/firestore";
+import { collection, getDocs, addDoc, updateDoc, doc, query, orderBy, Timestamp } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
-
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyBVV_vq5fjNSASYQndmbRbEtlfyOieFVTs",
-  authDomain: "zappy-health-c1kob.firebaseapp.com",
-  databaseURL: "https://zappy-health-c1kob-default-rtdb.firebaseio.com",
-  projectId: "zappy-health-c1kob",
-  storageBucket: "zappy-health-c1kob.appspot.com",
-  messagingSenderId: "833435237612",
-  appId: "1:833435237612:web:53731373b2ad7568f279c9"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+import { db } from "@/lib/firebase/client";
 
 type Patient = {
   id: string;
@@ -178,14 +163,14 @@ export default function PatientsPage() {
       if (editingPatient) {
         // Update existing patient
         const patientDoc = doc(db, "patients", editingPatient.id);
-        await updateDoc(patientDoc, values);
+        await updateDoc(patientDoc, { ...values, dob: Timestamp.fromDate(values.dob as Date) });
         toast({
           title: "Patient Updated",
           description: `${values.firstName} ${values.lastName}'s information has been saved.`,
         });
       } else {
         // Add new patient
-        await addDoc(collection(db, "patients"), { ...values, status: 'Active' });
+        await addDoc(collection(db, "patients"), { ...values, status: 'Active', dob: Timestamp.fromDate(values.dob as Date) });
         toast({
           title: "Patient Added",
           description: `${values.firstName} ${values.lastName} has been added to the system.`,

@@ -19,28 +19,10 @@ import {
 } from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
 import { CreditCard, FileStack, History, Plus } from "lucide-react";
-import { getFirestore, collection, query, where, getDocs } from "firebase/firestore";
-import { initializeApp } from "firebase/app";
+import { collection, query, where, getDocs } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from 'date-fns';
-
-const firebaseConfig = {
-    apiKey: "AIzaSyBVV_vq5fjNSASYQndmbRbEtlfyOieFVTs",
-    authDomain: "zappy-health-c1kob.firebaseapp.com",
-    databaseURL: "https://zappy-health-c1kob-default-rtdb.firebaseio.com",
-    projectId: "zappy-health-c1kob",
-    storageBucket: "zappy-health-c1kob.appspot.com",
-    messagingSenderId: "833435237612",
-    appId: "1:833435237612:web:53731373b2ad7568f279c9"
-};
-
-let app;
-try {
-  app = initializeApp(firebaseConfig, "patient-billing-app");
-} catch (e) {
-  app = initializeApp(firebaseConfig);
-}
-const db = getFirestore(app);
+import { db } from "@/lib/firebase/client";
 
 interface PatientBillingTabProps {
   patientId: string;
@@ -186,5 +168,3 @@ export function PatientBillingTab({ patientId }: PatientBillingTabProps) {
     </div>
   );
 }
-
-    

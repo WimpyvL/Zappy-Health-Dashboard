@@ -15,28 +15,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Paperclip, Send, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { getFirestore, collection, getDocs, query, orderBy, Timestamp, addDoc } from "firebase/firestore";
-import { initializeApp } from "firebase/app";
+import { collection, getDocs, query, orderBy, Timestamp, addDoc } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-
-const firebaseConfig = {
-    apiKey: "AIzaSyBVV_vq5fjNSASYQndmbRbEtlfyOieFVTs",
-    authDomain: "zappy-health-c1kob.firebaseapp.com",
-    databaseURL: "https://zappy-health-c1kob-default-rtdb.firebaseio.com",
-    projectId: "zappy-health-c1kob",
-    storageBucket: "zappy-health-c1kob.appspot.com",
-    messagingSenderId: "833435237612",
-    appId: "1:833435237612:web:53731373b2ad7568f279c9"
-  };
-  
-  let app;
-  try {
-    app = initializeApp(firebaseConfig, "messages-view-app");
-  } catch (e) {
-    app = initializeApp(firebaseConfig);
-  }
-  const db = getFirestore(app);
+import { db } from "@/lib/firebase/client";
 
 type Conversation = {
   id: string;

@@ -17,30 +17,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Briefcase, Pill } from "lucide-react";
-import { getFirestore, collection, query, where, getDocs, orderBy } from "firebase/firestore";
-import { initializeApp } from "firebase/app";
-import { Skeleton } from "@/components/ui/skeleton";
+import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
 import { Table, TableBody, TableCell, TableHeader, TableHead, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format } from 'date-fns';
-
-const firebaseConfig = {
-    apiKey: "AIzaSyBVV_vq5fjNSASYQndmbRbEtlfyOieFVTs",
-    authDomain: "zappy-health-c1kob.firebaseapp.com",
-    databaseURL: "https://zappy-health-c1kob-default-rtdb.firebaseio.com",
-    projectId: "zappy-health-c1kob",
-    storageBucket: "zappy-health-c1kob.appspot.com",
-    messagingSenderId: "833435237612",
-    appId: "1:833435237612:web:53731373b2ad7568f279c9"
-};
-
-let app;
-try {
-  app = initializeApp(firebaseConfig, "patient-orders-app");
-} catch (e) {
-  app = initializeApp(firebaseConfig);
-}
-const db = getFirestore(app);
+import { db } from "@/lib/firebase/client";
 
 interface PatientOrdersTabProps {
   patientId: string;
@@ -142,5 +123,3 @@ export function PatientOrdersTab({ patientId }: PatientOrdersTabProps) {
     </div>
   );
 }
-
-    

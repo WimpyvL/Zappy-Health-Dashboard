@@ -31,29 +31,10 @@ import { PatientOrdersTab } from "./components/patient-orders-tab";
 import { PatientBillingTab } from "./components/patient-billing-tab";
 import { PatientNotesTab } from "./components/patient-notes-tab";
 import { ViewMessageModal } from "../../messages/components/view-message-modal";
-import { getFirestore, doc, getDoc } from "firebase/firestore";
-import { initializeApp } from "firebase/app";
+import { doc, getDoc } from "firebase/firestore";
 import Loading from "./loading";
 import { useToast } from "@/hooks/use-toast";
-
-// Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyBVV_vq5fjNSASYQndmbRbEtlfyOieFVTs",
-  authDomain: "zappy-health-c1kob.firebaseapp.com",
-  databaseURL: "https://zappy-health-c1kob-default-rtdb.firebaseio.com",
-  projectId: "zappy-health-c1kob",
-  storageBucket: "zappy-health-c1kob.appspot.com",
-  messagingSenderId: "833435237612",
-  appId: "1:833435237612:web:53731373b2ad7568f279c9"
-};
-
-let app;
-try {
-  app = initializeApp(firebaseConfig, "patient-detail-app");
-} catch (e) {
-  app = initializeApp(firebaseConfig);
-}
-const db = getFirestore(app);
+import { db } from "@/lib/firebase/client";
 
 // Types
 type Patient = {
@@ -308,5 +289,3 @@ export default function PatientDetailPage({ params }: { params: { id: string } }
     </>
   );
 }
-
-    

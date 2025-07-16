@@ -46,26 +46,8 @@ import { FormRenderer } from "@/components/ui/form-renderer";
 import { templateBlocks, templateSections } from "./form-template-blocks";
 import type { FormSchema, FormPage, FormElement } from "@/lib/form-validator";
 import { useToast } from "@/hooks/use-toast";
-import { getFirestore, collection, addDoc, Timestamp } from "firebase/firestore";
-import { initializeApp } from "firebase/app";
-
-const firebaseConfig = {
-    apiKey: "AIzaSyBVV_vq5fjNSASYQndmbRbEtlfyOieFVTs",
-    authDomain: "zappy-health-c1kob.firebaseapp.com",
-    databaseURL: "https://zappy-health-c1kob-default-rtdb.firebaseio.com",
-    projectId: "zappy-health-c1kob",
-    storageBucket: "zappy-health-c1kob.appspot.com",
-    messagingSenderId: "833435237612",
-    appId: "1:833435237612:web:53731373b2ad7568f279c9"
-  };
-  
-  let app;
-  try {
-    app = initializeApp(firebaseConfig, "form-builder-app");
-  } catch (e) {
-    app = initializeApp(firebaseConfig);
-  }
-  const db = getFirestore(app);
+import { collection, addDoc, Timestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase/client";
 
 interface FormBuilderSheetProps {
   isOpen: boolean;
