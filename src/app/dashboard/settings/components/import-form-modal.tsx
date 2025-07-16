@@ -23,6 +23,7 @@ import {
   import { exampleFormJson } from './form-example';
   import { FormRenderer } from "@/components/ui/form-renderer";
   import { ScrollArea } from "@/components/ui/scroll-area";
+import { cn } from "@/lib/utils";
 
 
 interface ImportFormModalProps {
