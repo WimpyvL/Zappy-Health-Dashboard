@@ -46,7 +46,7 @@ import { PatientFormModal } from "./components/patient-form-modal";
 import { ViewMessageModal } from "../messages/components/view-message-modal";
 import { useToast } from "@/hooks/use-toast";
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, query, where, orderBy } from "firebase/firestore";
+import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, query, orderBy } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Your web app's Firebase configuration
@@ -192,7 +192,7 @@ export default function PatientsPage() {
         });
       }
       fetchPatients(); // Refresh the list
-      onClose();
+      handleCloseModal();
     } catch (error) {
       console.error("Error saving patient: ", error);
       toast({
@@ -391,7 +391,7 @@ export default function PatientsPage() {
        <ViewMessageModal 
         isOpen={isMessageModalOpen}
         onClose={handleCloseMessageModal}
-        message={selectedMessage}
+        conversation={selectedMessage}
       />
     </>
   );
