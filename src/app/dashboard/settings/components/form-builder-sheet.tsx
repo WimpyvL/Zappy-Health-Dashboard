@@ -51,11 +51,34 @@ import { FormRenderer } from "@/components/ui/form-renderer";
 import { templateBlocks, templateSections } from "./form-template-blocks";
 import type { FormSchema, FormPage, FormElement } from "@/lib/form-validator";
 import { useToast } from "@/hooks/use-toast";
+import { getFirestore, collection, addDoc, Timestamp } from "firebase/firestore";
+import { initializeApp } from "firebase/app";
 
+const firebaseConfig = {
+    apiKey: "AIzaSyBVV_vq5fjNSASYQndmbRbEtlfyOieFVTs",
+    authDomain: "zappy-health-c1kob.firebaseapp.com",
+    databaseURL: "https://zappy-health-c1kob-default-rtdb.firebaseio.com",
+    projectId: "zappy-health-c1kob",
+    storageBucket: "zappy-health-c1kob.appspot.com",
+    messagingSenderId: "833435237612",
+    appId: "1:833435237612:web:53731373b2ad7568f279c9"
+  };
+  
+  let app;
+  try {
+    app = initializeApp(firebaseConfig, "form-builder-app");
+  } catch (e) {
+    app = initializeApp(firebaseConfig);
+  }
+  const db = getFirestore(app);
 
 interface FormBuilderSheetProps {
   isOpen: boolean;
   onClose: () => void;
+  initialData?: {
+    title: string;
+    description: string;
+  };
 }
 
 const formElements = [
@@ -73,25 +96,39 @@ const formElements = [
     { icon: MapPin, label: "Address" },
 ];
 
-export function FormBuilderSheet({ isOpen, onClose }: FormBuilderSheetProps) {
+export function FormBuilderSheet({ isOpen, onClose, initialData }: FormBuilderSheetProps) {
   const [isAIGenModalOpen, setIsAIGenModalOpen] = React.useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = React.useState(false);
+  const [activePageIndex, setActivePageIndex] = React.useState(0);
+  const [isCreating, setIsCreating] = React.useState(false);
+  const { toast } = useToast();
+
   const [formSchema, setFormSchema] = React.useState<FormSchema>({
     title: "Untitled Form",
     description: "A new form created in the builder.",
     pages: [{ id: "page1", title: "Page 1", elements: [] }],
   });
-  const { toast } = useToast();
+
+  React.useEffect(() => {
+    if (isOpen && initialData) {
+        setFormSchema(prev => ({
+            ...prev,
+            title: initialData.title,
+            description: initialData.description,
+            pages: [{ id: "page1", title: "Page 1", elements: [] }]
+        }));
+        setActivePageIndex(0);
+    }
+  }, [isOpen, initialData]);
 
   const addBlockToForm = (blockName: keyof typeof templateBlocks) => {
     const block = templateBlocks[blockName];
     if (!block) return;
 
     setFormSchema(prevSchema => {
-        const newSchema = { ...prevSchema };
-        const currentPage = newSchema.pages[0]; // Assuming single page for now
+        const newSchema = JSON.parse(JSON.stringify(prevSchema));
+        const currentPage = newSchema.pages[activePageIndex];
 
-        // Avoid adding duplicate elements
         const existingElementIds = new Set(currentPage.elements.map(el => el.id));
         const elementsToAdd = block.elements.filter(el => !existingElementIds.has(el.id));
 
@@ -115,6 +152,51 @@ export function FormBuilderSheet({ isOpen, onClose }: FormBuilderSheetProps) {
     });
   };
 
+  const addPage = () => {
+    setFormSchema(prevSchema => {
+      const newPageNumber = prevSchema.pages.length + 1;
+      const newPage: FormPage = {
+        id: `page${newPageNumber}`,
+        title: `Page ${newPageNumber}`,
+        elements: []
+      };
+      const updatedSchema = { ...prevSchema, pages: [...prevSchema.pages, newPage] };
+      setActivePageIndex(updatedSchema.pages.length - 1); // Switch to the new page
+      return updatedSchema;
+    });
+  };
+
+  const createForm = async () => {
+    setIsCreating(true);
+    try {
+        await addDoc(collection(db, "resources"), {
+            title: formSchema.title,
+            description: formSchema.description,
+            contentType: "form_template",
+            category: "custom", // Or derive from somewhere
+            contentBody: formSchema, // Store the entire schema
+            status: "Draft",
+            author: "admin",
+            createdAt: Timestamp.now(),
+            updatedAt: Timestamp.now(),
+        });
+        toast({
+            title: "Form Created Successfully",
+            description: `The form "${formSchema.title}" has been saved.`,
+        });
+        onClose();
+    } catch(e) {
+        console.error("Error creating form: ", e);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "There was a problem creating the form.",
+        });
+    } finally {
+        setIsCreating(false);
+    }
+  };
+
 
   return (
     <>
@@ -123,8 +205,10 @@ export function FormBuilderSheet({ isOpen, onClose }: FormBuilderSheetProps) {
           <SheetHeader className="p-4 border-b flex-row justify-between items-center bg-background">
             <SheetTitle className="text-lg">Form Builder: {formSchema.title}</SheetTitle>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={onClose}>Cancel</Button>
-              <Button>Create Form</Button>
+              <Button variant="outline" onClick={onClose} disabled={isCreating}>Cancel</Button>
+              <Button onClick={createForm} disabled={isCreating}>
+                {isCreating ? "Creating..." : "Create Form"}
+              </Button>
             </div>
           </SheetHeader>
 
@@ -195,12 +279,21 @@ export function FormBuilderSheet({ isOpen, onClose }: FormBuilderSheetProps) {
             <main className="flex-1 bg-slate-100 flex flex-col overflow-hidden">
               <header className="p-4 border-b bg-white flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                      <Badge variant="secondary">Page 1</Badge>
+                    {formSchema.pages.map((page, index) => (
+                      <Button
+                        key={page.id}
+                        variant={activePageIndex === index ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setActivePageIndex(index)}
+                      >
+                        {page.title}
+                      </Button>
+                    ))}
                   </div>
-                  <Button variant="outline" size="sm"><Plus className="h-4 w-4 mr-2" /> Add Page</Button>
+                  <Button variant="outline" size="sm" onClick={addPage}><Plus className="h-4 w-4 mr-2" /> Add Page</Button>
               </header>
               <ScrollArea className="flex-grow p-8">
-                {formSchema.pages[0].elements.length === 0 ? (
+                {formSchema.pages[activePageIndex]?.elements.length === 0 ? (
                     <div className="bg-white rounded-lg p-6 min-h-[60vh] flex flex-col items-center justify-center border-2 border-dashed">
                         <div className="text-center text-muted-foreground">
                             <FolderOpen className="h-16 w-16 mx-auto text-gray-300" />
@@ -209,7 +302,7 @@ export function FormBuilderSheet({ isOpen, onClose }: FormBuilderSheetProps) {
                         </div>
                     </div>
                 ) : (
-                    <FormRenderer schema={formSchema} />
+                    <FormRenderer schema={{...formSchema, pages: [formSchema.pages[activePageIndex]]}} />
                 )}
               </ScrollArea>
             </main>

@@ -56,8 +56,10 @@ const settingsTabs = [
 export default function SettingsPage() {
   const [isFormModalOpen, setIsFormModalOpen] = React.useState(false);
   const [isFormBuilderOpen, setIsFormBuilderOpen] = React.useState(false);
+  const [formBuilderInitialData, setFormBuilderInitialData] = React.useState<{title: string, description: string} | undefined>(undefined);
 
-  const handleFormCreated = () => {
+  const handleFormCreated = (values: {title: string, description?: string}) => {
+    setFormBuilderInitialData({title: values.title, description: values.description || ''});
     setIsFormModalOpen(false);
     setIsFormBuilderOpen(true);
   };
@@ -149,7 +151,11 @@ export default function SettingsPage() {
       </Tabs>
     </div>
     <CreateFormModal isOpen={isFormModalOpen} onClose={() => setIsFormModalOpen(false)} onFormCreated={handleFormCreated} />
-    <FormBuilderSheet isOpen={isFormBuilderOpen} onClose={() => setIsFormBuilderOpen(false)} />
+    <FormBuilderSheet 
+        isOpen={isFormBuilderOpen} 
+        onClose={() => setIsFormBuilderOpen(false)} 
+        initialData={formBuilderInitialData}
+    />
     </>
   );
 }

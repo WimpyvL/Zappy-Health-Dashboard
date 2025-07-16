@@ -29,7 +29,7 @@ import { Switch } from "@/components/ui/switch";
 interface CreateFormModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onFormCreated: () => void;
+  onFormCreated: (values: z.infer<typeof formSchema>) => void;
 }
 
 const formSchema = z.object({
@@ -53,8 +53,7 @@ export function CreateFormModal({ isOpen, onClose, onFormCreated }: CreateFormMo
   });
 
   const onSubmit = (values: z.infer<typeof formSchema>) => {
-    console.log("Form values:", values);
-    onFormCreated();
+    onFormCreated(values);
     form.reset();
   };
 
