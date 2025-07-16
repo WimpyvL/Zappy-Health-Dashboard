@@ -23,9 +23,10 @@ import {
   ClipboardPlus,
 } from "lucide-react"
 import { useState, useEffect } from "react"
-// import { writeDocumentToFirestore } from "@/ai/flows/sample-firestore-flow" // Temporarily removed
-import { Input } from "@/components/ui/input"
 import { useToast } from "@/hooks/use-toast"
+import { useRouter } from 'next/navigation'
+import { TaskFormModal } from "./tasks/components/task-form-modal"
+import { CreateOrderModal } from "./orders/components/create-order-modal"
 
 const StatCard = ({
   title,
@@ -54,8 +55,9 @@ const StatCard = ({
 
 export default function DashboardPage() {
   const [currentTime, setCurrentTime] = useState("")
-  const [firestoreText, setFirestoreText] = useState("")
-  const [isSaving, setIsSaving] = useState(false)
+  const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+  const router = useRouter();
   const { toast } = useToast()
 
   useEffect(() => {
@@ -65,43 +67,34 @@ export default function DashboardPage() {
     return () => clearInterval(timer)
   }, [])
 
-  const handleSaveToFirestore = async () => {
-    // Temporarily disabled
+  const handleRefreshSessions = () => {
     toast({
-        variant: "destructive",
-        title: "Feature Disabled",
-        description: "Firestore integration is temporarily disabled to resolve a build issue.",
-    })
-    // if (!firestoreText) {
-    //   toast({
-    //     variant: "destructive",
-    //     title: "Error",
-    //     description: "Please enter some text to save.",
-    //   })
-    //   return
-    // }
-    // setIsSaving(true)
-    // try {
-    //   const result = await writeDocumentToFirestore(firestoreText)
-    //   console.log("Firestore result:", result)
-    //   toast({
-    //     title: "Success",
-    //     description: `Document saved with ID: ${result.docId}`,
-    //   })
-    //   setFirestoreText("")
-    // } catch (error) {
-    //   console.error("Failed to save to Firestore:", error)
-    //   toast({
-    //     variant: "destructive",
-    //     title: "Error",
-    //     description: "Failed to save document to Firestore.",
-    //   })
-    // } finally {
-    //   setIsSaving(false)
-    // }
-  }
+      title: "Sessions Refreshed",
+      description: "The list of today's sessions has been updated.",
+    });
+  };
+  
+  const handleCreateTask = (values: any) => {
+    console.log("Creating task:", values);
+    toast({
+      title: "Task Created",
+      description: `A new task has been assigned to ${values.assignee}.`,
+    });
+    setIsTaskModalOpen(false);
+  };
+
+  const handleCreateOrder = (values: any) => {
+    console.log("Creating order:", values);
+    toast({
+      title: "Order Created",
+      description: `New order for patient ${values.patientId} has been created.`,
+    });
+    setIsOrderModalOpen(false);
+  };
+
 
   return (
+    <>
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -153,11 +146,12 @@ export default function DashboardPage() {
                 variant="outline"
                 size="sm"
                 className="bg-yellow-300/80 border-yellow-400 hover:bg-yellow-300/100 text-yellow-900"
+                onClick={handleRefreshSessions}
               >
                 <RefreshCw className="mr-2 h-4 w-4" />
                 Refresh
               </Button>
-              <Button size="sm">View All</Button>
+              <Button size="sm" onClick={() => router.push('/dashboard/sessions')}>View All</Button>
             </div>
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center text-center h-48">
@@ -177,7 +171,7 @@ export default function DashboardPage() {
               <Clock className="h-6 w-6 text-green-700" />
               <CardTitle className="text-lg text-green-900">Tasks</CardTitle>
             </div>
-            <Button size="sm">
+            <Button size="sm" onClick={() => setIsTaskModalOpen(true)}>
               <Plus className="mr-2 h-4 w-4" /> Add Task
             </Button>
           </CardHeader>
@@ -197,7 +191,7 @@ export default function DashboardPage() {
                 Recent Orders
               </CardTitle>
             </div>
-            <Button size="sm">
+            <Button size="sm" onClick={() => setIsOrderModalOpen(true)}>
               <Plus className="mr-2 h-4 w-4" /> New Order
             </Button>
           </CardHeader>
@@ -215,7 +209,7 @@ export default function DashboardPage() {
                 Pending Consultations
               </CardTitle>
             </div>
-            <Button size="sm">View All</Button>
+            <Button size="sm" onClick={() => router.push('/dashboard/sessions')}>View All</Button>
           </CardHeader>
           <CardContent className="flex flex-col items-center justify-center text-center h-48">
             <MessageSquarePlus className="h-16 w-16 text-purple-400 mb-4" />
@@ -226,5 +220,16 @@ export default function DashboardPage() {
         </Card>
       </div>
     </div>
+    <TaskFormModal 
+        isOpen={isTaskModalOpen}
+        onClose={() => setIsTaskModalOpen(false)}
+        onSubmit={handleCreateTask}
+    />
+    <CreateOrderModal 
+        isOpen={isOrderModalOpen}
+        onClose={() => setIsOrderModalOpen(false)}
+        onSubmit={handleCreateOrder}
+    />
+    </>
   )
 }
