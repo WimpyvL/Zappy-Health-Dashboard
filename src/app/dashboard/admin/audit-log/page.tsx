@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -25,6 +26,31 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Search, FolderOpen, ArrowUpDown, ChevronDown } from "lucide-react";
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, getDocs, query, orderBy, Timestamp } from "firebase/firestore";
+import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+import { Skeleton } from "@/components/ui/skeleton";
+
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyBVV_vq5fjNSASYQndmbRbEtlfyOieFVTs",
+  authDomain: "zappy-health-c1kob.firebaseapp.com",
+  databaseURL: "https://zappy-health-c1kob-default-rtdb.firebaseio.com",
+  projectId: "zappy-health-c1kob",
+  storageBucket: "zappy-health-c1kob.appspot.com",
+  messagingSenderId: "833435237612",
+  appId: "1:833435237612:web:53731373b2ad7568f279c9"
+};
+
+// Initialize Firebase
+let app;
+try {
+  app = initializeApp(firebaseConfig, "audit-log-app");
+} catch (e) {
+  app = initializeApp(firebaseConfig);
+}
+const db = getFirestore(app);
 
 type AuditLog = {
   id: string;
@@ -34,10 +60,6 @@ type AuditLog = {
   action: string;
   details: string;
 };
-
-const mockLogs: AuditLog[] = [
-  // No mock logs to show the empty state
-];
 
 const FilterDropdown = ({
     label,
@@ -62,6 +84,41 @@ const FilterDropdown = ({
   );
 
 export default function AuditLogPage() {
+    const [logs, setLogs] = React.useState<AuditLog[]>([]);
+    const [loading, setLoading] = React.useState(true);
+    const { toast } = useToast();
+
+    React.useEffect(() => {
+        const fetchLogs = async () => {
+            setLoading(true);
+            try {
+                const logsCollection = collection(db, "audit_logs");
+                const q = query(logsCollection, orderBy("timestamp", "desc"));
+                const logsSnapshot = await getDocs(q);
+                const logsList = logsSnapshot.docs.map(doc => {
+                    const data = doc.data();
+                    return {
+                        id: doc.id,
+                        ...data,
+                        timestamp: data.timestamp ? format(data.timestamp.toDate(), "MMM dd, yyyy, hh:mm:ss a") : "N/A",
+                    } as AuditLog;
+                });
+                setLogs(logsList);
+            } catch (error) {
+                console.error("Error fetching audit logs: ", error);
+                toast({
+                    variant: "destructive",
+                    title: "Error Fetching Logs",
+                    description: "Could not retrieve audit log data from the database.",
+                });
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchLogs();
+    }, [toast]);
+
   return (
     <div className="flex flex-col gap-6">
       <h1 className="text-3xl font-bold">Audit Log</h1>
@@ -111,8 +168,17 @@ export default function AuditLogPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {mockLogs.length > 0 ? (
-                mockLogs.map((log) => (
+              {loading ? (
+                Array.from({ length: 5 }).map((_, index) => (
+                    <TableRow key={index}>
+                        <TableCell><Skeleton className="h-5 w-40" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-48" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-32" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-64" /></TableCell>
+                    </TableRow>
+                ))
+              ) : logs.length > 0 ? (
+                logs.map((log) => (
                   <TableRow key={log.id}>
                     <TableCell>{log.timestamp}</TableCell>
                     <TableCell>
