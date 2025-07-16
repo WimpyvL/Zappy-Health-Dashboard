@@ -3,10 +3,18 @@
 
 import * as React from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
-import { DayPicker } from "react-day-picker"
+import { DayPicker, DropdownProps } from "react-day-picker"
 
 import { cn } from "@/lib/utils"
 import { buttonVariants } from "@/components/ui/button"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { ScrollArea } from "./scroll-area"
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>
 
@@ -56,12 +64,60 @@ function Calendar({
         ...classNames,
       }}
       components={{
-        IconLeft: ({ className, ...props }) => (
-          <ChevronLeft className={cn("h-4 w-4", className)} {...props} />
-        ),
-        IconRight: ({ className, ...props }) => (
-          <ChevronRight className={cn("h-4 w-4", className)} {...props} />
-        ),
+        IconLeft: ({ ...props }) => <ChevronLeft className="h-4 w-4" />,
+        IconRight: ({ ...props }) => <ChevronRight className="h-4 w-4" />,
+        Dropdown: (props: DropdownProps) => {
+          const { fromDate, fromMonth, fromYear, toDate, toMonth, toYear } = props;
+          const {
+            // @ts-expect-error some props are not in the type
+            name,
+            // @ts-expect-error
+            value,
+            // @ts-expect-error
+            onChange,
+            // @ts-expect-error
+            children,
+          } = props;
+          const options = React.Children.toArray(
+            children
+          ) as React.ReactElement<React.ComponentProps<"option">>[];
+          const [selectedValue, setSelectedValue] = React.useState(options.find((child) => child.props.value === value));
+          
+          const handleValueChange = (value: string) => {
+            const changeEvent = {
+              target: { value },
+            } as React.ChangeEvent<HTMLSelectElement>;
+            onChange?.(changeEvent);
+          };
+
+          return (
+            <Select
+              value={selectedValue?.props?.value?.toString() ?? ""}
+              onValueChange={(value) => {
+                handleValueChange(value)
+              }}
+            >
+              <SelectTrigger className={cn(
+                buttonVariants({ variant: "ghost" }),
+                "px-2 py-1 h-7 text-sm font-medium"
+              )}>
+                {selectedValue?.props.children}
+              </SelectTrigger>
+              <SelectContent>
+                <ScrollArea className="h-80">
+                  {options.map((option, id: number) => (
+                    <SelectItem
+                      key={`${option.props.value}-${id}`}
+                      value={option.props.value?.toString() ?? ""}
+                    >
+                      {option.props.children}
+                    </SelectItem>
+                  ))}
+                </ScrollArea>
+              </SelectContent>
+            </Select>
+          )
+        },
       }}
       {...props}
     />
