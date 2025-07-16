@@ -99,12 +99,13 @@ export function ImportFormModal({ isOpen, onClose, onFormImported }: ImportFormM
     
     setIsImporting(true);
     try {
+        // Correctly save the form schema as a map object, not a string
         await addDoc(collection(db, "resources"), {
             title: validationResult.formSchema.title,
             description: validationResult.formSchema.description,
             contentType: "form_template",
             category: "imported",
-            contentBody: JSON.stringify(validationResult.formSchema, null, 2),
+            contentBody: validationResult.formSchema, // Store the object directly
             status: "Draft",
             author: "admin",
             createdAt: Timestamp.now(),
