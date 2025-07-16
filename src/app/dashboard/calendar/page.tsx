@@ -1,46 +1,97 @@
-// This file remains unchanged, as it was not part of the requested reconstruction.
+
 "use client";
 
 import * as React from "react";
-import { format, addDays } from "date-fns";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { initializeApp } from "firebase/app";
+import { getFirestore, collection, getDocs, query, where, Timestamp, orderBy } from "firebase/firestore";
+import { useToast } from "@/hooks/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const today = new Date();
-
-// Mock data for appointments for the next few days
-const appointments: { [key: string]: Appointment[] } = {
-  [format(today, "yyyy-MM-dd")]: [
-    { time: "09:00 AM", patient: "John Doe", type: "Check-up" },
-    { time: "11:30 AM", patient: "Jane Smith", type: "Follow-up" },
-  ],
-  [format(addDays(today, 2), "yyyy-MM-dd")]: [
-    { time: "02:00 PM", patient: "Peter Jones", type: "Consultation" },
-  ],
-  [format(addDays(today, 5), "yyyy-MM-dd")]: [
-    { time: "10:00 AM", patient: "Mary Williams", type: "Check-up" },
-    { time: "01:00 PM", patient: "David Brown", type: "Procedure" },
-    { time: "03:30 PM", patient: "Sarah Miller", type: "Consultation" },
-  ],
+// Your web app's Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyBVV_vq5fjNSASYQndmbRbEtlfyOieFVTs",
+  authDomain: "zappy-health-c1kob.firebaseapp.com",
+  databaseURL: "https://zappy-health-c1kob-default-rtdb.firebaseio.com",
+  projectId: "zappy-health-c1kob",
+  storageBucket: "zappy-health-c1kob.appspot.com",
+  messagingSenderId: "833435237612",
+  appId: "1:833435237612:web:53731373b2ad7568f279c9"
 };
+
+// Initialize Firebase
+let app;
+try {
+  app = initializeApp(firebaseConfig, "calendar-app");
+} catch (e) {
+  app = initializeApp(firebaseConfig);
+}
+const db = getFirestore(app);
 
 type Appointment = {
     time: string;
-    patient: string;
+    patientName: string;
     type: string;
+    date: Date;
+}
+
+type AppointmentsByDate = {
+    [key: string]: Appointment[];
 }
 
 export default function CalendarPage() {
-  const [date, setDate] = React.useState<Date | undefined>(today);
-  const [selectedAppointments, setSelectedAppointments] = React.useState<Appointment[]>([]);
+  const [date, setDate] = React.useState<Date | undefined>(new Date());
+  const [currentMonth, setCurrentMonth] = React.useState(new Date());
+  const [appointments, setAppointments] = React.useState<AppointmentsByDate>({});
+  const [loading, setLoading] = React.useState(true);
+  const { toast } = useToast();
+
+  const fetchAppointments = React.useCallback(async (month: Date) => {
+    setLoading(true);
+    try {
+        const start = startOfMonth(month);
+        const end = endOfMonth(month);
+        const sessionsCollection = collection(db, "sessions");
+        const q = query(
+            sessionsCollection, 
+            where("date", ">=", Timestamp.fromDate(start)),
+            where("date", "<=", Timestamp.fromDate(end)),
+            orderBy("date", "asc")
+        );
+        const querySnapshot = await getDocs(q);
+        const appointmentsByDate: AppointmentsByDate = {};
+        querySnapshot.forEach(doc => {
+            const data = doc.data();
+            const apptDate = (data.date as Timestamp).toDate();
+            const dateString = format(apptDate, "yyyy-MM-dd");
+            if (!appointmentsByDate[dateString]) {
+                appointmentsByDate[dateString] = [];
+            }
+            appointmentsByDate[dateString].push({
+                time: format(apptDate, "hh:mm a"),
+                patientName: data.patientName || "Unknown Patient",
+                type: data.type || "Appointment",
+                date: apptDate,
+            });
+        });
+        setAppointments(appointmentsByDate);
+    } catch (error) {
+        console.error("Error fetching appointments:", error);
+        toast({ variant: 'destructive', title: 'Failed to load appointments.' });
+    } finally {
+        setLoading(false);
+    }
+  }, [toast]);
 
   React.useEffect(() => {
-    if (date) {
-      const dateString = format(date, "yyyy-MM-dd");
-      setSelectedAppointments(appointments[dateString] || []);
-    }
-  }, [date]);
+    fetchAppointments(currentMonth);
+  }, [fetchAppointments, currentMonth]);
+
+  const selectedAppointments = date ? appointments[format(date, "yyyy-MM-dd")] || [] : [];
+  const daysWithAppointments = Object.keys(appointments).map(dateStr => new Date(dateStr));
 
   return (
     <div className="flex flex-col gap-8">
@@ -53,10 +104,18 @@ export default function CalendarPage() {
                         mode="single"
                         selected={date}
                         onSelect={setDate}
+                        month={currentMonth}
+                        onMonthChange={setCurrentMonth}
                         className="p-4"
                         classNames={{
                             day_selected: "bg-primary text-primary-foreground hover:bg-primary/90 focus:bg-primary/90",
                             day_today: "bg-accent text-accent-foreground",
+                        }}
+                        modifiers={{
+                           hasAppointment: daysWithAppointments,
+                        }}
+                        modifiersClassNames={{
+                           hasAppointment: "border-2 border-primary rounded-md",
                         }}
                     />
                 </CardContent>
@@ -71,13 +130,19 @@ export default function CalendarPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {selectedAppointments.length > 0 ? (
+              {loading ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ) : selectedAppointments.length > 0 ? (
                 <ul className="space-y-4">
                   {selectedAppointments.map((app, index) => (
                     <li key={index} className="flex items-start space-x-4">
                       <div className="flex-shrink-0 w-20 text-sm font-medium text-foreground pt-1">{app.time}</div>
                       <div className="flex-1 border-l-2 border-primary pl-4">
-                        <p className="font-semibold">{app.patient}</p>
+                        <p className="font-semibold">{app.patientName}</p>
                         <p className="text-sm text-muted-foreground">{app.type}</p>
                       </div>
                     </li>
