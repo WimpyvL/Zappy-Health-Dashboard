@@ -58,7 +58,13 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
+let app;
+try {
+    app = initializeApp(firebaseConfig, "invoices-app");
+} catch(e) {
+    app = initializeApp(firebaseConfig);
+}
+
 const db = getFirestore(app);
 
 type Invoice = {
@@ -94,7 +100,7 @@ export default function InvoicesPage() {
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const { toast } = useToast();
 
-  const fetchInvoices = async () => {
+  const fetchInvoices = React.useCallback(async () => {
     setLoading(true);
     try {
       const invoicesCollection = collection(db, "invoices");
@@ -118,32 +124,31 @@ export default function InvoicesPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
   React.useEffect(() => {
     fetchInvoices();
-  }, []);
+  }, [fetchInvoices]);
 
-  const handleCreateInvoice = async (values: Omit<Invoice, "id" | "status" | "amount">) => {
+  const handleCreateInvoice = async (values: any) => {
     try {
-        const subtotal = values.lineItems.reduce((acc, item) => acc + item.quantity * item.price, 0);
-        const totalAfterDiscount = subtotal - (values.discountAmount || 0);
-        const taxAmount = (totalAfterDiscount > 0 ? totalAfterDiscount : 0) * ((values.taxRate || 0) / 100);
-        const total = totalAfterDiscount + taxAmount;
-
-      await addDoc(collection(db, "invoices"), {
-        ...values,
-        dueDate: Timestamp.fromDate(new Date(values.dueDate)),
-        status: "Pending",
-        amount: total,
-        createdAt: Timestamp.now(),
-      });
-      toast({
-        title: "Invoice Created",
-        description: `A new invoice for ${values.patientName} has been created.`,
-      });
-      fetchInvoices();
-      setIsModalOpen(false);
+        await addDoc(collection(db, "invoices"), {
+            patientName: values.patientName,
+            dueDate: Timestamp.fromDate(values.dueDate),
+            subscriptionPlan: values.subscriptionPlan,
+            lineItems: values.lineItems,
+            discountAmount: values.discountAmount,
+            taxRate: values.taxRate,
+            amount: values.total,
+            status: "Pending", // Default status for new invoices
+            createdAt: Timestamp.now(),
+        });
+        toast({
+            title: "Invoice Created",
+            description: `A new invoice for ${values.patientName} has been created.`,
+        });
+        fetchInvoices();
+        setIsModalOpen(false);
     } catch (error) {
       console.error("Error creating invoice: ", error);
       toast({

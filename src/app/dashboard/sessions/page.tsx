@@ -42,7 +42,7 @@ import { Label } from "@/components/ui/label";
 import { ScheduleSessionModal } from "./components/schedule-session-modal";
 import { useToast } from "@/hooks/use-toast";
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, getDocs, addDoc, query, orderBy } from "firebase/firestore";
+import { getFirestore, collection, getDocs, addDoc, query, orderBy, Timestamp } from "firebase/firestore";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
@@ -59,7 +59,12 @@ const firebaseConfig = {
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
+let app;
+try {
+  app = initializeApp(firebaseConfig, "sessions-app");
+} catch (e) {
+  app = initializeApp(firebaseConfig);
+}
 const db = getFirestore(app);
 
 type Session = {
@@ -102,7 +107,7 @@ export default function SessionsPage() {
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const { toast } = useToast();
 
-  const fetchSessions = async () => {
+  const fetchSessions = React.useCallback(async () => {
     setLoading(true);
     try {
       const sessionsCollection = collection(db, "sessions");
@@ -126,17 +131,23 @@ export default function SessionsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
   React.useEffect(() => {
     fetchSessions();
-  }, []);
+  }, [fetchSessions]);
 
   const handleCreateSession = async (values: any) => {
     try {
       await addDoc(collection(db, "sessions"), {
-          ...values,
-          date: values.dateTime, // assuming dateTime is the field from form
+          patientName: values.patient, // In real app, you'd use patientId and join
+          patientId: 'mock-patient-id', // Placeholder
+          patientEmail: 'mock-email@example.com', // Placeholder
+          type: values.sessionType,
+          plan: values.servicePlan,
+          provider: values.provider,
+          date: Timestamp.fromDate(values.dateTime),
+          status: "Scheduled",
       });
       toast({
         title: "Session Scheduled",
