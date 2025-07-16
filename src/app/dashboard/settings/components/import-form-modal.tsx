@@ -18,7 +18,7 @@ import {
     TabsList,
     TabsTrigger,
   } from "@/components/ui/tabs";
-  import { Badge } from "@/components/ui/badge";
+  import { Card, CardContent } from "@/components/ui/card";
   import { validateFormSchema, ValidationResult } from "@/lib/form-validator";
   import { exampleFormJson } from './form-example';
   import { FormRenderer } from "@/components/ui/form-renderer";
