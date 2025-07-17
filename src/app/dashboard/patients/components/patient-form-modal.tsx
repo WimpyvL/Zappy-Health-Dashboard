@@ -25,7 +25,7 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -46,6 +46,8 @@ type Patient = {
   policyNumber?: string;
   groupNumber?: string;
   insuranceHolder?: string;
+  firstName: string;
+  lastName: string;
 };
 
 interface PatientFormModalProps {
@@ -53,6 +55,7 @@ interface PatientFormModalProps {
   onClose: () => void;
   patient?: Patient | null;
   onSubmit: (values: any) => void;
+  isSubmitting: boolean;
 }
 
 const formSchema = z.object({
@@ -67,10 +70,9 @@ const formSchema = z.object({
   policyNumber: z.string().optional(),
   groupNumber: z.string().optional(),
   insuranceHolder: z.string().optional(),
-  status: z.string().min(1, "Patient status is required"),
 });
 
-export function PatientFormModal({ isOpen, onClose, patient, onSubmit }: PatientFormModalProps) {
+export function PatientFormModal({ isOpen, onClose, patient, onSubmit, isSubmitting }: PatientFormModalProps) {
   const isEditMode = !!patient;
 
   const form = useForm<z.infer<typeof formSchema>>({
@@ -79,12 +81,9 @@ export function PatientFormModal({ isOpen, onClose, patient, onSubmit }: Patient
 
   React.useEffect(() => {
     if (isEditMode && patient) {
-      const [firstName, ...lastNameParts] = patient.name.split(" ");
-      const lastName = lastNameParts.join(" ");
-      
       form.reset({
-        firstName: firstName,
-        lastName: lastName,
+        firstName: patient.firstName,
+        lastName: patient.lastName,
         email: patient.email,
         phone: patient.phone || '',
         dob: patient.dob ? new Date(patient.dob) : undefined,
@@ -94,7 +93,6 @@ export function PatientFormModal({ isOpen, onClose, patient, onSubmit }: Patient
         policyNumber: patient.policyNumber || '',
         groupNumber: patient.groupNumber || '',
         insuranceHolder: patient.insuranceHolder || '',
-        status: patient.status || "Active",
       });
     } else {
       form.reset({
@@ -109,13 +107,12 @@ export function PatientFormModal({ isOpen, onClose, patient, onSubmit }: Patient
         policyNumber: "",
         groupNumber: "",
         insuranceHolder: "",
-        status: "Active",
       });
     }
   }, [patient, isEditMode, form]);
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={!isSubmitting ? onClose : undefined}>
       <DialogContent className="sm:max-w-[800px] p-0">
         <DialogHeader className="p-6 pb-0">
           <DialogTitle className="text-xl">{isEditMode ? "Edit Patient" : "Add New Patient"}</DialogTitle>
@@ -310,43 +307,18 @@ export function PatientFormModal({ isOpen, onClose, patient, onSubmit }: Patient
                     )}
                 />
               </div>
-              
-              {isEditMode && (
-                <FormField
-                  control={form.control}
-                  name="status"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Patient Status <span className="text-destructive">*</span></FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select a status" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="Active">Active</SelectItem>
-                          <SelectItem value="Inactive">Inactive</SelectItem>
-                          <SelectItem value="Pending">Pending</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              )}
-
             </form>
           </Form>
         </div>
         <DialogFooter className="p-6 pt-0 border-t mt-6">
           <DialogClose asChild>
-            <Button type="button" variant="outline">
+            <Button type="button" variant="outline" disabled={isSubmitting}>
               Cancel
             </Button>
           </DialogClose>
-          <Button type="submit" onClick={form.handleSubmit(onSubmit)}>
-            {isEditMode ? "Save Changes" : "Add Patient"}
+          <Button type="submit" onClick={form.handleSubmit(onSubmit)} disabled={isSubmitting}>
+            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            {isSubmitting ? (isEditMode ? "Saving..." : "Adding...") : (isEditMode ? "Save Changes" : "Add Patient")}
           </Button>
         </DialogFooter>
       </DialogContent>

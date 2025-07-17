@@ -107,12 +107,13 @@ export default function PatientsPage() {
   const [patients, setPatients] = React.useState<Patient[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [editingPatient, setEditingPatient] = React.useState<Patient | null>(null);
   const [isMessageModalOpen, setIsMessageModalOpen] = React.useState(false);
   const [selectedMessage, setSelectedMessage] = React.useState<Message | null>(null);
   const { toast } = useToast();
 
-  const fetchPatients = async () => {
+  const fetchPatients = React.useCallback(async () => {
     setLoading(true);
     try {
       const patientsCollection = collection(db, "patients");
@@ -137,11 +138,11 @@ export default function PatientsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
   React.useEffect(() => {
     fetchPatients();
-  }, []);
+  }, [fetchPatients]);
 
   const handleOpenAddModal = () => {
     setEditingPatient(null);
@@ -154,11 +155,13 @@ export default function PatientsPage() {
   };
 
   const handleCloseModal = () => {
+    if (isSubmitting) return;
     setIsModalOpen(false);
     setEditingPatient(null);
   };
 
-  const handleFormSubmit = async (values: Omit<Patient, 'id' | 'name'>) => {
+  const handleFormSubmit = async (values: any) => {
+    setIsSubmitting(true);
     try {
       const patientData = { ...values, dob: Timestamp.fromDate(values.dob as Date) };
       
@@ -182,15 +185,17 @@ export default function PatientsPage() {
           description: `${values.firstName} ${values.lastName} has been added to the system.`,
         });
       }
-      fetchPatients(); // Refresh the list
+      fetchPatients();
       handleCloseModal();
     } catch (error) {
       console.error("Error saving patient: ", error);
       toast({
         variant: "destructive",
         title: "Error Saving Patient",
-        description: "An error occurred while saving the patient information.",
+        description: "An error occurred while saving the patient information. Please try again.",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -378,6 +383,7 @@ export default function PatientsPage() {
         onClose={handleCloseModal}
         patient={editingPatient}
         onSubmit={handleFormSubmit}
+        isSubmitting={isSubmitting}
       />
        <ViewMessageModal 
         isOpen={isMessageModalOpen}
