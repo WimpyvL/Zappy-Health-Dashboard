@@ -45,4 +45,3 @@ export const sendProviderNotification = onRequest({cors: true}, (request, respon
   // Respond to the client that the request was accepted.
   response.status(200).json({ success: true, message: "Notification sent successfully." });
 });
-
