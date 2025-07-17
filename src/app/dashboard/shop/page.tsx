@@ -8,6 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 import { useTelehealthFlow } from "@/hooks/useTelehealthFlow.js";
 import Image from "next/image";
+import { Loader2 } from "lucide-react";
 
 // Mock data, in a real app this would come from a database.
 const products = [
@@ -34,7 +35,7 @@ export default function ShopPage() {
             
             const result = await initializeFlow({ patientId, categoryId: product.categoryId, productId: product.id });
 
-            if (result.success) {
+            if (result.success && result.flow?.id) {
                 toast({
                     title: "Consultation Started",
                     description: `Redirecting to the intake process for ${product.name}.`,
@@ -79,7 +80,7 @@ export default function ShopPage() {
                         <CardContent className="flex justify-between items-center">
                             <p className="text-2xl font-bold">${product.price}</p>
                             <Button onClick={() => handleSelectProduct(product)} disabled={loading}>
-                                {loading ? 'Starting...' : 'Get Started'}
+                                {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Get Started'}
                             </Button>
                         </CardContent>
                     </Card>
