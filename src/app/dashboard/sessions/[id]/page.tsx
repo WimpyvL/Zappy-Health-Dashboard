@@ -14,6 +14,9 @@ import {
   XCircle,
   Sparkles,
   Edit,
+  User,
+  Mail,
+  Phone
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +24,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  CardDescription
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -33,6 +37,13 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase/client";
+import { useRouter } from 'next/navigation';
+import Loading from "./loading";
+import Error from "../error";
 
 type MedicationDosageProps = {
     dose: string;
@@ -69,17 +80,84 @@ const EducationButton = ({ label }: { label: string }) => (
 );
 
 export default function EditSessionPage({ params }: { params: { id: string } }) {
+  const [session, setSession] = React.useState<any>(null);
+  const [patient, setPatient] = React.useState<any>(null);
+  const [loading, setLoading] = React.useState(true);
+  const [error, setError] = React.useState<string | null>(null);
+  const { toast } = useToast();
+  const router = useRouter();
+
   const [currentDose, setCurrentDose] = React.useState("0.5");
   const [currentFollowUp, setCurrentFollowUp] = React.useState("4w");
+
+  React.useEffect(() => {
+    const fetchSessionData = async () => {
+        if (!params.id) return;
+        setLoading(true);
+        setError(null);
+        try {
+            const sessionRef = doc(db, "sessions", params.id);
+            const sessionSnap = await getDoc(sessionRef);
+
+            if (!sessionSnap.exists()) {
+                throw new Error("Session not found.");
+            }
+            
+            const sessionData = { id: sessionSnap.id, ...sessionSnap.data() };
+            setSession(sessionData);
+
+            if (sessionData.patientId) {
+                const patientRef = doc(db, "patients", sessionData.patientId);
+                const patientSnap = await getDoc(patientRef);
+                if (patientSnap.exists()) {
+                    setPatient({ id: patientSnap.id, ...patientSnap.data() });
+                }
+            }
+
+        } catch (err: any) {
+            console.error("Error fetching session details:", err);
+            setError(err.message);
+            toast({
+                variant: "destructive",
+                title: "Error loading session",
+                description: err.message,
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    fetchSessionData();
+  }, [params.id, toast]);
+
+
+  if (loading) {
+    return <Loading />;
+  }
+
+  if (error) {
+    return <Error error={new Error(error)} reset={() => window.location.reload()} />;
+  }
+  
+  if (!session) {
+    return <div className="text-center p-8">Session could not be loaded.</div>
+  }
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" className="h-8 w-8">
+        <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => router.back()}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold">Review Follow-up Visit</h1>
+          <h1 className="text-2xl font-bold">{session.type?.replace(/_/g, ' ')} Review</h1>
+           {patient && (
+            <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                <span className="flex items-center gap-1.5"><User className="h-3 w-3" /> {patient.firstName} {patient.lastName}</span>
+                <span className="flex items-center gap-1.5"><Mail className="h-3 w-3" /> {patient.email}</span>
+                <span className="flex items-center gap-1.5"><Phone className="h-3 w-3" /> {patient.phone || 'N/A'}</span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -92,7 +170,7 @@ export default function EditSessionPage({ params }: { params: { id: string } }) 
             </CardHeader>
             <CardContent>
                 <div className="border rounded-lg p-4 flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">No treatment progress notes yet.</p>
+                    <p className="text-sm text-muted-foreground">{session.progressNotes || "No treatment progress notes yet."}</p>
                     <div className="flex gap-2">
                         <Button variant="outline" size="sm"><Sparkles className="h-4 w-4 mr-2" /> AI Compose</Button>
                         <Button variant="outline" size="sm"><Edit className="h-4 w-4 mr-2" /> Edit</Button>
@@ -264,7 +342,7 @@ export default function EditSessionPage({ params }: { params: { id: string } }) 
                     <Textarea 
                         rows={10} 
                         className="text-xs leading-5"
-                        defaultValue={`Weight Management:
+                        defaultValue={session.assessmentAndPlan || `Weight Management:
 • BMI 32.4, A1C 5.6%
 • Semaglutide 0.25mg wkly (6mo)
 • Metformin 500mg daily (6mo)
