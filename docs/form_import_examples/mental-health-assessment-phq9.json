@@ -1,0 +1,153 @@
+
+{
+  "flowConfig": {
+    "title": "Mental Health Assessment (PHQ-9)",
+    "description": "This is a standard screening tool to help understand your current mental well-being. Please answer based on how you have felt over the last 2 weeks.",
+    "form_type": "assessment",
+    "version": "1.0",
+    "completionMessage": "Thank you for completing the assessment. Your provider will review your responses.",
+    "estimatedTime": "2-3 minutes"
+  },
+  "pages": [
+    {
+      "id": "phq9_questions",
+      "title": "Patient Health Questionnaire (PHQ-9)",
+      "elements": [
+        {
+          "id": "interest_pleasure",
+          "type": "radio",
+          "label": "Over the last 2 weeks, how often have you been bothered by little interest or pleasure in doing things?",
+          "required": true,
+          "options": [
+            { "id": "q1_opt0", "value": "0", "label": "Not at all" },
+            { "id": "q1_opt1", "value": "1", "label": "Several days" },
+            { "id": "q1_opt2", "value": "2", "label": "More than half the days" },
+            { "id": "q1_opt3", "value": "3", "label": "Nearly every day" }
+          ]
+        },
+        {
+          "id": "feeling_down",
+          "type": "radio",
+          "label": "Over the last 2 weeks, how often have you been bothered by feeling down, depressed, or hopeless?",
+          "required": true,
+          "options": [
+            { "id": "q2_opt0", "value": "0", "label": "Not at all" },
+            { "id": "q2_opt1", "value": "1", "label": "Several days" },
+            { "id": "q2_opt2", "value": "2", "label": "More than half the days" },
+            { "id": "q2_opt3", "value": "3", "label": "Nearly every day" }
+          ]
+        },
+        {
+          "id": "sleep_trouble",
+          "type": "radio",
+          "label": "Over the last 2 weeks, how often have you been bothered by trouble falling or staying asleep, or sleeping too much?",
+          "required": true,
+          "options": [
+            { "id": "q3_opt0", "value": "0", "label": "Not at all" },
+            { "id": "q3_opt1", "value": "1", "label": "Several days" },
+            { "id": "q3_opt2", "value": "2", "label": "More than half the days" },
+            { "id": "q3_opt3", "value": "3", "label": "Nearly every day" }
+          ]
+        },
+        {
+          "id": "feeling_tired",
+          "type": "radio",
+          "label": "Over the last 2 weeks, how often have you been bothered by feeling tired or having little energy?",
+          "required": true,
+          "options": [
+            { "id": "q4_opt0", "value": "0", "label": "Not at all" },
+            { "id": "q4_opt1", "value": "1", "label": "Several days" },
+            { "id": "q4_opt2", "value": "2", "label": "More than half the days" },
+            { "id": "q4_opt3", "value": "3", "label": "Nearly every day" }
+          ]
+        },
+        {
+          "id": "appetite_issues",
+          "type": "radio",
+          "label": "Over the last 2 weeks, how often have you been bothered by poor appetite or overeating?",
+          "required": true,
+          "options": [
+            { "id": "q5_opt0", "value": "0", "label": "Not at all" },
+            { "id": "q5_opt1", "value": "1", "label": "Several days" },
+            { "id": "q5_opt2", "value": "2", "label": "More than half the days" },
+            { "id": "q5_opt3", "value": "3", "label": "Nearly every day" }
+          ]
+        },
+        {
+          "id": "feeling_bad_about_self",
+          "type": "radio",
+          "label": "Over the last 2 weeks, how often have you been bothered by feeling bad about yourself — or that you are a failure or have let yourself or your family down?",
+          "required": true,
+          "options": [
+            { "id": "q6_opt0", "value": "0", "label": "Not at all" },
+            { "id": "q6_opt1", "value": "1", "label": "Several days" },
+            { "id": "q6_opt2", "value": "2", "label": "More than half the days" },
+            { "id": "q6_opt3", "value": "3", "label": "Nearly every day" }
+          ]
+        },
+        {
+          "id": "trouble_concentrating",
+          "type": "radio",
+          "label": "Over the last 2 weeks, how often have you been bothered by trouble concentrating on things, such as reading the newspaper or watching television?",
+          "required": true,
+          "options": [
+            { "id": "q7_opt0", "value": "0", "label": "Not at all" },
+            { "id": "q7_opt1", "value": "1", "label": "Several days" },
+            { "id": "q7_opt2", "value": "2", "label": "More than half the days" },
+            { "id": "q7_opt3", "value": "3", "label": "Nearly every day" }
+          ]
+        },
+        {
+          "id": "moving_speaking_slowly",
+          "type": "radio",
+          "label": "Over the last 2 weeks, how often have you been bothered by moving or speaking so slowly that other people could have noticed? Or the opposite — being so fidgety or restless that you have been moving around a lot more than usual?",
+          "required": true,
+          "options": [
+            { "id": "q8_opt0", "value": "0", "label": "Not at all" },
+            { "id": "q8_opt1", "value": "1", "label": "Several days" },
+            { "id": "q8_opt2", "value": "2", "label": "More than half the days" },
+            { "id": "q8_opt3", "value": "3", "label": "Nearly every day" }
+          ]
+        },
+        {
+          "id": "self_harm_thoughts",
+          "type": "radio",
+          "label": "Over the last 2 weeks, how often have you been bothered by thoughts that you would be better off dead, or of hurting yourself in some way?",
+          "required": true,
+          "options": [
+            { "id": "q9_opt0", "value": "0", "label": "Not at all" },
+            { "id": "q9_opt1", "value": "1", "label": "Several days" },
+            { "id": "q9_opt2", "value": "2", "label": "More than half the days" },
+            { "id": "q9_opt3", "value": "3", "label": "Nearly every day" }
+          ]
+        }
+      ]
+    }
+  ],
+  "completionActions": [
+    {
+      "type": "calculate_score",
+      "fields": ["interest_pleasure", "feeling_down", "sleep_trouble", "feeling_tired", "appetite_issues", "feeling_bad_about_self", "trouble_concentrating", "moving_speaking_slowly", "self_harm_thoughts"],
+      "action": "sum",
+      "result_field": "phq9_score"
+    },
+    {
+      "type": "conditional_alert",
+      "condition": {
+        "field": "phq9_score",
+        "operator": "greater_than",
+        "value": 9
+      },
+      "alert_message": "Based on your score, a provider will reach out to discuss your results."
+    },
+    {
+      "type": "conditional_alert",
+      "condition": {
+        "field": "self_harm_thoughts",
+        "operator": "not_equals",
+        "value": "0"
+      },
+      "alert_message": "If you are in a crisis, please call 988 or go to the nearest emergency room."
+    }
+  ]
+}
