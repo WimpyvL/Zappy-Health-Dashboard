@@ -26,7 +26,6 @@ import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, X } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 
 interface ScheduleSessionModalProps {
@@ -34,6 +33,13 @@ interface ScheduleSessionModalProps {
   onClose: () => void;
   onSubmit: (values: any) => void;
 }
+
+const SESSION_TYPES = [
+    'initial_consultation',
+    'follow_up',
+    'check_in',
+    'emergency'
+];
 
 const formSchema = z.object({
   patient: z.string().min(1, "Patient is required"),
@@ -99,6 +105,7 @@ export function ScheduleSessionModal({ isOpen, onClose, onSubmit }: ScheduleSess
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        {/* This should be populated with real patient data */}
                         <SelectItem value="patient1">John Doe</SelectItem>
                         <SelectItem value="patient2">Jane Smith</SelectItem>
                       </SelectContent>
@@ -114,17 +121,18 @@ export function ScheduleSessionModal({ isOpen, onClose, onSubmit }: ScheduleSess
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Session Type <span className="text-destructive">*</span></FormLabel>
-                     <Select onValueChange={field.onChange} defaultValue={field.value}>
+                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select a session type" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="initial_consultation">Initial Consultation</SelectItem>
-                        <SelectItem value="follow_up">Follow-up</SelectItem>
-                        <SelectItem value="check_in">Check-in</SelectItem>
-                        <SelectItem value="emergency">Emergency</SelectItem>
+                        {SESSION_TYPES.map(type => (
+                            <SelectItem key={type} value={type} className="capitalize">
+                                {type.replace(/_/g, ' ')}
+                            </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                     <FormMessage />

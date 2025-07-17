@@ -93,7 +93,7 @@ const FilterDropdown = ({
 );
 
 const StatusBadge = ({ status }: { status: SessionStatus }) => {
-    const statusConfig = {
+    const statusConfig: Record<SessionStatus, { label: string; className: string }> = {
       pending: { label: "Pending", className: "bg-gray-100 text-gray-800" },
       'in-progress': { label: "In Progress", className: "bg-blue-100 text-blue-800" },
       completed: { label: "Completed", className: "bg-green-100 text-green-800" },
