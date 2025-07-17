@@ -1,0 +1,12 @@
+specVersion: "v1"
+serviceId: "zappy-health-api"
+location: "us-central1"
+schema:
+  source: "./schema"
+  datasource:
+    postgresql:
+      database: "fdcdb"
+      cloudSql:
+        instanceId: "zappy-health-db"
+      # schemaValidation: "COMPATIBLE"
+connectorDirs: ["./connector"]

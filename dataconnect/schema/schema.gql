@@ -1,0 +1,54 @@
+type User @table {
+  authId: String!
+  role: String! # 'patient' or 'provider'
+  firstName: String!
+  lastName: String!
+  email: String!
+  createdAt: Timestamp!
+  phoneNumber: String
+  address: String
+  dateOfBirth: Date # For patients
+  profilePictureUrl: String
+  licenseNumber: String # For providers
+  specialties: [String] # For providers
+}
+
+type Service @table {
+  name: String!
+  durationMinutes: Int!
+  price: Float!
+  createdAt: Timestamp!
+  description: String
+}
+
+type AvailabilitySlot @table {
+  provider: User!
+  startTime: Timestamp!
+  endTime: Timestamp!
+  status: String! # 'available', 'booked', 'cancelled'
+  createdAt: Timestamp!
+}
+
+type Appointment @table {
+  patient: User!
+  provider: User!
+  service: Service!
+  availabilitySlot: AvailabilitySlot!
+  appointmentDateTime: Timestamp!
+  status: String! # 'scheduled', 'completed', 'cancelled', 'rescheduled'
+  createdAt: Timestamp!
+  updatedAt: Timestamp!
+  patientNotes: String
+  consultationUrl: String
+}
+
+type MedicalRecord @table {
+  appointment: Appointment!
+  recordDate: Date!
+  createdAt: Timestamp!
+  updatedAt: Timestamp!
+  consultationNotes: String
+  diagnosis: String
+  prescriptionDetails: String # Storing as text or JSON string
+  followUpRecommendations: String
+}
