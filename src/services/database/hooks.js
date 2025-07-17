@@ -88,5 +88,15 @@ export const useUpdatePatient = (options) => useUpdateEntity('patients', options
 
 
 // --- Providers Hooks ---
+
 export const useProviders = (options) => useEntities('providers', options);
-// ... other provider hooks ...
+export const useProviderById = (id, options) => {
+  return useQuery({
+    queryKey: queryKeys.details('providers', id),
+    queryFn: () => dbService.providers.getById(id),
+    enabled: !!id,
+    ...options,
+  });
+};
+export const useCreateProvider = (options) => useCreateEntity('providers', options);
+export const useUpdateProvider = (options) => useUpdateEntity('providers', options);
