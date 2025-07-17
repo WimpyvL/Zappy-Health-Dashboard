@@ -25,6 +25,9 @@ const Products = React.lazy(() => import('../pages/dashboard/admin/products/page
 const Resources = React.lazy(() => import('../pages/dashboard/admin/resources/page.tsx'));
 const Insurance = React.lazy(() => import('../pages/dashboard/insurance/page.tsx'));
 const Calendar = React.lazy(() => import('../pages/dashboard/calendar/page.tsx'));
+const ShopPage = React.lazy(() => import('../app/dashboard/shop/page.tsx'));
+const IntakeFormFlowPage = React.lazy(() => import('../app/dashboard/intake/[flowId]/page.tsx'));
+
 
 // Auth Pages (can be loaded eagerly or lazy)
 import Login from '../pages/auth/Login.jsx';
@@ -57,6 +60,11 @@ const AppRoutes = () => {
         <Route path="/" element={<MainLayout><Navigate to="/dashboard" replace /></MainLayout>} />
         <Route path="/dashboard" element={<MainLayout><Dashboard /></MainLayout>} />
         
+        {/* New Telehealth Flow Route */}
+        <Route path="/dashboard/intake/:flowId" element={<MainLayout><IntakeFormFlowPage /></MainLayout>} />
+        <Route path="/dashboard/shop" element={<MainLayout><ShopPage /></MainLayout>} />
+
+
         {/* Admin & Provider Routes */}
         <Route path="/patients" element={<MainLayout><Patients /></MainLayout>} />
         <Route path="/patients/:id/*" element={<MainLayout><PatientDetail /></MainLayout>} />

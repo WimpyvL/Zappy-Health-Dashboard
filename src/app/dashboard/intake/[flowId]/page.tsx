@@ -34,9 +34,9 @@ export default function IntakeFormPage() {
         if(flow?.product_id) {
             // Pre-fill form based on product context if needed
             let complaint = '';
-            if (flow.product_id.includes('_wm')) complaint = 'Interested in weight management options.';
-            if (flow.product_id.includes('_sh')) complaint = 'Interested in sexual health consultation.';
-            if (flow.product_id.includes('_hl')) complaint = 'Seeking treatment for hair loss.';
+            if (flow.product_id.includes('prod_wm')) complaint = 'Interested in weight management options.';
+            if (flow.product_id.includes('prod_sh')) complaint = 'Interested in sexual health consultation.';
+            if (flow.product_id.includes('prod_hl')) complaint = 'Seeking treatment for hair loss.';
             setFormData(prev => ({ ...prev, chief_complaint: complaint }));
         }
     }, [flow]);
