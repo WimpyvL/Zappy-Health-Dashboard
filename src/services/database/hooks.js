@@ -7,6 +7,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dbService } from './index';
+import { toast } from '@/hooks/use-toast';
 
 // --- Query Keys Factory ---
 // A centralized place for managing query keys. This is crucial for
@@ -100,3 +101,31 @@ export const useProviderById = (id, options) => {
 };
 export const useCreateProvider = (options) => useCreateEntity('providers', options);
 export const useUpdateProvider = (options) => useUpdateEntity('providers', options);
+
+// --- Sessions Hooks ---
+export const useUpdateSessionStatus = (options = {}) => {
+    const queryClient = useQueryClient();
+    return useMutation({
+      mutationFn: async ({ sessionId, status }) => {
+        if (!sessionId) throw new Error('Session ID is required for status update.');
+        return dbService.sessions.update(sessionId, { status });
+      },
+      onSuccess: (data, variables) => {
+        toast({
+            title: "Session Updated",
+            description: `Session status successfully changed.`,
+        });
+        queryClient.invalidateQueries({ queryKey: ['sessions', 'list'] });
+        queryClient.invalidateQueries({ queryKey: ['sessions', 'detail', variables.sessionId] });
+        if (options.onSuccess) options.onSuccess(data, variables);
+      },
+      onError: (error, variables) => {
+        toast({
+            variant: "destructive",
+            title: "Error Updating Status",
+            description: error.message,
+        });
+        if (options.onError) options.onError(error, variables);
+      },
+    });
+};

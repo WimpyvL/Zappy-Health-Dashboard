@@ -47,6 +47,7 @@ import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { db } from "@/lib/firebase/client";
+import { useUpdateSessionStatus } from "@/services/database/hooks";
 
 const SESSION_STATUSES = [
   'pending',
@@ -95,8 +96,10 @@ const FilterDropdown = ({
 const StatusBadge = ({ status }: { status: SessionStatus }) => {
     const statusConfig: Record<SessionStatus, { label: string; className: string }> = {
       pending: { label: "Pending", className: "bg-gray-100 text-gray-800" },
+      scheduled: { label: "Scheduled", className: "bg-blue-100 text-blue-800" },
       'in-progress': { label: "In Progress", className: "bg-blue-100 text-blue-800" },
       completed: { label: "Completed", className: "bg-green-100 text-green-800" },
+      missed: { label: "Missed", className: "bg-orange-100 text-orange-800" },
       cancelled: { label: "Cancelled", className: "bg-red-100 text-red-800" },
       followup: { label: "Follow-up", className: "bg-purple-100 text-purple-800" },
     };
@@ -115,6 +118,7 @@ export default function SessionsPage() {
   const [loading, setLoading] = React.useState(true);
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const { toast } = useToast();
+  const updateStatusMutation = useUpdateSessionStatus();
 
   const fetchSessions = React.useCallback(async () => {
     setLoading(true);
@@ -175,22 +179,11 @@ export default function SessionsPage() {
   };
 
   const handleUpdateStatus = async (sessionId: string, newStatus: SessionStatus) => {
-    try {
-        const sessionDoc = doc(db, "sessions", sessionId);
-        await updateDoc(sessionDoc, { status: newStatus });
-        toast({
-            title: "Session Updated",
-            description: `Session status changed to ${newStatus}.`,
-        });
-        fetchSessions();
-    } catch (error) {
-        console.error("Error updating session status: ", error);
-        toast({
-            variant: "destructive",
-            title: "Error Updating Status",
-            description: "An error occurred while updating the session.",
-        });
-    }
+    updateStatusMutation.mutate({ sessionId, status: newStatus }, {
+        onSuccess: () => {
+            fetchSessions();
+        }
+    });
   };
 
 
@@ -331,14 +324,6 @@ export default function SessionsPage() {
                 </SelectContent>
               </Select>
               <span>per page</span>
-            </div>
-            <div className="flex gap-1">
-              <Button variant="outline" size="icon" className="h-8 w-8" disabled>
-                <ChevronDown className="h-4 w-4 rotate-90" />
-              </Button>
-              <Button variant="outline" size="icon" className="h-8 w-8" disabled>
-                <ChevronDown className="h-4 w-4 -rotate-90" />
-              </Button>
             </div>
           </div>
         </div>

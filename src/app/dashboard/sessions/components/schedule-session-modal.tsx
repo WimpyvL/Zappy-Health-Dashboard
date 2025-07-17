@@ -39,11 +39,11 @@ const SESSION_TYPES = [
     'follow_up',
     'check_in',
     'emergency'
-];
+] as const;
 
 const formSchema = z.object({
   patient: z.string().min(1, "Patient is required"),
-  sessionType: z.enum(["initial_consultation", "follow_up", "check_in", "emergency"], {
+  sessionType: z.enum(SESSION_TYPES, {
     required_error: "You need to select a session type.",
   }),
   servicePlan: z.string().min(1, "Service plan is required"),
