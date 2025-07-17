@@ -49,6 +49,10 @@ import { collection, getDocs, addDoc, updateDoc, doc, query, orderBy, Timestamp 
 import { Skeleton } from "@/components/ui/skeleton";
 import { db } from "@/lib/firebase/client";
 
+// Import the new centralized service hooks
+import { usePatients, useCreatePatient, useUpdatePatient } from "@/services/database/hooks";
+
+
 type Patient = {
   id: string;
   firstName: string;
@@ -104,45 +108,16 @@ const FilterDropdown = ({
 );
 
 export default function PatientsPage() {
-  const [patients, setPatients] = React.useState<Patient[]>([]);
-  const [loading, setLoading] = React.useState(true);
   const [isModalOpen, setIsModalOpen] = React.useState(false);
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [editingPatient, setEditingPatient] = React.useState<Patient | null>(null);
   const [isMessageModalOpen, setIsMessageModalOpen] = React.useState(false);
   const [selectedMessage, setSelectedMessage] = React.useState<Message | null>(null);
   const { toast } = useToast();
 
-  const fetchPatients = React.useCallback(async () => {
-    setLoading(true);
-    try {
-      const patientsCollection = collection(db, "patients");
-      const patientSnapshot = await getDocs(query(patientsCollection, orderBy("lastName", "asc")));
-      const patientList = patientSnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          name: `${data.firstName} ${data.lastName}`,
-          ...data,
-          dob: data.dob?.toDate(), // Convert Firestore Timestamp to Date
-        } as Patient;
-      });
-      setPatients(patientList);
-    } catch (error) {
-      console.error("Error fetching patients: ", error);
-      toast({
-        variant: "destructive",
-        title: "Error fetching patients",
-        description: "Could not retrieve patient data from the database.",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [toast]);
-
-  React.useEffect(() => {
-    fetchPatients();
-  }, [fetchPatients]);
+  // Use the new centralized hooks
+  const { data: patients = [], isLoading: loading } = usePatients();
+  const createPatientMutation = useCreatePatient();
+  const updatePatientMutation = useUpdatePatient();
 
   const handleOpenAddModal = () => {
     setEditingPatient(null);
@@ -155,47 +130,48 @@ export default function PatientsPage() {
   };
 
   const handleCloseModal = () => {
-    if (isSubmitting) return;
+    if (createPatientMutation.isPending || updatePatientMutation.isPending) return;
     setIsModalOpen(false);
     setEditingPatient(null);
   };
 
   const handleFormSubmit = async (values: any) => {
-    setIsSubmitting(true);
-    try {
-      const patientData = { ...values, dob: Timestamp.fromDate(values.dob as Date) };
+    const patientData = { ...values, dob: Timestamp.fromDate(values.dob as Date) };
       
-      if (editingPatient) {
-        // Update existing patient
-        const patientDoc = doc(db, "patients", editingPatient.id);
-        await updateDoc(patientDoc, patientData);
-        toast({
-          title: "Patient Updated",
-          description: `${values.firstName} ${values.lastName}'s information has been saved.`,
-        });
-      } else {
-        // Add new patient
-        await addDoc(collection(db, "patients"), {
-          ...patientData,
-          status: 'Active',
-          createdAt: Timestamp.now(),
-        });
-        toast({
-          title: "Patient Added",
-          description: `${values.firstName} ${values.lastName} has been added to the system.`,
-        });
-      }
-      fetchPatients();
-      handleCloseModal();
-    } catch (error) {
-      console.error("Error saving patient: ", error);
-      toast({
-        variant: "destructive",
-        title: "Error Saving Patient",
-        description: "An error occurred while saving the patient information. Please try again.",
+    if (editingPatient) {
+      updatePatientMutation.mutate({ id: editingPatient.id, ...patientData }, {
+        onSuccess: () => {
+          toast({
+            title: "Patient Updated",
+            description: `${values.firstName} ${values.lastName}'s information has been saved.`,
+          });
+          handleCloseModal();
+        },
+        onError: () => {
+           toast({
+            variant: "destructive",
+            title: "Error Saving Patient",
+            description: "An error occurred while saving the patient information. Please try again.",
+          });
+        }
       });
-    } finally {
-      setIsSubmitting(false);
+    } else {
+      createPatientMutation.mutate(patientData, {
+        onSuccess: () => {
+          toast({
+            title: "Patient Added",
+            description: `${values.firstName} ${values.lastName} has been added to the system.`,
+          });
+          handleCloseModal();
+        },
+        onError: () => {
+          toast({
+            variant: "destructive",
+            title: "Error Saving Patient",
+            description: "An error occurred while saving the patient information. Please try again.",
+          });
+        }
+      });
     }
   };
 
@@ -216,6 +192,8 @@ export default function PatientsPage() {
     setIsMessageModalOpen(false);
     setSelectedMessage(null);
   }
+
+  const isSubmitting = createPatientMutation.isPending || updatePatientMutation.isPending;
 
   return (
     <>
@@ -287,13 +265,13 @@ export default function PatientsPage() {
                     </TableRow>
                   ))
                 ) : (
-                  patients.map((patient) => (
+                  patients.map((patient: Patient) => (
                   <TableRow key={patient.id}>
                     <TableCell>
                       <Checkbox />
                     </TableCell>
                     <TableCell>
-                      <Link href={`/dashboard/patients/${patient.id}`} className="font-medium text-primary hover:underline">{patient.name}</Link>
+                      <Link href={`/dashboard/patients/${patient.id}`} className="font-medium text-primary hover:underline">{`${patient.firstName} ${patient.lastName}`}</Link>
                       <div className="text-sm text-muted-foreground">
                         {patient.email}
                       </div>
