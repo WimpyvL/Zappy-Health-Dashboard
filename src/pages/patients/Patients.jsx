@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -24,6 +23,7 @@ import RealtimeNotifications from '../../components/realtime/RealtimeNotificatio
 import { useRealtimePatients } from '../../hooks/useRealtime';
 import CrudModal from '../../components/common/CrudModal';
 import BulkPatientTagOperations from '../../components/admin/BulkPatientTagOperations';
+import PatientStatusBadge from '../../components/ui/PatientStatusBadge';
 import UndoNotification from '../../components/patients/UndoNotification';
 import BulkCheckInModal from '../../components/patients/BulkCheckInModal';
 import ExportModal from '../../components/export/ExportModal';
@@ -252,18 +252,31 @@ const patientFormFields = [
       },
     },
   },
-  // Patient Status Field
+  // NEW Patient Status Fields
   {
-    name: 'status',
-    label: 'Patient Status',
+    name: 'account_status',
+    label: 'Account Status',
     type: 'select',
     options: [
-      { value: 'active', label: 'Active' },
-      { value: 'deactivated', label: 'Deactivated' },
-      { value: 'blacklisted', label: 'Blacklisted' },
+      { value: 'active', label: 'Available' },
+      { value: 'suspended', label: 'Suspended' },
+      { value: 'banned', label: 'Banned' },
     ],
     gridCols: 1,
-    required: 'Status is required',
+    required: 'Account status is required',
+  },
+  {
+    name: 'id_verification_status',
+    label: 'ID Verification Status',
+    type: 'select',
+    options: [
+      { value: 'verified', label: 'ID Verified' },
+      { value: 'pending', label: 'ID Pending' },
+      { value: 'rejected', label: 'ID Rejected' },
+      { value: 'not_required', label: 'Not Required' },
+    ],
+    gridCols: 1,
+    required: 'ID Verification status is required',
   },
 ];
 
@@ -273,6 +286,7 @@ const Patients = () => {
 
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [idVerificationFilter, setIdVerificationFilter] = useState('all');
   const [affiliateFilter, setAffiliateFilter] = useState('all');
   const [selectedTags, setSelectedTags] = useState([]);
   const [subscriptionPlanFilter, setSubscriptionPlanFilter] = useState('all');
@@ -292,7 +306,8 @@ const Patients = () => {
 
   const filtersForHook = {
     search: searchTerm || undefined,
-    status: statusFilter !== 'all' ? statusFilter : undefined,
+    account_status: statusFilter !== 'all' ? statusFilter : undefined,
+    id_verification_status: idVerificationFilter !== 'all' ? idVerificationFilter : undefined,
     tag_id: selectedTags.length > 0 ? selectedTags : undefined,
     is_affiliate:
       affiliateFilter !== 'all' ? affiliateFilter === 'yes' : undefined,
@@ -313,7 +328,6 @@ const Patients = () => {
   const rawPatients = patientsData?.data || [];
   const rawMeta = patientsData?.meta;
   
-  // Calculate pagination metadata with proper fallbacks
   const totalRecords = rawMeta?.total || 0;
   const calculatedTotalPages = Math.ceil(totalRecords / pageSize);
   
@@ -322,7 +336,6 @@ const Patients = () => {
     total_pages: calculatedTotalPages,
     current_page: rawMeta?.current_page || currentPage,
     per_page: rawMeta?.per_page || pageSize,
-    // Keep original last_page for backward compatibility
     last_page: calculatedTotalPages,
   };
   
@@ -350,7 +363,6 @@ const Patients = () => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
 
-  // Bulk operations hook
   const {
     bulkUpdateStatus,
     bulkScheduleCheckIns,
@@ -362,10 +374,8 @@ const Patients = () => {
     dismissUndo,
   } = useBulkPatientOperations();
 
-  // Quick export hook
   const { quickExport, isLoading: isExporting } = useQuickExport();
 
-  // Real-time patient updates
   const {
     isConnected,
     connectionStatus,
@@ -381,27 +391,18 @@ const Patients = () => {
     enableNotifications: true,
   });
 
-  // Handle real-time updates by refreshing patient list
   useEffect(() => {
     if (notifications.length > 0) {
       const latestNotification = notifications[0];
       if (
         latestNotification.type === 'patient' &&
-        latestNotification.event === 'INSERT'
+        (latestNotification.event === 'INSERT' || latestNotification.event === 'UPDATE')
       ) {
-        // Refresh patient list when new patients are added
-        fetchPatients();
-      } else if (
-        latestNotification.type === 'patient' &&
-        latestNotification.event === 'UPDATE'
-      ) {
-        // Refresh patient list when patients are updated
         fetchPatients();
       }
     }
   }, [notifications, fetchPatients]);
 
-  // Handle export button click
   const handleExportClick = () => {
     console.log('Export button clicked, patients count:', patients.length);
     console.log('Selected patients count:', selectedPatients.length);
@@ -426,10 +427,9 @@ const Patients = () => {
 
   const handlePageSizeChange = (newPageSize) => {
     setPageSize(newPageSize);
-    setCurrentPage(1); // Reset to first page when page size changes
+    setCurrentPage(1);
   };
 
-  // Create pagination info for our reusable component
   const paginationInfo = {
     currentPage: paginationMeta.current_page,
     totalPages: paginationMeta.total_pages,
@@ -440,16 +440,17 @@ const Patients = () => {
   };
 
   const handlePatientSelection = (patientId) => {
-    if (selectedPatients.includes(patientId)) {
-      setSelectedPatients(selectedPatients.filter((id) => id !== patientId));
-    } else {
-      setSelectedPatients([...selectedPatients, patientId]);
-    }
+    setSelectedPatients(prevSelected => 
+      prevSelected.includes(patientId)
+        ? prevSelected.filter((id) => id !== patientId)
+        : [...prevSelected, patientId]
+    );
   };
 
   const resetFilters = () => {
     setSearchTerm('');
     setStatusFilter('all');
+    setIdVerificationFilter('all');
     setAffiliateFilter('all');
     setSelectedTags([]);
     setSubscriptionPlanFilter('all');
@@ -469,7 +470,6 @@ const Patients = () => {
     setEditingPatientId(null);
   };
 
-  // Bulk operation handlers
   const handleBulkStatusUpdate = async (newStatus) => {
     if (selectedPatients.length === 0) return;
 
@@ -477,11 +477,7 @@ const Patients = () => {
       selectedPatients.includes(p.id)
     );
     await bulkUpdateStatus(selectedPatientObjects, newStatus);
-
-    // Clear selection after operation
     setSelectedPatients([]);
-
-    // Refresh patient list
     fetchPatients();
   };
 
@@ -492,12 +488,8 @@ const Patients = () => {
       selectedPatients.includes(p.id)
     );
     await bulkScheduleCheckIns(selectedPatientObjects, templateId);
-
-    // Close modal and clear selection
     setShowBulkCheckInModal(false);
     setSelectedPatients([]);
-
-    // Refresh patient list
     fetchPatients();
   };
 
@@ -507,7 +499,6 @@ const Patients = () => {
 
   return (
     <div>
-      {/* Header and Bulk Actions */}
       <div className="flex justify-between items-center mb-6">
         <div className="flex items-center space-x-4">
           <h1 className="admin-page-title">Patients</h1>
@@ -529,112 +520,28 @@ const Patients = () => {
             maxToasts={3}
           />
           {showBulkActions && (
-            <div
-              style={{
-                background: 'var(--primary-light)',
-                borderBottom: '1px solid var(--border)',
-                padding: '12px 24px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                fontSize: '14px',
-                borderRadius: 'var(--radius-md)',
-                marginBottom: '16px',
-              }}
-            >
-              <span style={{ fontWeight: '600', color: 'var(--primary-600)' }}>
-                {selectedPatients.length} patient
-                {selectedPatients.length !== 1 ? 's' : ''} selected
+             <div className="bg-white rounded-md shadow px-4 py-2 flex items-center">
+              <span className="text-sm font-medium text-gray-600 mr-3">
+                {selectedPatients.length} selected
               </span>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  onClick={() => handleBulkStatusUpdate('deactivated')}
-                  disabled={isProcessing}
-                  style={{
-                    padding: '6px 12px',
-                    border: '1px solid var(--error-600)',
-                    borderRadius: 'var(--radius-sm)',
-                    background: 'var(--bg-primary)',
-                    color: 'var(--error-600)',
-                    fontSize: '12px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                  }}
-                >
-                  <Ban className="h-4 w-4" /> Suspend
-                </button>
-                <button
-                  onClick={() => handleBulkStatusUpdate('active')}
-                  disabled={isProcessing}
-                  style={{
-                    padding: '6px 12px',
-                    border: '1px solid var(--success-600)',
-                    borderRadius: 'var(--radius-sm)',
-                    background: 'var(--bg-primary)',
-                    color: 'var(--success-600)',
-                    fontSize: '12px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                  }}
-                >
-                  <UserCheck className="h-4 w-4" /> Activate
-                </button>
-                <button
-                  onClick={() => setShowBulkCheckInModal(true)}
-                  disabled={isProcessing}
-                  style={{
-                    padding: '6px 12px',
-                    border:
-                      '1px solid var(--primary-600)' /* Using primary-600 token */,
-                    borderRadius: 'var(--radius-sm)',
-                    background: 'var(--bg-primary)',
-                    color: 'var(--primary-600)' /* Using primary-600 token */,
-                    fontSize: '12px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                  }}
-                >
-                  <Calendar className="h-4 w-4" /> Schedule Follow-up
-                </button>
-                <button
-                  onClick={() => setShowBulkTagModal(true)}
-                  style={{
-                    padding: '6px 12px',
-                    border: '1px solid var(--programs-weight)',
-                    borderRadius: 'var(--radius-sm)',
-                    background: 'var(--bg-primary)',
-                    color: 'var(--programs-weight)',
-                    fontSize: '12px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                  }}
-                >
-                  <TagIcon className="h-4 w-4" /> Tag Operations
-                </button>
-                <button
-                  onClick={() => setSelectedPatients([])}
-                  style={{
-                    padding: '6px 12px',
-                    border: '1px solid var(--border)' /* Using border token */,
-                    borderRadius: 'var(--radius-sm)',
-                    background: 'var(--bg-primary)',
-                    color:
-                      'var(--text-secondary)' /* Using text-secondary token */,
-                    fontSize: '12px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Clear Selection
-                </button>
-              </div>
+              <button
+                onClick={() => handleBulkStatusUpdate('suspended')}
+                className="text-orange-600 hover:text-orange-900 text-sm font-medium mx-2 flex items-center"
+              >
+                <Ban className="h-4 w-4 mr-1" /> Suspend
+              </button>
+              <button
+                onClick={() => handleBulkStatusUpdate('active')}
+                className="text-green-600 hover:text-green-900 text-sm font-medium mx-2 flex items-center"
+              >
+                <UserCheck className="h-4 w-4 mr-1" /> Reactivate
+              </button>
+              <button
+                onClick={() => handleBulkStatusUpdate('banned')}
+                className="text-red-600 hover:text-red-900 text-sm font-medium mx-2 flex items-center"
+              >
+                <X className="h-4 w-4 mr-1" /> Ban
+              </button>
             </div>
           )}
           <button
@@ -657,13 +564,10 @@ const Patients = () => {
         </div>
       </div>
 
-      {/* Filters and Search */}
       <div className="bg-white p-4 rounded-lg shadow mb-6">
         <div className="flex flex-col md:flex-row md:items-center space-y-4 md:space-y-0 md:space-x-4 mb-4">
           <div className="flex-1 relative">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-5 w-5 text-gray-400" />
-            </div>
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
             <input
               type="text"
               placeholder={`Search patients by ${searchType}...`}
@@ -672,105 +576,39 @@ const Patients = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <div className="flex items-center space-x-2">
-            <select
-              className="block pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-              value={searchType}
-              onChange={(e) => setSearchType(e.target.value)}
-            >
-              <option value="name">Name</option>
-              <option value="email">Email</option>
-              <option value="phone">Phone</option>
-              <option value="order">Order #</option>
-            </select>
-          </div>
-          <div className="flex items-center space-x-2">
-            <Filter className="h-5 w-5 text-gray-400" />
-            <select
-              className="block pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="all">All Statuses</option>
-              <option value="active">Active</option>
-              <option value="deactivated">Deactivated</option>
-              <option value="blacklisted">Blacklisted</option>
-            </select>
-          </div>
-          <button
-            className="text-indigo-600 hover:text-indigo-900 text-sm font-medium"
-            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+          <select
+            className="block pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+            value={searchType}
+            onChange={(e) => setSearchType(e.target.value)}
           >
-            {showAdvancedFilters ? 'Hide Filters' : 'Advanced Filters'}
-          </button>
+            <option value="name">Name</option>
+            <option value="email">Email</option>
+            <option value="phone">Phone</option>
+          </select>
+          <select
+            className="block pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+          >
+            <option value="all">All Account Statuses</option>
+            <option value="active">Available</option>
+            <option value="suspended">Suspended</option>
+            <option value="banned">Banned</option>
+          </select>
+           <select
+            className="block pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+            value={idVerificationFilter}
+            onChange={(e) => setIdVerificationFilter(e.target.value)}
+          >
+            <option value="all">All ID Statuses</option>
+            <option value="verified">ID Verified</option>
+            <option value="pending">ID Pending</option>
+            <option value="rejected">ID Rejected</option>
+            <option value="not_required">Not Required</option>
+          </select>
         </div>
-
-        {showAdvancedFilters && (
-          <div className="flex flex-col md:flex-row md:items-center space-y-4 md:space-y-0 md:space-x-4 pt-4 border-t border-gray-200">
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-500">Tags:</span>
-              <div className="flex flex-wrap gap-2 max-w-md">
-                {tags.map((tag) => (
-                  <label
-                    key={tag.id}
-                    className="flex items-center space-x-1 cursor-pointer"
-                  >
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4 text-indigo-600 border-gray-300 rounded"
-                      checked={selectedTags.includes(tag.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          setSelectedTags([...selectedTags, tag.id]);
-                        } else {
-                          setSelectedTags(
-                            selectedTags.filter((id) => id !== tag.id)
-                          );
-                        }
-                      }}
-                    />
-                    <span className="text-sm text-gray-700">{tag.name}</span>
-                  </label>
-                ))}
-                {selectedTags.length > 0 && (
-                  <button
-                    onClick={() => setSelectedTags([])}
-                    className="text-xs text-indigo-600 hover:text-indigo-800 underline"
-                  >
-                    Clear all
-                  </button>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center space-x-2">
-              <span className="text-sm text-gray-500">Plan:</span>
-              <select
-                className="block pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
-                value={subscriptionPlanFilter}
-                onChange={(e) => setSubscriptionPlanFilter(e.target.value)}
-              >
-                <option value="all">All Plans</option>
-                {uniquePlanNames.map((planName) => (
-                  <option key={planName} value={planName}>
-                    {planName}
-                  </option>
-                ))}
-                <option value="none">No Plan</option>
-              </select>
-            </div>
-            <div className="flex items-center space-x-2 ml-auto">
-              <button
-                className="px-3 py-1 border border-gray-300 text-gray-700 rounded text-sm hover:bg-gray-50"
-                onClick={resetFilters}
-              >
-                Reset Filters
-              </button>
-            </div>
-          </div>
-        )}
       </div>
       
-      {/* Patients List */}
       <div className="admin-table-container">
         <VirtualizedPatientList
           patients={patients}
@@ -779,14 +617,12 @@ const Patients = () => {
           isNextPageLoading={loading}
           loadMoreItems={() => handlePageChange(currentPage + 1)}
           onPatientClick={(patient) => navigate(`/patients/${patient.id}`)}
-          onPatientSelect={(patientId) => handlePatientSelection(patientId)}
+          onPatientSelect={handlePatientSelection}
           selectedPatients={selectedPatients}
           isSelectionMode={showBulkActions}
         />
       </div>
 
-
-      {/* Pagination */}
       <div className="admin-table-footer">
         <Pagination
           currentPage={paginationInfo.currentPage}
@@ -795,13 +631,12 @@ const Patients = () => {
           pageSize={paginationInfo.pageSize}
           onPageChange={handlePageChange}
           onPageSizeChange={handlePageSizeChange}
-          pageSizeOptions={[5, 10, 25, 50]}
+          pageSizeOptions={[10, 25, 50]}
           showPageInfo={true}
           layout="clean"
         />
       </div>
-
-      {/* Generic CRUD Modal for Add/Edit */}
+      
       {(showAddModal || showEditModal) && (
         <CrudModal
           isOpen={showAddModal || showEditModal}
@@ -819,36 +654,7 @@ const Patients = () => {
           formGridCols={2}
         />
       )}
-
-      {/* Bulk Patient Tag Operations Modal */}
-      {showBulkTagModal && (
-        <BulkPatientTagOperations
-          selectedPatients={patients.filter((p) =>
-            selectedPatients.includes(p.id)
-          )}
-          onComplete={(results) => {
-            setSelectedPatients([]);
-            setShowBulkTagModal(false);
-            fetchPatients(); // Refresh to show updated tags
-          }}
-          onClose={() => setShowBulkTagModal(false)}
-        />
-      )}
-
-      {/* Bulk Check-in Scheduling Modal */}
-      {showBulkCheckInModal && (
-        <BulkCheckInModal
-          isOpen={showBulkCheckInModal}
-          onClose={() => setShowBulkCheckInModal(false)}
-          selectedPatients={patients.filter((p) =>
-            selectedPatients.includes(p.id)
-          )}
-          onSchedule={handleBulkCheckInSchedule}
-          isProcessing={isProcessing}
-        />
-      )}
-
-      {/* Undo Notification */}
+      
       {showUndo && (
         <UndoNotification
           message="Operation completed successfully"
@@ -859,45 +665,13 @@ const Patients = () => {
         />
       )}
 
-      {/* Progress Indicator */}
-      {isProcessing && progress.total > 0 && (
-        <div className="fixed bottom-4 left-4 z-50 max-w-sm">
-          <div className="bg-white border border-gray-200 rounded-lg shadow-lg p-4">
-            <div className="flex items-center space-x-3">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
-              <div>
-                <p className="text-sm font-medium text-gray-900">
-                  Processing {progress.current} of {progress.total} patients...
-                </p>
-                <div className="w-full bg-gray-200 rounded-full h-2 mt-2">
-                  <div
-                    className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
-                    style={{
-                      width: `${(progress.current / progress.total) * 100}%`,
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Export Modal */}
       {showExportModal && (
         <ExportModal
           isOpen={showExportModal}
           onClose={() => setShowExportModal(false)}
           patients={patients}
           selectedPatients={selectedPatients}
-          currentFilters={{
-            status: statusFilter !== 'all' ? statusFilter : undefined,
-            subscriptionPlan:
-              subscriptionPlanFilter !== 'all'
-                ? subscriptionPlanFilter
-                : undefined,
-            search: searchTerm || undefined,
-          }}
+          currentFilters={filtersForHook}
         />
       )}
     </div>
