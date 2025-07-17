@@ -189,7 +189,7 @@ const PatientRow = React.memo(({ index, style, data }) => {
         </div>
 
         <div className="patient-tags-row">
-          {patient.tags?.slice(0, 2).map((tag) => (
+          {patient.tags?.slice(0, 3).map((tag) => (
             <Tag
               key={tag.id}
               id={tag.id}
@@ -198,8 +198,8 @@ const PatientRow = React.memo(({ index, style, data }) => {
               size="small"
             />
           ))}
-          {patient.tags?.length > 2 && (
-            <span className="tag-overflow">+{patient.tags.length - 2}</span>
+          {patient.tags?.length > 3 && (
+            <span className="tag-overflow">+{patient.tags.length - 3}</span>
           )}
         </div>
 

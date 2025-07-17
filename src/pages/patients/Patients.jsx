@@ -259,6 +259,7 @@ const Patients = () => {
   const navigate = useNavigate();
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
   const [affiliateFilter, setAffiliateFilter] = useState('all');
   const [selectedTags, setSelectedTags] = useState([]);
   const [subscriptionPlanFilter, setSubscriptionPlanFilter] = useState('all');
@@ -278,6 +279,7 @@ const Patients = () => {
 
   const filtersForHook = {
     search: searchTerm || undefined,
+    status: statusFilter !== 'all' ? statusFilter : undefined,
     tag_id: selectedTags.length > 0 ? selectedTags : undefined,
     is_affiliate:
       affiliateFilter !== 'all' ? affiliateFilter === 'yes' : undefined,
