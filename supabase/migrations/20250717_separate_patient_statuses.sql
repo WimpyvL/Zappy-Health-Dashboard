@@ -2,62 +2,62 @@
 
 BEGIN;
 
--- Add new columns for separate status tracking
+-- 1. Add new columns for separated statuses
 ALTER TABLE public.patients
-ADD COLUMN IF NOT EXISTS account_status VARCHAR(20) DEFAULT 'active'
+ADD COLUMN IF NOT EXISTS account_status VARCHAR(20) DEFAULT 'active' 
 CHECK (account_status IN ('active', 'suspended', 'banned')),
 ADD COLUMN IF NOT EXISTS id_verification_status VARCHAR(20) DEFAULT 'not_required'
 CHECK (id_verification_status IN ('verified', 'pending', 'rejected', 'not_required'));
 
--- Add comments for clarity
-COMMENT ON COLUMN public.patients.account_status IS 'Tracks the patient''s platform access status (active, suspended, banned).';
-COMMENT ON COLUMN public.patients.id_verification_status IS 'Tracks the status of patient ID verification for prescription eligibility.';
+-- 2. Create a temporary mapping from old status to new statuses
+-- This step is done in a transaction, so we can use a temporary table if needed,
+-- but a CASE statement is simpler for this logic.
+-- We update the new columns based on the values in the old 'status' column.
+UPDATE public.patients
+SET
+  account_status = CASE
+    WHEN status = 'active' THEN 'active'
+    WHEN status = 'deactivated' THEN 'suspended'
+    WHEN status = 'blacklisted' THEN 'banned'
+    ELSE 'active' -- Default for any other or NULL values
+  END,
+  id_verification_status = CASE
+    WHEN status = 'pending' THEN 'pending'
+    ELSE 'not_required'
+  END
+WHERE
+  column_exists('public', 'patients', 'status'); -- Only run if the old column exists
 
--- Migrate data from old 'status' column to new columns
-DO $$
-BEGIN
-    IF EXISTS (
-        SELECT 1
-        FROM information_schema.columns
-        WHERE table_name = 'patients'
-        AND column_name = 'status'
-    ) THEN
-        -- Migrate data based on the old status values
-        UPDATE public.patients
-        SET
-            account_status = CASE
-                WHEN status = 'deactivated' THEN 'suspended'
-                WHEN status = 'blacklisted' THEN 'banned'
-                ELSE 'active'
-            END,
-            id_verification_status = CASE
-                WHEN status = 'pending' THEN 'pending'
-                ELSE 'not_required'
-            END
-        WHERE status IS NOT NULL;
-    END IF;
-END $$;
-
--- Set default for existing NULL rows
-UPDATE public.patients SET account_status = 'active' WHERE account_status IS NULL;
-UPDATE public.patients SET id_verification_status = 'not_required' WHERE id_verification_status IS NULL;
-
-
--- Drop the old 'status' column if it exists
-DO $$
-BEGIN
-    IF EXISTS (
-        SELECT 1
-        FROM information_schema.columns
-        WHERE table_name = 'patients'
-        AND column_name = 'status'
-    ) THEN
-        ALTER TABLE public.patients DROP COLUMN status;
-    END IF;
-END $$;
-
--- Add indexes for performance
+-- 3. Add indexes for performance on the new columns
 CREATE INDEX IF NOT EXISTS idx_patients_account_status ON public.patients(account_status);
-CREATE INDEX IF NOT EXISTS idx_patients_id_verification_status ON public.patients(id_verification_status);
+CREATE INDEX IF NOT EXISTS idx_patients_id_verification ON public.patients(id_verification_status);
+
+-- 4. Safely drop the old 'status' column
+-- The `column_exists` function is a helper to make this script runnable
+-- even if parts of it have been applied before.
+DO $$
+BEGIN
+   IF column_exists('public', 'patients', 'status') THEN
+      ALTER TABLE public.patients DROP COLUMN status;
+   END IF;
+END;
+$$;
+
+-- Helper function to check for column existence before altering
+CREATE OR REPLACE FUNCTION column_exists(schema_name text, table_name text, column_name text)
+RETURNS boolean AS
+$$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = schema_name
+    AND table_name = table_name
+    AND column_name = column_name
+  );
+END;
+$$
+LANGUAGE plpgsql;
+
 
 COMMIT;
