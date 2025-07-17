@@ -95,10 +95,12 @@ class TelehealthFlowOrchestrator {
   }
 
   /**
-   * Processes the intake form, creates a pending consultation.
+   * Processes the intake form submission.
+   * This step now creates a pending consultation for a provider to review.
+   * Order and Invoice creation are deferred until provider approval.
    * @param {string} flowId - The ID of the telehealth flow.
    * @param {object} formData - The submitted form data.
-   * @returns {Promise<{success: boolean, flow: object, consultation: object, error: Error|null}>}
+   * @returns {Promise<{success: boolean, flow: object, error: Error|null}>}
    */
   async processIntakeForm(flowId, formData) {
     const flowRef = doc(db, 'enhanced_telehealth_flows', flowId);
@@ -110,7 +112,7 @@ class TelehealthFlowOrchestrator {
         flowData = { id: flowSnap.id, ...flowSnap.data() };
         const fromStatus = flowData.current_status;
 
-        // Save form submission
+        // 1. Save form submission
         const submissionRef = await addDoc(collection(db, 'form_submissions'), {
             flow_id: flowId,
             patient_id: flowData.patient_id,
@@ -119,10 +121,10 @@ class TelehealthFlowOrchestrator {
         });
         await this.logStateTransition(flowId, fromStatus, FLOW_STATUSES.INTAKE_COMPLETED, { submissionId: submissionRef.id });
 
-        // Create a PENDING consultation record
+        // 2. Create a PENDING consultation record for a provider to review
         const consultationRef = await addDoc(collection(db, 'consultations'), {
             patient_id: flowData.patient_id,
-            provider_id: null,
+            provider_id: null, // To be assigned by a provider
             status: 'pending_review',
             form_submission_id: submissionRef.id,
             flow_id: flowId,
@@ -130,7 +132,7 @@ class TelehealthFlowOrchestrator {
         });
         await this.logStateTransition(flowId, FLOW_STATUSES.INTAKE_COMPLETED, FLOW_STATUSES.CONSULTATION_PENDING, { consultationId: consultationRef.id });
 
-        // Update the main flow document
+        // 3. Update the main flow document to the 'consultation_pending' state
         const finalUpdateData = {
             current_status: FLOW_STATUSES.CONSULTATION_PENDING,
             form_submission_id: submissionRef.id,
@@ -142,23 +144,18 @@ class TelehealthFlowOrchestrator {
         const finalFlowSnap = await getDoc(flowRef);
         const finalFlow = { id: finalFlowSnap.id, ...finalFlowSnap.data() };
 
-        return { 
-            success: true, 
-            flow: finalFlow, 
-            consultation: { id: consultationRef.id }, 
-            error: null 
-        };
-
+        return { success: true, flow: finalFlow, error: null };
     } catch (error) {
         console.error('Error processing intake form:', error);
-        return { success: false, flow: flowData, error };
+        return { success: false, flow: flowData || null, error };
     }
   }
 
   /**
    * Processes a provider's approval of a consultation.
+   * This is a new step that creates the order and invoice AFTER provider approval.
    * @param {string} flowId - The ID of the telehealth flow.
-   * @param {object} approvalData - Data related to the approval (e.g., prescribed medication).
+   * @param {object} approvalData - Data from the provider (e.g., notes, medication).
    * @returns {Promise<{success: boolean, flow: object, error: Error|null}>}
    */
   async processConsultationApproval(flowId, approvalData) {
@@ -170,12 +167,16 @@ class TelehealthFlowOrchestrator {
       if (!flowSnap.exists()) throw new Error("Flow not found.");
       flowData = { id: flowSnap.id, ...flowSnap.data() };
 
-      // Update consultation status
+      // 1. Update consultation status to 'approved'
       const consultationRef = doc(db, 'consultations', flowData.consultation_id);
-      await updateDoc(consultationRef, { status: 'approved', provider_notes: approvalData.notes });
+      await updateDoc(consultationRef, { 
+        status: 'approved', 
+        provider_id: approvalData.providerId,
+        provider_notes: approvalData.notes 
+      });
       await this.logStateTransition(flowId, FLOW_STATUSES.CONSULTATION_PENDING, FLOW_STATUSES.CONSULTATION_APPROVED, { providerId: approvalData.providerId });
 
-      // Create Order based on approval
+      // 2. Create the Order
       const orderRef = await addDoc(collection(db, 'orders'), {
         patientId: flowData.patient_id,
         status: 'pending_payment',
@@ -186,18 +187,18 @@ class TelehealthFlowOrchestrator {
       });
       await this.logStateTransition(flowId, FLOW_STATUSES.CONSULTATION_APPROVED, FLOW_STATUSES.ORDER_CREATED, { orderId: orderRef.id });
 
-      // Create Invoice
+      // 3. Create the Invoice
       const invoiceRef = await addDoc(collection(db, 'invoices'), {
           patientId: flowData.patient_id,
           orderId: orderRef.id,
           amount: flowData.pricing_snapshot?.final_price || 0,
           status: 'pending_payment',
-          dueDate: Timestamp.fromDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
+          dueDate: Timestamp.fromDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)), // Due in 7 days
           createdAt: Timestamp.now(),
       });
       await this.logStateTransition(flowId, FLOW_STATUSES.ORDER_CREATED, FLOW_STATUSES.INVOICE_GENERATED, { invoiceId: invoiceRef.id });
 
-      // Final flow update
+      // 4. Update the main flow status to 'payment_pending'
       const finalUpdateData = {
         current_status: FLOW_STATUSES.PAYMENT_PENDING,
         order_id: orderRef.id,
@@ -214,7 +215,7 @@ class TelehealthFlowOrchestrator {
       return { success: true, flow: finalFlow, error: null };
     } catch(error) {
       console.error('Error processing consultation approval:', error);
-      return { success: false, flow: flowData, error };
+      return { success: false, flow: flowData || null, error };
     }
   }
 
