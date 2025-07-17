@@ -29,7 +29,7 @@ const AIPanel = ({
     data: existingSummary,
     isLoading: isLoadingSummary,
     isError: isSummaryError,
-  } = useAISummary(consultationId);
+  } = useAISummary(consultationId, consultationId); // Assuming consultationId can act as formId here
 
   // Mutation for generating and saving a summary
   const generateAndSaveSummary = useGenerateAndSaveAISummary();
@@ -114,7 +114,7 @@ const AIPanel = ({
         );
       }
     }
-  }, [showAIPanel, existingSummary, initialInsights, consultationId]);
+  }, [showAIPanel, existingSummary, initialInsights, consultationId, formData, categoryId, isFollowUp]);
 
   // Handle accepting a recommendation
   const handleAcceptRecommendation = (recommendation, index) => {
