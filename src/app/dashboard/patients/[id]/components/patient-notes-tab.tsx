@@ -16,12 +16,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Search, Plus, Filter, FolderOpen } from "lucide-react";
+import { Search, Plus, Filter, FolderOpen, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from 'date-fns';
 import { db } from "@/lib/firebase/client";
+import { useToast } from "@/hooks/use-toast";
 
 interface PatientNotesTabProps {
   patientId: string;
@@ -30,10 +31,14 @@ interface PatientNotesTabProps {
 export function PatientNotesTab({ patientId }: PatientNotesTabProps) {
   const [notes, setNotes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchNotes = async () => {
-      if (!patientId) return;
+      if (!patientId) {
+          setLoading(false);
+          return;
+      }
       setLoading(true);
       try {
         const q = query(
@@ -46,13 +51,14 @@ export function PatientNotesTab({ patientId }: PatientNotesTabProps) {
         setNotes(notesData);
       } catch (error) {
         console.error("Error fetching notes: ", error);
+        toast({ variant: "destructive", title: "Failed to load notes." });
       } finally {
         setLoading(false);
       }
     };
 
     fetchNotes();
-  }, [patientId]);
+  }, [patientId, toast]);
 
   return (
     <Card>
@@ -89,10 +95,9 @@ export function PatientNotesTab({ patientId }: PatientNotesTabProps) {
       </CardHeader>
       <CardContent>
         {loading ? (
-             <div className="h-80 flex flex-col items-center justify-center text-center text-muted-foreground bg-gray-50 rounded-lg">
-                <Skeleton className="h-16 w-16 rounded-full" />
-                <Skeleton className="h-6 w-48 mt-4 rounded-md" />
-                <Skeleton className="h-4 w-64 mt-2 rounded-md" />
+             <div className="h-80 flex flex-col items-center justify-center text-center text-muted-foreground">
+                <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
+                <p>Loading clinical notes...</p>
             </div>
         ) : notes.length > 0 ? (
           <div className="space-y-4">

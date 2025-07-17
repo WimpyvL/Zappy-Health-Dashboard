@@ -12,6 +12,7 @@ import {
   HeartPulse,
   CreditCard,
   Briefcase,
+  Settings,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +31,7 @@ import { PatientInfoTab } from "./components/patient-info-tab";
 import { PatientOrdersTab } from "./components/patient-orders-tab";
 import { PatientBillingTab } from "./components/patient-billing-tab";
 import { PatientNotesTab } from "./components/patient-notes-tab";
+import { PatientOverviewTab } from "./components/patient-overview-tab";
 import { ViewMessageModal } from "../../messages/components/view-message-modal";
 import { doc, getDoc } from "firebase/firestore";
 import Loading from "./loading";
@@ -49,12 +51,13 @@ type Patient = {
     status: "Active" | "Inactive" | "Pending";
     registrationDate: string;
     lastLogin: string;
-    currentPlan: string;
-    billingCycle: string;
-    nextBilling: string;
-    outstandingBalance: number;
     dob?: any; // Can be a Timestamp
-  };
+    address?: string;
+    allergies?: string[];
+    medications?: string[];
+    insuranceProvider?: string;
+    policyNumber?: string;
+};
   
 type Message = {
     id: string;
@@ -95,7 +98,7 @@ function AdminToolsSidebar({ isOpen, onClose, patient }: { isOpen: boolean, onCl
                     <div>
                         <h3 className="text-sm font-semibold text-muted-foreground mb-2">Patient Information</h3>
                         <Card><CardContent className="pt-4 space-y-2 text-sm">
-                                <div className="flex justify-between"><span>Patient ID</span><span className="font-mono text-muted-foreground">{patient.id}</span></div>
+                                <div className="flex justify-between"><span>Patient ID</span><span className="font-mono text-muted-foreground">{patient.id.substring(0,8)}...</span></div>
                                 <div className="flex justify-between"><span>Registration</span><span>{patient.registrationDate}</span></div>
                                 <div className="flex justify-between"><span>Last Login</span><span>{patient.lastLogin}</span></div>
                                 <div className="flex justify-between items-center">
@@ -141,6 +144,10 @@ export default function PatientDetailPage({ params }: { params: { id: string } }
 
   React.useEffect(() => {
     const fetchPatientData = async () => {
+        if (!params.id) {
+            setLoading(false);
+            return;
+        };
         setLoading(true);
         try {
             const patientDocRef = doc(db, "patients", params.id);
@@ -173,9 +180,7 @@ export default function PatientDetailPage({ params }: { params: { id: string } }
             setLoading(false);
         }
     };
-    if (params.id) {
-        fetchPatientData();
-    }
+    fetchPatientData();
   }, [params.id, toast]);
 
 
@@ -198,13 +203,12 @@ export default function PatientDetailPage({ params }: { params: { id: string } }
   }
 
   const renderTabContent = () => {
-    if (!patient) return null;
-
     switch(activeTab) {
-        case 'Patient Info': return <PatientInfoTab patient={patient} />;
-        case 'Orders': return <PatientOrdersTab patientId={patient.id} />;
-        case 'Billing': return <PatientBillingTab patientId={patient.id} />;
-        case 'Notes': return <PatientNotesTab patientId={patient.id} />;
+        case 'Overview': return <PatientOverviewTab />;
+        case 'Patient Info': return <PatientInfoTab patient={patient} isLoading={loading} />;
+        case 'Orders': return <PatientOrdersTab patientId={params.id} />;
+        case 'Billing': return <PatientBillingTab patientId={params.id} />;
+        case 'Notes': return <PatientNotesTab patientId={params.id} />;
         default:
             return (
                 <Card>
@@ -248,7 +252,7 @@ export default function PatientDetailPage({ params }: { params: { id: string } }
             <Button variant="outline" size="sm">New Patient</Button>
             <Button variant="outline" size="sm">+ Tag</Button>
             <div className="ml-4 flex items-center gap-2">
-                <Button variant="secondary" size="sm" onClick={() => setIsAdminPanelOpen(true)}>Admin</Button>
+                <Button variant="secondary" size="sm" onClick={() => setIsAdminPanelOpen(true)}><Settings className="h-4 w-4 mr-2" />Admin</Button>
                 <Button size="sm" onClick={() => handleOpenMessageModal(patient)}>Message</Button>
             </div>
         </div>

@@ -17,9 +17,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Separator } from "@/components/ui/separator";
-import { CreditCard, FileStack, History, Plus } from "lucide-react";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { CreditCard, FileStack, History, Plus, Loader2 } from "lucide-react";
+import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from 'date-fns';
 import { db } from "@/lib/firebase/client";
@@ -34,7 +33,10 @@ export function PatientBillingTab({ patientId }: PatientBillingTabProps) {
 
   useEffect(() => {
     const fetchBillingData = async () => {
-      if (!patientId) return;
+      if (!patientId) {
+          setLoading(false);
+          return;
+      };
       setLoading(true);
       try {
         const q = query(collection(db, "invoices"), where("patientId", "==", patientId));
@@ -65,8 +67,8 @@ export function PatientBillingTab({ patientId }: PatientBillingTabProps) {
         <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
             <p className="text-xs text-muted-foreground font-semibold uppercase">Current Balance Due</p>
-            <p className="text-3xl font-bold text-yellow-600 mt-1">$0.00</p>
-            <p className="text-xs text-muted-foreground">Due by Jan 1, 1970</p>
+            {loading ? <Skeleton className="h-8 w-24 mt-1" /> : <p className="text-3xl font-bold text-yellow-600 mt-1">$0.00</p>}
+            {loading ? <Skeleton className="h-4 w-32 mt-1" /> : <p className="text-xs text-muted-foreground">Due by N/A</p>}
           </div>
           <div className="md:col-span-2 space-y-4">
              <div>
@@ -74,7 +76,7 @@ export function PatientBillingTab({ patientId }: PatientBillingTabProps) {
                 <div className="flex justify-between items-center mt-1 text-sm p-3 border rounded-md bg-white">
                     <div className="flex items-center gap-2">
                         <CreditCard className="h-4 w-4 text-muted-foreground" />
-                        <span>No payment method on file</span>
+                        {loading ? <Skeleton className="h-5 w-40" /> : <span>No payment method on file</span>}
                     </div>
                     <Button variant="secondary" size="sm">Add</Button>
                 </div>
@@ -82,7 +84,7 @@ export function PatientBillingTab({ patientId }: PatientBillingTabProps) {
              <div>
                 <p className="text-sm font-semibold">Active Subscription</p>
                  <div className="flex justify-between items-center mt-1 text-sm p-3 border rounded-md bg-white">
-                    <span className="text-muted-foreground">No active subscription</span>
+                    {loading ? <Skeleton className="h-5 w-32" /> : <span className="text-muted-foreground">No active subscription</span>}
                 </div>
             </div>
           </div>
@@ -112,7 +114,12 @@ export function PatientBillingTab({ patientId }: PatientBillingTabProps) {
             <TableBody>
               {loading ? (
                 <TableRow>
-                    <TableCell colSpan={5}><Skeleton className="h-5 w-full" /></TableCell>
+                    <TableCell colSpan={5} className="h-24 text-center">
+                      <div className="flex justify-center items-center">
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Loading invoices...
+                      </div>
+                    </TableCell>
                 </TableRow>
               ) : invoices.length > 0 ? (
                 invoices.map(invoice => (

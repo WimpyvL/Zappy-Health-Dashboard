@@ -5,11 +5,12 @@ import React from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { User, Heart, FileText, Upload } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
-const InfoField = ({ label, value }: { label: string, value: string | undefined }) => (
+const InfoField = ({ label, value, isLoading }: { label: string; value: string | undefined; isLoading?: boolean }) => (
   <div>
     <p className="text-xs text-muted-foreground font-semibold uppercase">{label}</p>
-    <p className="text-sm font-medium">{value || '-'}</p>
+    {isLoading ? <Skeleton className="h-5 w-3/4 mt-1" /> : <p className="text-sm font-medium">{value || '-'}</p>}
   </div>
 );
 
@@ -28,13 +29,11 @@ const DocumentUploadItem = ({ title, description }: { title: string, description
 
 interface PatientInfoTabProps {
     patient: any;
+    isLoading: boolean;
 }
 
-export function PatientInfoTab({ patient }: PatientInfoTabProps) {
-  if (!patient) {
-    return <div>Loading patient information...</div>;
-  }
-  
+export function PatientInfoTab({ patient, isLoading }: PatientInfoTabProps) {
+
   return (
     <div className="space-y-6">
       {/* Personal Information */}
@@ -48,11 +47,11 @@ export function PatientInfoTab({ patient }: PatientInfoTabProps) {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
-            <InfoField label="Full Name" value={patient.name} />
-            <InfoField label="Date of Birth" value={patient.dob ? patient.dob.toLocaleDateString() : 'N/A'} />
-            <InfoField label="Email" value={patient.email} />
-            <InfoField label="Phone" value={patient.phone} />
-            <InfoField label="Address" value={patient.address} />
+            <InfoField label="Full Name" value={patient?.name} isLoading={isLoading} />
+            <InfoField label="Date of Birth" value={patient?.dob ? new Date(patient.dob).toLocaleDateString() : 'N/A'} isLoading={isLoading} />
+            <InfoField label="Email" value={patient?.email} isLoading={isLoading} />
+            <InfoField label="Phone" value={patient?.phone} isLoading={isLoading} />
+            <InfoField label="Address" value={patient?.address} isLoading={isLoading} />
           </div>
         </CardContent>
       </Card>
@@ -70,13 +69,13 @@ export function PatientInfoTab({ patient }: PatientInfoTabProps) {
            <div className="space-y-1">
                 <label className="text-xs font-semibold uppercase text-muted-foreground">Known Allergies</label>
                 <div className="p-3 border rounded-md min-h-[60px] text-sm">
-                    {patient.allergies || "No known allergies"}
+                    {isLoading ? <Skeleton className="h-4 w-full" /> : patient?.allergies || "No known allergies"}
                 </div>
             </div>
              <div className="space-y-1">
                 <label className="text-xs font-semibold uppercase text-muted-foreground">Current Medications</label>
                 <div className="p-3 border rounded-md min-h-[60px] text-sm">
-                    {patient.medications?.join(', ') || "No current medications"}
+                    {isLoading ? <Skeleton className="h-4 w-full" /> : patient?.medications?.join(', ') || "No current medications"}
                 </div>
             </div>
         </CardContent>
@@ -92,13 +91,13 @@ export function PatientInfoTab({ patient }: PatientInfoTabProps) {
         </CardHeader>
         <CardContent>
             <div className="grid md:grid-cols-3 gap-6">
-                <InfoField label="Insurance Provider" value={patient.insuranceProvider} />
-                <InfoField label="Policy Number" value={patient.policyNumber} />
+                <InfoField label="Insurance Provider" value={patient?.insuranceProvider} isLoading={isLoading} />
+                <InfoField label="Policy Number" value={patient?.policyNumber} isLoading={isLoading} />
                 <div>
                     <p className="text-xs text-muted-foreground font-semibold uppercase">Verification Status</p>
                     <div className="flex items-center gap-2 mt-1">
-                         <span className="text-sm font-medium text-yellow-600">Unverified</span>
-                         <p className="text-xs text-muted-foreground">Upload required documents to verify</p>
+                         {isLoading ? <Skeleton className="h-5 w-24" /> : <span className="text-sm font-medium text-yellow-600">Unverified</span>}
+                         {isLoading ? null : <p className="text-xs text-muted-foreground">Upload required documents to verify</p>}
                     </div>
                 </div>
             </div>
@@ -114,5 +113,3 @@ export function PatientInfoTab({ patient }: PatientInfoTabProps) {
     </div>
   );
 }
-
-    
