@@ -56,6 +56,7 @@ const PatientStatusBadge = ({
     <div className="flex flex-wrap gap-2 items-center">
       <span
         className={`inline-flex items-center ${sizeClasses} rounded-full font-medium border ${accountInfo.color}`}
+        title={`Account Status: ${accountInfo.label}`}
       >
         <span className="mr-1">{accountInfo.icon}</span>
         {accountInfo.label}
@@ -63,6 +64,7 @@ const PatientStatusBadge = ({
       {idVerificationStatus && idVerificationStatus !== 'not_required' && (
         <span
           className={`inline-flex items-center ${sizeClasses} rounded-full font-medium border ${idInfo.color}`}
+          title={`ID Verification: ${idInfo.label}`}
         >
           <span className="mr-1">{idInfo.icon}</span>
           {idInfo.label}
