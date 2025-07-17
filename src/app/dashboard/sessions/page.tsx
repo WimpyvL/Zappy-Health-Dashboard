@@ -44,10 +44,12 @@ import { ScheduleSessionModal } from "./components/schedule-session-modal";
 import { useToast } from "@/hooks/use-toast";
 import { collection, addDoc, query, orderBy, Timestamp, doc, updateDoc } from "firebase/firestore";
 import Link from "next/link";
+import { useRouter } from 'next/navigation';
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { db } from "@/lib/firebase/client";
 import { useUpdateSessionStatus, useSessions } from "@/services/database/hooks";
+import { useTelehealthFlow } from "@/hooks/useTelehealthFlow.js";
 
 const SESSION_STATUSES = [
   'pending',
@@ -118,6 +120,8 @@ export default function SessionsPage({ searchParams }: { searchParams?: { page?:
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const { toast } = useToast();
   const updateStatusMutation = useUpdateSessionStatus();
+  const router = useRouter();
+  const { initializeFlow, loading: flowLoading } = useTelehealthFlow();
 
   const page = searchParams?.page ? parseInt(searchParams.page, 10) : 1;
   const status = searchParams?.status;
@@ -137,7 +141,7 @@ export default function SessionsPage({ searchParams }: { searchParams?: { page?:
 
   const handleCreateSession = async (values: any) => {
     try {
-      await addDoc(collection(db, "sessions"), {
+      const sessionDocRef = await addDoc(collection(db, "sessions"), {
           patientName: values.patient, 
           patientId: 'mock-patient-id', 
           patientEmail: 'mock-email@example.com',
@@ -147,18 +151,35 @@ export default function SessionsPage({ searchParams }: { searchParams?: { page?:
           date: Timestamp.fromDate(values.dateTime),
           status: "pending",
       });
-      toast({
-        title: "Session Scheduled",
-        description: `A new session has been scheduled for ${values.patient}.`,
+      
+      // Initialize telehealth flow linked to this session
+      const flowResult = await initializeFlow({
+        patientId: 'mock-patient-id',
+        // In a real app, you would get category/product from the session or service plan
+        categoryId: 'general', 
+        productId: null
       });
+
+      if (flowResult.success && flowResult.flow?.id) {
+        // Link session to the flow
+        await updateDoc(sessionDocRef, { flowId: flowResult.flow.id });
+        toast({
+            title: "Session Scheduled",
+            description: `A new session has been scheduled and a telehealth flow has been initiated.`,
+        });
+        router.push(`/dashboard/sessions/${sessionDocRef.id}`);
+      } else {
+        throw new Error(flowResult.error?.message || "Failed to initiate telehealth flow.");
+      }
+
       fetchSessions();
       setIsModalOpen(false);
     } catch (error) {
-       console.error("Error creating session: ", error);
+       console.error("Error creating session or flow: ", error);
        toast({
         variant: "destructive",
         title: "Error Scheduling Session",
-        description: "An error occurred while creating the session.",
+        description: "An error occurred while creating the session or flow.",
       });
     }
   };
@@ -183,8 +204,8 @@ export default function SessionsPage({ searchParams }: { searchParams?: { page?:
               Pending: <span className="font-semibold">{sessions.filter(s => s.status === 'pending').length}</span> | 
               Completed: <span className="font-semibold">{sessions.filter(s => s.status === 'completed').length}</span>
             </div>
-            <Button onClick={() => setIsModalOpen(true)}>
-              <Plus className="h-4 w-4" /> Add Session
+            <Button onClick={() => setIsModalOpen(true)} disabled={flowLoading}>
+              <Plus className="h-4 w-4" /> {flowLoading ? "Initializing..." : "Add Session"}
             </Button>
              <div className="flex items-center space-x-2">
               <Switch id="batch-mode" />
