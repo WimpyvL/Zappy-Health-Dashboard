@@ -23,7 +23,6 @@ import { format } from 'date-fns';
 import { db } from "@/lib/firebase/client";
 import { useToast } from "@/hooks/use-toast";
 
-// Mocks for hooks that are not yet created
 const useNotes = (patientId: string) => {
   const [notes, setNotes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,9 +58,6 @@ const useNotes = (patientId: string) => {
   return { data: notes, isLoading: loading, error, refetch };
 };
 
-const useNoteTemplates = () => ({ data: [], isLoading: false });
-
-
 interface PatientNotesTabProps {
   patientId: string;
 }
@@ -80,8 +76,6 @@ export function PatientNotesTab({ patientId }: PatientNotesTabProps) {
     error: notesError,
     refetch: refetchNotes,
   } = useNotes(patientId);
-
-  const { data: templates = [] } = useNoteTemplates();
 
   const filteredNotes = notes.filter((note) => {
     const matchesSearch =

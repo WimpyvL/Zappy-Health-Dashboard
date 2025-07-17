@@ -71,13 +71,13 @@ export function PatientInfoTab({ patient, isLoading }: PatientInfoTabProps) {
            <div className="space-y-1">
                 <label className="text-xs font-semibold uppercase text-muted-foreground">Known Allergies</label>
                 <div className="p-3 border rounded-md min-h-[60px] text-sm">
-                    {isLoading ? <Skeleton className="h-4 w-full" /> : patient?.allergies || "No known allergies"}
+                    {isLoading ? <Skeleton className="h-4 w-full" /> : (patient?.allergies && patient.allergies.length > 0 ? patient.allergies.join(', ') : "No known allergies")}
                 </div>
             </div>
              <div className="space-y-1">
                 <label className="text-xs font-semibold uppercase text-muted-foreground">Current Medications</label>
                 <div className="p-3 border rounded-md min-h-[60px] text-sm">
-                    {isLoading ? <Skeleton className="h-4 w-full" /> : patient?.medications?.join(', ') || "No current medications"}
+                    {isLoading ? <Skeleton className="h-4 w-full" /> : (patient?.medications && patient.medications.length > 0 ? patient.medications.join(', ') : "No current medications")}
                 </div>
             </div>
         </CardContent>
