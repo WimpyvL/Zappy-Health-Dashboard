@@ -6,14 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { useTelehealthFlow } from "@/hooks/useTelehealthFlow";
+import { useTelehealthFlow } from "@/hooks/useTelehealthFlow.js";
 import Image from "next/image";
 
 // Mock data, in a real app this would come from a database.
 const products = [
-    { id: 'prod_wm', name: 'Weight Management Program', category: 'weight-management', description: 'A comprehensive plan for sustainable weight loss.', price: 150, requiresPrescription: true, imageUrl: 'https://placehold.co/600x400.png', "data-ai-hint": "fitness health" },
-    { id: 'prod_sh', name: 'Sexual Health Consultation', category: 'sexual-health', description: 'Discreet and professional consultations.', price: 125, requiresPrescription: true, imageUrl: 'https://placehold.co/600x400.png', "data-ai-hint": "romance relationship" },
-    { id: 'prod_hl', name: 'Hair Loss Treatment', category: 'hair-loss', description: 'Personalized hair loss treatment plans.', price: 100, requiresPrescription: true, imageUrl: 'https://placehold.co/600x400.png', "data-ai-hint": "hair model" },
+    { id: 'prod_wm', name: 'Weight Management Program', categoryId: 'weight-management', description: 'A comprehensive plan for sustainable weight loss.', price: 150, requiresPrescription: true, imageUrl: 'https://placehold.co/600x400.png', "data-ai-hint": "fitness health" },
+    { id: 'prod_sh', name: 'Sexual Health Consultation', categoryId: 'sexual-health', description: 'Discreet and professional consultations.', price: 125, requiresPrescription: true, imageUrl: 'https://placehold.co/600x400.png', "data-ai-hint": "romance relationship" },
+    { id: 'prod_hl', name: 'Hair Loss Treatment', categoryId: 'hair-loss', description: 'Personalized hair loss treatment plans.', price: 100, requiresPrescription: true, imageUrl: 'https://placehold.co/600x400.png', "data-ai-hint": "hair model" },
 ];
 
 export default function ShopPage() {
@@ -25,13 +25,19 @@ export default function ShopPage() {
         if (product.requiresPrescription) {
             // This is the new flow logic
             // In a real app, you would get the patientId from your auth context
-            const patientId = "mock_patient_id"; 
-            const result = await initializeFlow({ patientId, categoryId: product.category });
+            const patientId = "mock_patient_id_123"; 
+            
+            toast({
+                title: "Initiating Telehealth Flow...",
+                description: `Please wait while we set up the ${product.name}.`,
+            });
+            
+            const result = await initializeFlow({ patientId, categoryId: product.categoryId, productId: product.id });
 
             if (result.success) {
                 toast({
                     title: "Consultation Started",
-                    description: `Starting the intake process for ${product.name}.`,
+                    description: `Redirecting to the intake process for ${product.name}.`,
                 });
                 // Navigate to the intake form, passing the new flow ID
                 router.push(`/dashboard/intake/${result.flow.id}`);
@@ -39,7 +45,7 @@ export default function ShopPage() {
                 toast({
                     variant: "destructive",
                     title: "Could not start consultation",
-                    description: "There was a problem initiating the telehealth flow. Please try again.",
+                    description: result.error?.message || "There was a problem initiating the telehealth flow. Please try again.",
                 });
             }
         } else {
