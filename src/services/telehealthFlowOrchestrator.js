@@ -33,14 +33,16 @@ class TelehealthFlowOrchestrator {
    * @param {object} params - The initial parameters for the flow.
    * @param {string} params.patientId - The ID of the patient.
    * @param {string} params.categoryId - The ID of the selected category.
+   * @param {string} [params.productId] - The optional ID of a pre-selected product.
    * @returns {Promise<{success: boolean, flow: object, error: Error|null}>}
    */
-  async initializeFlow({ patientId, categoryId }) {
+  async initializeFlow({ patientId, categoryId, productId }) {
     try {
       const flowData = {
         patient_id: patientId,
         category_id: categoryId,
-        current_status: FLOW_STATUSES.CATEGORY_SELECTED,
+        product_id: productId || null,
+        current_status: productId ? FLOW_STATUSES.PRODUCT_SELECTED : FLOW_STATUSES.CATEGORY_SELECTED,
         started_at: Timestamp.now(),
         last_activity_at: Timestamp.now(),
         flow_metadata: { categoryName: '' }, // Add more metadata as needed
@@ -48,8 +50,7 @@ class TelehealthFlowOrchestrator {
       const docRef = await addDoc(this.flowsCollection, flowData);
       const flow = { id: docRef.id, ...flowData };
       
-      // Log state transition
-      await this.logStateTransition(docRef.id, null, FLOW_STATUSES.CATEGORY_SELECTED);
+      await this.logStateTransition(docRef.id, null, flowData.current_status);
 
       return { success: true, flow, error: null };
     } catch (error) {
@@ -107,6 +108,7 @@ class TelehealthFlowOrchestrator {
       const flowSnap = await getDoc(flowRef);
       if (!flowSnap.exists()) throw new Error("Flow not found.");
       flowData = { id: flowSnap.id, ...flowSnap.data() };
+      const fromStatus = flowData.current_status;
 
       // Step 2: Save the form submission
       const submissionRef = await addDoc(collection(db, 'form_submissions'), {
@@ -116,7 +118,7 @@ class TelehealthFlowOrchestrator {
         submitted_at: Timestamp.now(),
       });
       
-      await this.logStateTransition(flowId, flowData.current_status, FLOW_STATUSES.INTAKE_COMPLETED, { submissionId: submissionRef.id });
+      await this.logStateTransition(flowId, fromStatus, FLOW_STATUSES.INTAKE_COMPLETED, { submissionId: submissionRef.id });
 
       // Step 3: Create Consultation
       const consultationRef = await addDoc(collection(db, 'consultations'), {
@@ -124,6 +126,7 @@ class TelehealthFlowOrchestrator {
           provider_id: null, // To be assigned by a provider later
           status: 'pending_review',
           form_submission_id: submissionRef.id,
+          flow_id: flowId,
           created_at: Timestamp.now(),
       });
 
@@ -131,11 +134,11 @@ class TelehealthFlowOrchestrator {
 
       // Step 4: Create Order
       const orderRef = await addDoc(collection(db, 'orders'), {
-        patient_id: flowData.patient_id,
+        patientId: flowData.patient_id,
         status: 'pending_consultation',
-        items: [{ productId: flowData.product_id, quantity: 1, price: flowData.pricing_snapshot.final_price }],
-        total: flowData.pricing_snapshot.final_price,
-        created_at: Timestamp.now(),
+        medication: flowData.pricing_snapshot?.productName || 'Consultation Service', // Example
+        orderDate: Timestamp.now(),
+        flow_id: flowId,
         consultation_id: consultationRef.id,
       });
 
@@ -143,12 +146,12 @@ class TelehealthFlowOrchestrator {
 
       // Step 5: Create Invoice
       const invoiceRef = await addDoc(collection(db, 'invoices'), {
-          patient_id: flowData.patient_id,
-          order_id: orderRef.id,
-          amount: flowData.pricing_snapshot.final_price,
+          patientId: flowData.patient_id,
+          orderId: orderRef.id,
+          amount: flowData.pricing_snapshot?.final_price || 0,
           status: 'pending',
-          due_date: Timestamp.fromDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)), // Due in 7 days
-          created_at: Timestamp.now(),
+          dueDate: Timestamp.fromDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)), // Due in 7 days
+          createdAt: Timestamp.now(),
       });
 
       await this.logStateTransition(flowId, FLOW_STATUSES.ORDER_CREATED, FLOW_STATUSES.INVOICE_GENERATED, { invoiceId: invoiceRef.id });

@@ -2,38 +2,58 @@
 "use client";
 
 import * as React from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Loader2 } from "lucide-react";
 import { useTelehealthFlow } from "@/hooks/useTelehealthFlow";
 import { useToast } from "@/hooks/use-toast";
-import { useRouter } from "next/navigation";
 
 // This is a simplified intake form for demonstration.
 // A real application would have a multi-step, dynamic form here.
 
 export default function IntakeFormPage() {
     const params = useParams();
+    const router = useRouter();
     const flowId = params.flowId as string;
     
-    // In a real app, you would load the specific form schema based on the flow's category.
-    // For now, we use a simple, static form.
-
+    const { flow, loading, submitIntakeForm } = useTelehealthFlow(flowId);
     const { toast } = useToast();
-    const router = useRouter();
+    
+    // Simple state for our static form
+    const [formData, setFormData] = React.useState({
+        chief_complaint: '',
+        allergies: '',
+        medications: '',
+    });
 
-    const handleSubmit = (event: React.FormEvent) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const { id, value } = e.target;
+        setFormData(prev => ({ ...prev, [id]: value }));
+    };
+
+    const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
-        toast({
-            title: "Intake Form Submitted",
-            description: "A provider will review your information shortly.",
-        });
-        // In a real app, you would save the form data and update the flow status.
-        // For now, we'll just navigate back to the dashboard.
-        router.push("/dashboard");
+        if (!flowId) {
+            toast({ variant: "destructive", title: "Error", description: "Flow ID is missing." });
+            return;
+        }
+
+        const result = await submitIntakeForm(formData);
+
+        if (result.success) {
+            toast({
+                title: "Intake Form Submitted",
+                description: "A provider will review your information shortly.",
+            });
+            // Navigate to a success page or back to the dashboard
+            router.push("/dashboard/shop");
+        } else {
+            // The hook already shows a toast on error
+            console.error("Intake submission failed:", result.error);
+        }
     };
 
     return (
@@ -44,31 +64,32 @@ export default function IntakeFormPage() {
                 </Button>
                 <div>
                     <h1 className="text-2xl font-bold">Patient Intake Form</h1>
-                    <p className="text-muted-foreground">Flow ID: {flowId}</p>
+                    <p className="text-muted-foreground text-sm">Please provide your medical information.</p>
                 </div>
             </div>
 
-            <Card className="max-w-2xl mx-auto">
+            <Card className="max-w-2xl mx-auto w-full">
                 <CardHeader>
                     <CardTitle>Medical History</CardTitle>
-                    <CardDescription>Please provide some basic information. This will be reviewed by a healthcare provider.</CardDescription>
+                    <CardDescription>This information will be reviewed by a licensed healthcare provider.</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-6">
                         <div className="space-y-2">
                             <Label htmlFor="chief_complaint">Chief Complaint</Label>
-                            <Input id="chief_complaint" placeholder="e.g., I'm interested in weight management" required />
+                            <Input id="chief_complaint" placeholder="e.g., I'm interested in weight management" required value={formData.chief_complaint} onChange={handleChange} />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="allergies">Known Allergies</Label>
-                            <Input id="allergies" placeholder="e.g., Penicillin, Peanuts" />
+                            <Input id="allergies" placeholder="e.g., Penicillin, Peanuts" value={formData.allergies} onChange={handleChange} />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="medications">Current Medications</Label>
-                            <Input id="medications" placeholder="e.g., Lisinopril 10mg" />
+                            <Input id="medications" placeholder="e.g., Lisinopril 10mg" value={formData.medications} onChange={handleChange} />
                         </div>
-                        <Button type="submit" className="w-full">
-                            Submit Intake Form
+                        <Button type="submit" className="w-full" disabled={loading}>
+                            {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {loading ? 'Submitting...' : 'Submit Intake Form'}
                         </Button>
                     </form>
                 </CardContent>
