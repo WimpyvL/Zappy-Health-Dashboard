@@ -272,5 +272,3 @@ export const getPromptByCategoryTypeAndSection = async (
     throw error;
   }
 };
-
-    
