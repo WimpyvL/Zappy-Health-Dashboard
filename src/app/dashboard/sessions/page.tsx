@@ -42,12 +42,12 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ScheduleSessionModal } from "./components/schedule-session-modal";
 import { useToast } from "@/hooks/use-toast";
-import { collection, getDocs, addDoc, query, orderBy, Timestamp, doc, updateDoc } from "firebase/firestore";
+import { collection, addDoc, query, orderBy, Timestamp, doc, updateDoc } from "firebase/firestore";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { db } from "@/lib/firebase/client";
-import { useUpdateSessionStatus } from "@/services/database/hooks";
+import { useUpdateSessionStatus, useSessions } from "@/services/database/hooks";
 
 const SESSION_STATUSES = [
   'pending',
@@ -71,28 +71,6 @@ type Session = {
   status: SessionStatus;
 };
 
-const FilterDropdown = ({
-  label,
-  options,
-}: {
-  label: string;
-  options: string[];
-}) => (
-  <DropdownMenu>
-    <DropdownMenuTrigger asChild>
-      <Button variant="outline" className="flex items-center gap-2">
-        {label}
-        <ChevronDown className="h-4 w-4" />
-      </Button>
-    </DropdownMenuTrigger>
-    <DropdownMenuContent align="end">
-      {options.map((option) => (
-        <DropdownMenuItem key={option}>{option}</DropdownMenuItem>
-      ))}
-    </DropdownMenuContent>
-  </DropdownMenu>
-);
-
 const StatusBadge = ({ status }: { status: SessionStatus }) => {
     const statusConfig: Record<SessionStatus, { label: string; className: string }> = {
       pending: { label: "Pending", className: "bg-gray-100 text-gray-800" },
@@ -111,51 +89,58 @@ const StatusBadge = ({ status }: { status: SessionStatus }) => {
         {currentStatus.label}
       </Badge>
     );
-  };
+};
 
-export default function SessionsPage() {
-  const [sessions, setSessions] = React.useState<Session[]>([]);
-  const [loading, setLoading] = React.useState(true);
+const FilterDropdown = ({
+    label,
+    options,
+  }: {
+    label: string;
+    options: string[];
+  }) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" className="flex items-center gap-2">
+          {label}
+          <ChevronDown className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {options.map((option) => (
+          <DropdownMenuItem key={option}>{option}</DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+);
+
+export default function SessionsPage({ searchParams }: { searchParams?: { page?: string; status?: string; searchTerm?: string } }) {
+  
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const { toast } = useToast();
   const updateStatusMutation = useUpdateSessionStatus();
 
-  const fetchSessions = React.useCallback(async () => {
-    setLoading(true);
-    try {
-      const sessionsCollection = collection(db, "sessions");
-      const sessionSnapshot = await getDocs(query(sessionsCollection, orderBy("date", "desc")));
-      const sessionList = sessionSnapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          date: data.date ? format(data.date.toDate(), "MMM dd, yyyy") : "N/A",
-          ...data,
-        } as Session;
-      });
-      setSessions(sessionList);
-    } catch (error) {
-      console.error("Error fetching sessions: ", error);
-      toast({
-        variant: "destructive",
-        title: "Error fetching sessions",
-        description: "Could not retrieve session data from the database.",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }, [toast]);
+  const page = searchParams?.page ? parseInt(searchParams.page, 10) : 1;
+  const status = searchParams?.status;
+  const searchTerm = searchParams?.searchTerm;
+  
+  const pageSize = 10; 
 
-  React.useEffect(() => {
-    fetchSessions();
-  }, [fetchSessions]);
+  const { data: sessionsData, isLoading: loading, error: sessionsError, refetch: fetchSessions } = useSessions({ page, status, searchTerm }, pageSize);
+
+  const sessions: Session[] = React.useMemo(() => {
+    if (!sessionsData?.data) return [];
+    return sessionsData.data.map((s: any) => ({
+      ...s,
+      date: s.date ? format(new Date(s.date), "MMM dd, yyyy") : "N/A",
+    }));
+  }, [sessionsData]);
 
   const handleCreateSession = async (values: any) => {
     try {
       await addDoc(collection(db, "sessions"), {
-          patientName: values.patient, // In real app, you'd use patientId and join
-          patientId: 'mock-patient-id', // Placeholder
-          patientEmail: 'mock-email@example.com', // Placeholder
+          patientName: values.patient, 
+          patientId: 'mock-patient-id', 
+          patientEmail: 'mock-email@example.com',
           type: values.sessionType,
           plan: values.servicePlan,
           provider: values.provider,

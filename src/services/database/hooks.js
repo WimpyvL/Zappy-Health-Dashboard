@@ -7,7 +7,8 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dbService } from './index';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
+import auditLogService from '../../utils/auditLogService';
 
 // --- Query Keys Factory ---
 // A centralized place for managing query keys. This is crucial for
@@ -103,12 +104,36 @@ export const useCreateProvider = (options) => useCreateEntity('providers', optio
 export const useUpdateProvider = (options) => useUpdateEntity('providers', options);
 
 // --- Sessions Hooks ---
+export const useSessions = (params = {}, pageSize = 10) => {
+    const { page, status, patientId, searchTerm } = params;
+    const currentPage = page || 1;
+  
+    return useQuery({
+      queryKey: queryKeys.lists('sessions', params),
+      queryFn: async () => {
+        const result = await dbService.sessions.getAll({
+            page: currentPage,
+            pageSize,
+            filters: { status, patientId, searchTerm }
+        });
+        if (result.error) {
+            throw new Error(result.error.message);
+        }
+        return result;
+      },
+      keepPreviousData: true,
+    });
+  };
+
 export const useUpdateSessionStatus = (options = {}) => {
     const queryClient = useQueryClient();
+    const { toast } = useToast();
     return useMutation({
       mutationFn: async ({ sessionId, status }) => {
         if (!sessionId) throw new Error('Session ID is required for status update.');
-        return dbService.sessions.update(sessionId, { status });
+        const result = await dbService.sessions.update(sessionId, { status });
+        if(result.error) throw result.error;
+        return result.data;
       },
       onSuccess: (data, variables) => {
         toast({
