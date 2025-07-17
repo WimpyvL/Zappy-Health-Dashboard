@@ -37,7 +37,7 @@ interface ScheduleSessionModalProps {
 
 const formSchema = z.object({
   patient: z.string().min(1, "Patient is required"),
-  sessionType: z.enum(["initial", "follow-up"], {
+  sessionType: z.enum(["initial_consultation", "follow_up", "check_in", "emergency"], {
     required_error: "You need to select a session type.",
   }),
   servicePlan: z.string().min(1, "Service plan is required"),
@@ -54,7 +54,7 @@ export function ScheduleSessionModal({ isOpen, onClose, onSubmit }: ScheduleSess
     resolver: zodResolver(formSchema),
     defaultValues: {
         patient: "",
-        sessionType: "initial",
+        sessionType: "initial_consultation",
         servicePlan: "",
         provider: "",
         dateTime: new Date(),
@@ -70,7 +70,7 @@ export function ScheduleSessionModal({ isOpen, onClose, onSubmit }: ScheduleSess
         plan: values.servicePlan,
         provider: values.provider,
         date: values.dateTime,
-        status: "Scheduled",
+        status: "pending",
     });
   };
 
@@ -114,26 +114,19 @@ export function ScheduleSessionModal({ isOpen, onClose, onSubmit }: ScheduleSess
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Session Type <span className="text-destructive">*</span></FormLabel>
-                    <FormControl>
-                      <RadioGroup
-                        onValueChange={field.onChange}
-                        defaultValue={field.value}
-                        className="flex items-center space-x-4"
-                      >
-                        <FormItem className="flex items-center space-x-2">
-                          <FormControl>
-                            <RadioGroupItem value="initial" />
-                          </FormControl>
-                          <FormLabel className="font-normal">Initial Consultation</FormLabel>
-                        </FormItem>
-                        <FormItem className="flex items-center space-x-2">
-                          <FormControl>
-                            <RadioGroupItem value="follow-up" />
-                          </FormControl>
-                          <FormLabel className="font-normal">Follow-up</FormLabel>
-                        </FormItem>
-                      </RadioGroup>
-                    </FormControl>
+                     <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a session type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="initial_consultation">Initial Consultation</SelectItem>
+                        <SelectItem value="follow_up">Follow-up</SelectItem>
+                        <SelectItem value="check_in">Check-in</SelectItem>
+                        <SelectItem value="emergency">Emergency</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}

@@ -20,6 +20,7 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import {
@@ -41,11 +42,21 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ScheduleSessionModal } from "./components/schedule-session-modal";
 import { useToast } from "@/hooks/use-toast";
-import { collection, getDocs, addDoc, query, orderBy, Timestamp } from "firebase/firestore";
+import { collection, getDocs, addDoc, query, orderBy, Timestamp, doc, updateDoc } from "firebase/firestore";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { db } from "@/lib/firebase/client";
+
+const SESSION_STATUSES = [
+  'pending',
+  'in-progress',
+  'completed',
+  'cancelled',
+  'followup'
+] as const;
+
+type SessionStatus = typeof SESSION_STATUSES[number];
 
 type Session = {
   id: string;
@@ -56,7 +67,7 @@ type Session = {
   date: string;
   plan: string;
   provider: string;
-  status: "Scheduled" | "Completed" | "Canceled";
+  status: SessionStatus;
 };
 
 const FilterDropdown = ({
@@ -80,6 +91,24 @@ const FilterDropdown = ({
     </DropdownMenuContent>
   </DropdownMenu>
 );
+
+const StatusBadge = ({ status }: { status: SessionStatus }) => {
+    const statusConfig = {
+      pending: { label: "Pending", className: "bg-gray-100 text-gray-800" },
+      'in-progress': { label: "In Progress", className: "bg-blue-100 text-blue-800" },
+      completed: { label: "Completed", className: "bg-green-100 text-green-800" },
+      cancelled: { label: "Cancelled", className: "bg-red-100 text-red-800" },
+      followup: { label: "Follow-up", className: "bg-purple-100 text-purple-800" },
+    };
+  
+    const currentStatus = statusConfig[status] || statusConfig.pending;
+  
+    return (
+      <Badge variant="secondary" className={`${currentStatus.className} hover:${currentStatus.className}`}>
+        {currentStatus.label}
+      </Badge>
+    );
+  };
 
 export default function SessionsPage() {
   const [sessions, setSessions] = React.useState<Session[]>([]);
@@ -127,7 +156,7 @@ export default function SessionsPage() {
           plan: values.servicePlan,
           provider: values.provider,
           date: Timestamp.fromDate(values.dateTime),
-          status: "Scheduled",
+          status: "pending",
       });
       toast({
         title: "Session Scheduled",
@@ -145,6 +174,26 @@ export default function SessionsPage() {
     }
   };
 
+  const handleUpdateStatus = async (sessionId: string, newStatus: SessionStatus) => {
+    try {
+        const sessionDoc = doc(db, "sessions", sessionId);
+        await updateDoc(sessionDoc, { status: newStatus });
+        toast({
+            title: "Session Updated",
+            description: `Session status changed to ${newStatus}.`,
+        });
+        fetchSessions();
+    } catch (error) {
+        console.error("Error updating session status: ", error);
+        toast({
+            variant: "destructive",
+            title: "Error Updating Status",
+            description: "An error occurred while updating the session.",
+        });
+    }
+  };
+
+
   return (
     <>
       <div className="flex flex-col gap-6">
@@ -153,8 +202,8 @@ export default function SessionsPage() {
           <div className="flex items-center gap-4">
             <div className="text-sm text-muted-foreground">
               Total: <span className="font-semibold">{sessions.length}</span> | 
-              Active: <span className="font-semibold">{sessions.filter(s => s.status === 'Scheduled').length}</span> | 
-              Completed: <span className="font-semibold">{sessions.filter(s => s.status === 'Completed').length}</span>
+              Pending: <span className="font-semibold">{sessions.filter(s => s.status === 'pending').length}</span> | 
+              Completed: <span className="font-semibold">{sessions.filter(s => s.status === 'completed').length}</span>
             </div>
             <Button onClick={() => setIsModalOpen(true)}>
               <Plus className="h-4 w-4" /> Add Session
@@ -173,11 +222,11 @@ export default function SessionsPage() {
           </div>
           <FilterDropdown
             label="All Types"
-            options={["Check-in", "Consultation", "Follow-up"]}
+            options={["initial_consultation", "follow_up", "check_in", "emergency"]}
           />
           <FilterDropdown
             label="All Statuses"
-            options={["Scheduled", "Completed", "Canceled"]}
+            options={["pending", "in-progress", "completed", "cancelled", "followup"]}
           />
         </div>
 
@@ -218,15 +267,13 @@ export default function SessionsPage() {
                             </div>
                             </TableCell>
                             <TableCell>
-                            <Badge variant="outline">{session.type}</Badge>
+                            <Badge variant="outline" className="capitalize">{session.type.replace(/_/g, ' ')}</Badge>
                             </TableCell>
                             <TableCell>{session.date}</TableCell>
                             <TableCell>{session.plan || 'N/A'}</TableCell>
                             <TableCell>{session.provider || 'N/A'}</TableCell>
                             <TableCell>
-                            <Badge variant={session.status === 'Scheduled' ? 'secondary' : 'default'} className={session.status === 'Scheduled' ? 'bg-cyan-100 text-cyan-800 hover:bg-cyan-200' : 'bg-green-100 text-green-800'}>
-                                {session.status}
-                            </Badge>
+                                <StatusBadge status={session.status} />
                             </TableCell>
                             <TableCell>
                             <DropdownMenu>
@@ -236,12 +283,27 @@ export default function SessionsPage() {
                                 </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end">
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuItem asChild><Link href={`/dashboard/sessions/${session.id}`}>View Details</Link></DropdownMenuItem>
-                                <DropdownMenuItem>Reschedule</DropdownMenuItem>
-                                <DropdownMenuItem className="text-destructive">
-                                    Cancel Session
-                                </DropdownMenuItem>
+                                    <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                    <DropdownMenuItem asChild>
+                                        <Link href={`/dashboard/sessions/${session.id}`}>View Details / Notes</Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem>Reschedule</DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuLabel>Change Status</DropdownMenuLabel>
+                                    {SESSION_STATUSES.map(status => (
+                                        <DropdownMenuItem 
+                                            key={status}
+                                            disabled={session.status === status}
+                                            onClick={() => handleUpdateStatus(session.id, status)}
+                                            className="capitalize"
+                                        >
+                                            Mark as {status.replace(/-/g, ' ')}
+                                        </DropdownMenuItem>
+                                    ))}
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem className="text-destructive">
+                                        Cancel Session
+                                    </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
                             </TableCell>
