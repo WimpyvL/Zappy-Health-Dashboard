@@ -160,17 +160,23 @@ export default function PatientsPage() {
 
   const handleFormSubmit = async (values: Omit<Patient, 'id' | 'name'>) => {
     try {
+      const patientData = { ...values, dob: Timestamp.fromDate(values.dob as Date) };
+      
       if (editingPatient) {
         // Update existing patient
         const patientDoc = doc(db, "patients", editingPatient.id);
-        await updateDoc(patientDoc, { ...values, dob: Timestamp.fromDate(values.dob as Date) });
+        await updateDoc(patientDoc, patientData);
         toast({
           title: "Patient Updated",
           description: `${values.firstName} ${values.lastName}'s information has been saved.`,
         });
       } else {
         // Add new patient
-        await addDoc(collection(db, "patients"), { ...values, status: 'Active', dob: Timestamp.fromDate(values.dob as Date) });
+        await addDoc(collection(db, "patients"), {
+          ...patientData,
+          status: 'Active',
+          createdAt: Timestamp.now(),
+        });
         toast({
           title: "Patient Added",
           description: `${values.firstName} ${values.lastName} has been added to the system.`,
