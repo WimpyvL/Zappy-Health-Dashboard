@@ -8,7 +8,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dbService } from './index';
 import { useToast } from '@/hooks/use-toast';
-import auditLogService from '../../utils/auditLogService';
+import auditLogService from './auditLogService';
 
 // --- Query Keys Factory ---
 // A centralized place for managing query keys. This is crucial for
@@ -85,8 +85,65 @@ export const usePatientById = (id, options) => {
     ...options,
   });
 };
-export const useCreatePatient = (options) => useCreateEntity('patients', options);
-export const useUpdatePatient = (options) => useUpdateEntity('patients', options);
+export const useCreatePatient = (options = {}) => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (patientData) => {
+      const { data, error } = await dbService.patients.create(patientData);
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data, variables, context) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.patients.all });
+      toast({
+        title: 'Patient Created',
+        description: `${variables.firstName} ${variables.lastName} has been added.`,
+      });
+      options.onSuccess?.(data, variables, context);
+    },
+    onError: (error, variables, context) => {
+      toast({
+        variant: "destructive",
+        title: 'Error Creating Patient',
+        description: error.message || 'An unknown error occurred.',
+      });
+      options.onError?.(error, variables, context);
+    },
+    ...options,
+  });
+};
+export const useUpdatePatient = (options = {}) => {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async ({ id, ...patientData }) => {
+      const { data, error } = await dbService.patients.update(id, patientData);
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data, variables, context) => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.patients.all });
+      queryClient.invalidateQueries({ queryKey: queryKeys.patients.details(variables.id) });
+      toast({
+        title: 'Patient Updated',
+        description: `Information for ${variables.firstName} ${variables.lastName} has been updated.`,
+      });
+      options.onSuccess?.(data, variables, context);
+    },
+    onError: (error, variables, context) => {
+      toast({
+        variant: "destructive",
+        title: 'Error Updating Patient',
+        description: error.message || 'An unknown error occurred.',
+      });
+      options.onError?.(error, variables, context);
+    },
+    ...options,
+  });
+};
 
 
 // --- Providers Hooks ---
@@ -153,4 +210,130 @@ export const useUpdateSessionStatus = (options = {}) => {
         if (options.onError) options.onError(error, variables);
       },
     });
+};
+// ============================================================================
+// CONSULTATION HOOKS
+// ============================================================================
+
+/**
+ * Hook to fetch consultations with pagination and filtering
+ * @param {Object} options - Query options with page, pageSize, filters
+ * @returns {Object} Query result with consultations data
+ */
+export const useConsultations = (options = {}) => {
+  const { page = 1, pageSize = 20, filters = {}, ...queryOptions } = options;
+  const { toast } = useToast();
+
+  return useQuery({
+    queryKey: ['consultations', 'list', { page, pageSize, filters }],
+    queryFn: async () => {
+      const result = await dbService.consultations.getAll({
+        page,
+        pageSize,
+        filters,
+      });
+      if (result.error) throw result.error;
+      return result.data || result;
+    },
+    keepPreviousData: true,
+    staleTime: 30 * 1000, // 30 seconds
+    onError: (error) => {
+      console.error('Fetch consultations error:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: error.message || 'Failed to fetch consultations'
+      });
+    },
+    ...queryOptions,
+  });
+};
+
+/**
+ * Hook to fetch patient orders
+ * @param {string} patientId - Patient ID
+ * @param {Object} options - Additional query options
+ * @returns {Object} Query result with patient orders
+ */
+export const usePatientOrders = (patientId, options = {}) => {
+  return useQuery({
+    queryKey: ['orders', 'patient', patientId],
+    queryFn: async () => {
+      if (!patientId) return [];
+      const result = await dbService.orders.getAll({ filters: [{ field: 'patientId', op: '==', value: patientId }] });
+      if (result.error) throw result.error;
+      return result;
+    },
+    enabled: !!patientId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    ...options,
+  });
+};
+
+/**
+ * Hook to fetch patient appointments
+ * @param {string} patientId - Patient ID
+ * @param {Object} options - Additional query options
+ * @returns {Object} Query result with patient appointments
+ */
+export const usePatientAppointments = (patientId, options = {}) => {
+  return useQuery({
+    queryKey: ['appointments', 'patient', patientId],
+    queryFn: async () => {
+      if (!patientId) return [];
+
+      console.warn(
+        'usePatientAppointments: Using sessions as a stand-in for appointments.'
+      );
+      const result = await dbService.sessions.getAll({ filters: [{ field: 'patient_id', op: '==', value: patientId }] });
+      if (result.error) throw result.error;
+      return result;
+    },
+    enabled: !!patientId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    ...options,
+  });
+};
+
+/**
+ * Hook to fetch patient payments
+ * @param {string} patientId - Patient ID
+ * @param {Object} options - Additional query options
+ * @returns {Object} Query result with patient payments
+ */
+export const usePatientPayments = (patientId, options = {}) => {
+  return useQuery({
+    queryKey: ['payments', 'patient', patientId],
+    queryFn: async () => {
+      if (!patientId) return [];
+      const result = await dbService.payments.getAll({ filters: [{ field: 'patientId', op: '==', value: patientId }] });
+      if (result.error) throw result.error;
+      return result;
+    },
+    enabled: !!patientId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    ...options,
+  });
+};
+
+/**
+ * Hook to fetch patient alerts
+ * @param {string} patientId - Patient ID
+ * @param {Object} options - Additional query options
+ * @returns {Object} Query result with patient alerts
+ */
+export const usePatientAlerts = (patientId, options = {}) => {
+  return useQuery({
+    queryKey: ['alerts', 'patient', patientId],
+    queryFn: async () => {
+      if (!patientId) return [];
+
+       const result = await dbService.alerts.getAll({ filters: [{ field: 'patientId', op: '==', value: patientId }] });
+       if (result.error) throw result.error;
+       return result;
+    },
+    enabled: !!patientId,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    ...options,
+  });
 };
