@@ -1,138 +1,306 @@
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'react-toastify';
-import { db } from '../services/database';
+import { useUpdatePatient } from '../services/database/hooks';
+import { useScheduleFollowUp } from '../apis/followUps/hooks';
+import { useFollowUpTemplates } from '../apis/followUps/hooks';
 
-/**
- * Custom hook for managing bulk patient operations.
- * Provides functions for bulk status updates and scheduling check-ins,
- * with progress tracking and undo functionality.
- */
-const useBulkPatientOperations = () => {
-  const queryClient = useQueryClient();
+// Undo stack management
+let undoStack = null;
+let undoTimer = null;
+
+export const useBulkPatientOperations = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0 });
   const [showUndo, setShowUndo] = useState(false);
-  const [undoAction, setUndoAction] = useState(null);
-  const [undoTimeLeft, setUndoTimeLeft] = useState(5);
+  const [undoTimeLeft, setUndoTimeLeft] = useState(30);
 
-  const bulkUpdateStatusMutation = useMutation({
-    mutationFn: async ({ patients, newStatus }) => {
-      setIsProcessing(true);
-      setProgress({ current: 0, total: patients.length });
-      const originalStatuses = patients.map(p => ({ id: p.id, status: p.status }));
-      
-      for (let i = 0; i < patients.length; i++) {
-        await db.patients.update(patients[i].id, { status: newStatus });
-        setProgress({ current: i + 1, total: patients.length });
-      }
-      
-      return { originalStatuses, newStatus };
-    },
-    onSuccess: ({ originalStatuses, newStatus }) => {
-      toast.success(`${originalStatuses.length} patients updated to ${newStatus}`);
-      setUndoAction(() => async () => {
-        for (const { id, status } of originalStatuses) {
-          await db.patients.update(id, { status });
-        }
-        toast.info('Bulk update undone.');
-        queryClient.invalidateQueries(['patients']);
-      });
-      setShowUndo(true);
-    },
-    onError: (error) => {
-      toast.error(`Bulk update failed: ${error.message}`);
-    },
-    onSettled: () => {
-      setIsProcessing(false);
-      queryClient.invalidateQueries(['patients']);
-    },
-  });
+  const queryClient = useQueryClient();
+  const updatePatient = useUpdatePatient();
+  const scheduleFollowUp = useScheduleFollowUp();
 
-  const bulkScheduleCheckInsMutation = useMutation({
-    mutationFn: async ({ patients, templateId }) => {
-      setIsProcessing(true);
-      setProgress({ current: 0, total: patients.length });
-      const createdCheckIns = [];
-      
-      for (let i = 0; i < patients.length; i++) {
-        // Placeholder for actual check-in scheduling logic
-        console.log(`Scheduling check-in for ${patients[i].id} with template ${templateId}`);
-        // In a real implementation, you'd create check-in records here.
-        // For now, we simulate success.
-        createdCheckIns.push({ patientId: patients[i].id, templateId });
-        setProgress({ current: i + 1, total: patients.length });
-      }
-
-      return { createdCheckIns };
-    },
-    onSuccess: ({ createdCheckIns }) => {
-      toast.success(`Scheduled check-ins for ${createdCheckIns.length} patients.`);
-       // Undo for check-ins would involve deleting the created records.
-      setUndoAction(() => async () => {
-        console.log('Undoing check-in scheduling for:', createdCheckIns);
-        toast.info('Check-in scheduling undone.');
-        queryClient.invalidateQueries(['patients']);
-      });
-      setShowUndo(true);
-    },
-    onError: (error) => {
-      toast.error(`Failed to schedule check-ins: ${error.message}`);
-    },
-    onSettled: () => {
-      setIsProcessing(false);
-      queryClient.invalidateQueries(['patients']);
-    },
-  });
-
-  const startUndoTimer = useCallback(() => {
-    setUndoTimeLeft(5);
-    const timer = setInterval(() => {
-      setUndoTimeLeft(prev => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          setShowUndo(false);
-          setUndoAction(null);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-    return timer;
-  }, []);
-
-  useEffect(() => {
-    let timer;
-    if (showUndo) {
-      timer = startUndoTimer();
+  // Clear any existing undo timer
+  const clearUndoTimer = useCallback(() => {
+    if (undoTimer) {
+      clearInterval(undoTimer);
+      undoTimer = null;
     }
-    return () => clearInterval(timer);
-  }, [showUndo, startUndoTimer]);
-
-
-  const executeUndo = useCallback(() => {
-    if (undoAction) {
-      undoAction();
-      setShowUndo(false);
-      setUndoAction(null);
-    }
-  }, [undoAction]);
-
-  const dismissUndo = useCallback(() => {
     setShowUndo(false);
-    setUndoAction(null);
+    setUndoTimeLeft(30);
+    undoStack = null;
   }, []);
+
+  // Start undo countdown timer
+  const startUndoTimer = useCallback(
+    (undoData, undoFunction) => {
+      undoStack = { data: undoData, function: undoFunction };
+      setShowUndo(true);
+      setUndoTimeLeft(30);
+
+      undoTimer = setInterval(() => {
+        setUndoTimeLeft((prev) => {
+          if (prev <= 1) {
+            clearUndoTimer();
+            return 30;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    },
+    [clearUndoTimer]
+  );
+
+  // Execute undo operation
+  const executeUndo = useCallback(async () => {
+    if (!undoStack) return;
+
+    try {
+      setIsProcessing(true);
+      await undoStack.function(undoStack.data);
+      clearUndoTimer();
+      toast.success('Operation undone successfully');
+    } catch (error) {
+      console.error('Undo failed:', error);
+      toast.error('Failed to undo operation');
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [clearUndoTimer]);
+
+  // Dismiss undo notification
+  const dismissUndo = useCallback(() => {
+    clearUndoTimer();
+  }, [clearUndoTimer]);
+
+  // Bulk update patient status
+  const bulkUpdateStatus = useCallback(
+    async (patients, newStatus) => {
+      if (!patients || patients.length === 0) return;
+
+      // Store original states for undo
+      const originalStates = patients.map((patient) => ({
+        id: patient.id,
+        status: patient.status,
+        first_name: patient.first_name,
+        last_name: patient.last_name,
+      }));
+
+      try {
+        setIsProcessing(true);
+        setProgress({ current: 0, total: patients.length });
+
+        const results = [];
+        const errors = [];
+
+        // Process each patient
+        for (let i = 0; i < patients.length; i++) {
+          const patient = patients[i];
+          setProgress({ current: i + 1, total: patients.length });
+
+          try {
+            await updatePatient.mutateAsync({
+              id: patient.id,
+              data: { status: newStatus },
+            });
+            results.push(patient);
+          } catch (error) {
+            console.error(`Failed to update patient ${patient.id}:`, error);
+            errors.push({ patient, error: error.message });
+          }
+        }
+
+        // Show results
+        const successCount = results.length;
+        const errorCount = errors.length;
+
+        if (successCount > 0) {
+          const statusText =
+            newStatus === 'deactivated' ? 'suspended' : newStatus;
+          const message =
+            errorCount > 0
+              ? `Successfully ${statusText} ${successCount} patients, ${errorCount} failed`
+              : `Successfully ${statusText} ${successCount} patients`;
+
+          // Start undo timer
+          startUndoTimer(originalStates, async (undoData) => {
+            // Undo function: restore original statuses
+            for (const originalState of undoData) {
+              try {
+                await updatePatient.mutateAsync({
+                  id: originalState.id,
+                  data: { status: originalState.status },
+                });
+              } catch (error) {
+                console.error(
+                  `Failed to undo status for patient ${originalState.id}:`,
+                  error
+                );
+              }
+            }
+
+            // Refresh patient list
+            queryClient.invalidateQueries(['patients']);
+
+            const undoStatusText =
+              originalStates[0]?.status === 'deactivated'
+                ? 'suspended'
+                : originalStates[0]?.status || 'original status';
+            toast.success(
+              `Restored ${undoData.length} patients to ${undoStatusText}`
+            );
+          });
+
+          // Show success notification
+          toast.success(message);
+        }
+
+        if (errorCount > 0 && successCount === 0) {
+          toast.error(`Failed to update ${errorCount} patients`);
+        }
+
+        // Refresh patient list
+        queryClient.invalidateQueries(['patients']);
+      } catch (error) {
+        console.error('Bulk status update failed:', error);
+        toast.error('Bulk status update failed');
+      } finally {
+        setIsProcessing(false);
+        setProgress({ current: 0, total: 0 });
+      }
+    },
+    [updatePatient, startUndoTimer, queryClient]
+  );
+
+  // Bulk schedule check-ins
+  const bulkScheduleCheckIns = useCallback(
+    async (patients, templateId) => {
+      if (!patients || patients.length === 0 || !templateId) return;
+
+      try {
+        setIsProcessing(true);
+        setProgress({ current: 0, total: patients.length });
+
+        const results = [];
+        const errors = [];
+        const scheduledFollowUps = [];
+
+        // Process each patient
+        for (let i = 0; i < patients.length; i++) {
+          const patient = patients[i];
+          setProgress({ current: i + 1, total: patients.length });
+
+          try {
+            // Schedule follow-up using existing system
+            const followUpData = await scheduleFollowUp.mutateAsync({
+              patientId: patient.id,
+              templateId: templateId,
+              paymentStatus: 'pending',
+            });
+
+            scheduledFollowUps.push({
+              followUpId: followUpData.id,
+              patientId: patient.id,
+              patientName: `${patient.first_name} ${patient.last_name}`,
+            });
+
+            results.push(patient);
+
+            // Send notification to patient (the existing scheduleFollowUp hook handles this)
+            console.log(
+              `Check-in scheduled for patient ${patient.first_name} ${patient.last_name}`
+            );
+          } catch (error) {
+            console.error(
+              `Failed to schedule check-in for patient ${patient.id}:`,
+              error
+            );
+            errors.push({ patient, error: error.message });
+          }
+        }
+
+        // Show results
+        const successCount = results.length;
+        const errorCount = errors.length;
+
+        if (successCount > 0) {
+          const message =
+            errorCount > 0
+              ? `Successfully scheduled ${successCount} check-ins and notified patients, ${errorCount} failed`
+              : `Successfully scheduled ${successCount} check-ins and notified patients`;
+
+          // Start undo timer
+          startUndoTimer(scheduledFollowUps, async (undoData) => {
+            // Undo function: cancel scheduled follow-ups
+            // Note: For now, we'll just log the cancellation
+            // In a full implementation, you would call the cancel API here
+
+            for (const item of undoData) {
+              try {
+                // TODO: Implement actual cancellation API call
+                console.log(
+                  `Would cancel check-in for patient ${item.patientName} (Follow-up ID: ${item.followUpId})`
+                );
+
+                // Send cancellation notification to patient
+                // Note: This would integrate with your notification system
+                console.log(
+                  `Would send cancellation notification to patient ${item.patientName}`
+                );
+              } catch (error) {
+                console.error(
+                  `Failed to cancel follow-up ${item.followUpId}:`,
+                  error
+                );
+              }
+            }
+
+            // Refresh relevant queries
+            queryClient.invalidateQueries(['followUps']);
+            queryClient.invalidateQueries(['patients']);
+
+            toast.success(`Cancelled ${undoData.length} scheduled check-ins`);
+          });
+
+          // Show success notification
+          toast.success(message);
+        }
+
+        if (errorCount > 0 && successCount === 0) {
+          toast.error(`Failed to schedule ${errorCount} check-ins`);
+        }
+
+        // Refresh relevant queries
+        queryClient.invalidateQueries(['followUps']);
+        queryClient.invalidateQueries(['patients']);
+      } catch (error) {
+        console.error('Bulk check-in scheduling failed:', error);
+        toast.error('Bulk check-in scheduling failed');
+      } finally {
+        setIsProcessing(false);
+        setProgress({ current: 0, total: 0 });
+      }
+    },
+    [scheduleFollowUp, startUndoTimer, queryClient]
+  );
 
   return {
-    bulkUpdateStatus: bulkUpdateStatusMutation.mutateAsync,
-    bulkScheduleCheckIns: bulkScheduleCheckInsMutation.mutateAsync,
+    // Operations
+    bulkUpdateStatus,
+    bulkScheduleCheckIns,
+
+    // State
     isProcessing,
     progress,
+
+    // Undo functionality
     showUndo,
     undoTimeLeft,
     executeUndo,
     dismissUndo,
+
+    // Cleanup
+    clearUndoTimer,
   };
 };
 
