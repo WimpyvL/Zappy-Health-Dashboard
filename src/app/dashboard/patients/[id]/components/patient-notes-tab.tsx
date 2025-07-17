@@ -96,6 +96,46 @@ export function PatientNotesTab({ patientId }: PatientNotesTabProps) {
     setShowViewModal(true);
   };
 
+  const handleNoteCreated = () => {
+    refetchNotes();
+  };
+
+  const handleNoteUpdated = () => {
+    refetchNotes();
+  };
+
+  const handleNoteDeleted = () => {
+    refetchNotes();
+  };
+
+  const getNoteTypeColor = (type: string) => {
+    const colorMap: { [key: string]: string } = {
+      general: 'bg-gray-100 text-gray-800',
+      consultation: 'bg-blue-100 text-blue-800',
+      follow_up: 'bg-green-100 text-green-800',
+      medication_review: 'bg-purple-100 text-purple-800',
+      weight_management: 'bg-orange-100 text-orange-800',
+      ed: 'bg-red-100 text-red-800',
+      primary_care: 'bg-indigo-100 text-indigo-800',
+      mental_health: 'bg-pink-100 text-pink-800',
+    };
+    return colorMap[type] || 'bg-gray-100 text-gray-800';
+  };
+
+  const getNoteTypeDisplay = (type: string) => {
+    const typeMap: { [key: string]: string } = {
+      general: 'General',
+      consultation: 'Consultation',
+      follow_up: 'Follow-up',
+      medication_review: 'Med Review',
+      weight_management: 'Weight Mgmt',
+      ed: 'ED',
+      primary_care: 'Primary Care',
+      mental_health: 'Mental Health',
+    };
+    return typeMap[type] || type;
+  };
+
   if (notesError) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-4">
@@ -171,6 +211,11 @@ export function PatientNotesTab({ patientId }: PatientNotesTabProps) {
                         <h3 className="font-medium text-gray-900">
                           {note.title}
                         </h3>
+                        <span
+                          className={`px-2 py-1 rounded-full text-xs font-medium ${getNoteTypeColor(note.note_type)}`}
+                        >
+                          {getNoteTypeDisplay(note.note_type)}
+                        </span>
                       </div>
                       <p className="text-gray-600 text-sm line-clamp-2 mb-2">
                         {note.content}
@@ -194,10 +239,6 @@ export function PatientNotesTab({ patientId }: PatientNotesTabProps) {
           )}
         </CardContent>
       </Card>
-
-      {/* MODALS WILL GO HERE */}
-      {/* <NoteCreationModal isOpen={showCreateModal} onClose={() => setShowCreateModal(false)} patientId={patientId} onNoteCreated={refetchNotes} /> */}
-      {/* <NoteViewModal isOpen={showViewModal} onClose={() => setShowViewModal(false)} note={selectedNote} onNoteUpdated={refetchNotes} onNoteDeleted={refetchNotes} /> */}
     </div>
   );
 }
