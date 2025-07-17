@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -28,11 +29,11 @@ export default function DashboardLayout({
               <Button variant="ghost" className="h-10 w-10 p-0" asChild>
                 <a href="/dashboard">
                   <Leaf className="w-6 h-6 text-primary" />
-                  <span className="sr-only">Zappy</span>
+                  <span className="sr-only">HealthFlow</span>
                 </a>
               </Button>
               <h2 className="text-lg font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
-                Zappy
+                HealthFlow
               </h2>
             </div>
             <SidebarTrigger className="lg:hidden" />
@@ -43,7 +44,7 @@ export default function DashboardLayout({
         </SidebarContent>
       </Sidebar>
       <SidebarInset>
-        <main className="flex-1 p-6 lg:p-8 overflow-auto">
+        <main className="flex-1 p-6 lg:p-8 overflow-auto bg-slate-50">
           {children}
         </main>
       </SidebarInset>

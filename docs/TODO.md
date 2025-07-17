@@ -2,8 +2,6 @@
 
 This list tracks the next steps for implementing and integrating features in the Zappy Health dashboard.
 
-## High Priority
-
 - [ ] **Integrate Shop Page with Telehealth Flow Orchestrator:**
   - Update `ShopPage.jsx` to use the `useTelehealthFlow` hook.
   - Initialize a new flow when a user selects a product or category.
@@ -23,3 +21,5 @@ This list tracks the next steps for implementing and integrating features in the
     - Patient-specific dashboard (`/my-services`).
     - Browsing and purchasing services (`/shop`).
     - Viewing health programs and progress.
+
+- [ ] **Build out patient-facing UI and logic**: Implement the full patient experience, including the patient dashboard, service management, and shopping features, as a separate application.

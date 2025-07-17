@@ -24,6 +24,8 @@ import {
   Palette,
   Heart,
   ShoppingBag,
+  Leaf,
+  Calendar,
 } from "lucide-react";
 import {
   SidebarMenu,
@@ -39,6 +41,7 @@ const adminNavGroups = [
         label: "Overview",
         items: [
             { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
+            { href: "/dashboard/calendar", label: "Calendar", icon: Calendar },
         ]
     },
     {
@@ -75,8 +78,8 @@ const adminNavGroups = [
     {
         label: "Products & Content",
         items: [
-            { href: "/dashboard/admin/products", label: "Products & Subscriptions", icon: Box },
-            { href: "/dashboard/admin/resources", label: "Educational Resources", icon: Library },
+            { href: "/dashboard/admin/products", label: "Products", icon: Box },
+            { href: "/dashboard/admin/resources", label: "Resources", icon: Library },
         ]
     },
     {
