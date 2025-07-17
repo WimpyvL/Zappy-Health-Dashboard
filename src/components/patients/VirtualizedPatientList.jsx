@@ -2,7 +2,6 @@
 import React, { useMemo, useCallback, useRef, useEffect } from 'react';
 import { FixedSizeList as List } from 'react-window';
 import InfiniteLoader from 'react-window-infinite-loader';
-import PatientStatusBadge from '../ui/PatientStatusBadge';
 import Tag from '../common/Tag';
 import { formatDate } from '../../utils/dateUtils';
 import './VirtualizedPatientList.css';
@@ -40,18 +39,13 @@ const VirtualizedPatientList = ({
     ]
   );
 
-  // Calculate total item count (patients + loading indicator)
   const itemCount = hasNextPage ? patients.length + 1 : patients.length;
 
-  // Check if item is loaded
   const isItemLoaded = useCallback(
-    (index) => {
-      return !!patients[index];
-    },
+    (index) => !!patients[index],
     [patients]
   );
 
-  // Load more items when needed
   const loadMoreItemsCallback = useCallback(
     (startIndex, stopIndex) => {
       if (!isNextPageLoading && hasNextPage) {
@@ -62,10 +56,8 @@ const VirtualizedPatientList = ({
     [loadMoreItems, isNextPageLoading, hasNextPage]
   );
 
-  // Cleanup function for memory management
   useEffect(() => {
     return () => {
-      // Clear any cached data when component unmounts
       if (listRef.current) {
         // @ts-ignore
         listRef.current.scrollTo(0);
@@ -82,7 +74,7 @@ const VirtualizedPatientList = ({
         isItemLoaded={isItemLoaded}
         itemCount={itemCount}
         loadMoreItems={loadMoreItemsCallback}
-        threshold={10} // Start loading when 10 items from the end
+        threshold={10}
       >
         {({ onItemsRendered, ref }) => (
           <List
@@ -107,7 +99,6 @@ const VirtualizedPatientList = ({
   );
 };
 
-// Memoized patient row component for performance
 const PatientRow = React.memo(({ index, style, data }) => {
   const {
     patients,
@@ -118,7 +109,6 @@ const PatientRow = React.memo(({ index, style, data }) => {
   } = data;
   const patient = patients[index];
 
-  // Move useCallback definitions to the top
   const handleRowClick = useCallback(
     (e) => {
       if (isSelectionMode) {
@@ -139,7 +129,6 @@ const PatientRow = React.memo(({ index, style, data }) => {
     [patient.id, onPatientSelect]
   );
 
-  // Loading row
   if (!patient) {
     return (
       <div style={style} className="patient-row loading-row">
@@ -169,7 +158,6 @@ const PatientRow = React.memo(({ index, style, data }) => {
       onClick={handleRowClick}
     >
       <div className="patient-row-content">
-        {/* Selection checkbox */}
         {isSelectionMode && (
           <div className="patient-checkbox">
             <input
@@ -181,20 +169,13 @@ const PatientRow = React.memo(({ index, style, data }) => {
           </div>
         )}
 
-        {/* Patient avatar */}
         <div className="patient-avatar-small">
           {patientInitials}
-          <div className={`status-dot ${patient.status || 'active'}`}></div>
         </div>
 
-        {/* Patient info */}
         <div className="patient-info-row">
           <div className="patient-primary-info">
             <span className="patient-name">{patientName}</span>
-            <PatientStatusBadge
-              status={patient.status || 'active'}
-              size="small"
-            />
           </div>
           <div className="patient-secondary-info">
             <span className="patient-age-gender">
@@ -207,7 +188,6 @@ const PatientRow = React.memo(({ index, style, data }) => {
           </div>
         </div>
 
-        {/* Patient tags */}
         <div className="patient-tags-row">
           {patient.tags?.slice(0, 2).map((tag) => (
             <Tag
@@ -223,7 +203,6 @@ const PatientRow = React.memo(({ index, style, data }) => {
           )}
         </div>
 
-        {/* Last activity */}
         <div className="patient-activity">
           <span className="last-activity">
             Last: {formatDate(patient.updated_at || patient.created_at)}
@@ -236,7 +215,6 @@ const PatientRow = React.memo(({ index, style, data }) => {
 
 PatientRow.displayName = 'PatientRow';
 
-// Helper functions
 const calculateAge = (dob) => {
   if (!dob) return 'Unknown';
   const birthDate = new Date(dob);

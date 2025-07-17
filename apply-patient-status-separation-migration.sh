@@ -17,11 +17,10 @@ supabase db push --file supabase/migrations/20250717_separate_patient_statuses.s
 # Check the exit code of the last command
 if [ $? -eq 0 ]; then
     echo "✅ Migration applied successfully."
-    echo "The 'patients' table has been updated with 'account_status' and 'id_verification_status' columns."
-    echo "The old 'status' column has been removed."
+    echo "The 'patients' table has been updated. Old status columns have been migrated to the tags system and removed."
     echo "Next steps:"
-    echo "1. Verify the changes in your Supabase dashboard."
-    echo "2. Test patient creation and editing to ensure new status fields work correctly."
+    echo "1. Verify the changes in your Supabase dashboard by checking the 'tags' and 'patient_tags' tables."
+    echo "2. Test patient list filtering to ensure tag-based status filtering works correctly."
 else
     echo "❌ Migration failed."
     echo "Please check the error messages above and your Supabase project status."
