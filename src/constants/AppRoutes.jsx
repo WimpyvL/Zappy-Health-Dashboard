@@ -9,8 +9,6 @@ import RoleProtectedRoute from '@/appGuards/RoleProtectedRoute';
 const Dashboard = React.lazy(() => import('../pages/dashboard/ProviderDashboard.jsx'));
 const Patients = React.lazy(() => import('../pages/patients/Patients.jsx'));
 const PatientDetail = React.lazy(() => import('../pages/patients/PatientDetailOptimized.jsx'));
-const PatientServicesPageV3 = React.lazy(() => import('../pages/patients/PatientServicesPageV3.jsx'));
-const ShopPage = React.lazy(() => import('../pages/patients/ShopPage.jsx'));
 const Sessions = React.lazy(() => import('../pages/sessions/Sessions.jsx'));
 const EditSessionPage = React.lazy(() => import('../pages/sessions/[id]/page.tsx'));
 const Orders = React.lazy(() => import('../pages/orders/Orders.jsx'));
@@ -56,13 +54,9 @@ const AppRoutes = () => {
         <Route path="/public/intake" element={<ModernIntakeFormPage />} />
 
         {/* Core Authenticated Routes */}
-        <Route path="/" element={<MainLayout><Navigate to="/my-services" replace /></MainLayout>} />
+        <Route path="/" element={<MainLayout><Navigate to="/dashboard" replace /></MainLayout>} />
         <Route path="/dashboard" element={<MainLayout><Dashboard /></MainLayout>} />
         
-        {/* Patient-Facing Routes */}
-        <Route path="/my-services" element={<MainLayout><PatientServicesPageV3 /></MainLayout>} />
-        <Route path="/shop" element={<MainLayout><ShopPage /></MainLayout>} />
-
         {/* Admin & Provider Routes */}
         <Route path="/patients" element={<MainLayout><Patients /></MainLayout>} />
         <Route path="/patients/:id/*" element={<MainLayout><PatientDetail /></MainLayout>} />
