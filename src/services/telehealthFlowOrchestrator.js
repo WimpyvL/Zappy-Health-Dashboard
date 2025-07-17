@@ -3,7 +3,7 @@
  * from category selection to order fulfillment.
  */
 import { db } from '@/lib/firebase/client';
-import { collection, addDoc, doc, updateDoc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc, getDoc, Timestamp } from 'firebase/firestore';
 import { categoryProductOrchestrator } from './categoryProductOrchestrator';
 
 export const FLOW_STATUSES = {
@@ -41,8 +41,8 @@ class TelehealthFlowOrchestrator {
         patient_id: patientId,
         category_id: categoryId,
         current_status: FLOW_STATUSES.CATEGORY_SELECTED,
-        started_at: new Date(),
-        last_activity_at: new Date(),
+        started_at: Timestamp.now(),
+        last_activity_at: Timestamp.now(),
         flow_metadata: { categoryName: '' }, // Add more metadata as needed
       };
       const docRef = await addDoc(this.flowsCollection, flowData);
@@ -75,7 +75,7 @@ class TelehealthFlowOrchestrator {
         subscription_duration_id: subscriptionDurationId || null,
         current_status: FLOW_STATUSES.SUBSCRIPTION_CONFIGURED,
         pricing_snapshot: pricingSnapshot,
-        last_activity_at: new Date(),
+        last_activity_at: Timestamp.now(),
       };
       
       await updateDoc(flowRef, updateData);
@@ -93,6 +93,97 @@ class TelehealthFlowOrchestrator {
   }
 
   /**
+   * Processes the intake form, creates related records, and updates the flow.
+   * @param {string} flowId - The ID of the telehealth flow.
+   * @param {object} formData - The submitted form data.
+   * @returns {Promise<{success: boolean, flow: object, order: object, consultation: object, error: Error|null}>}
+   */
+  async processIntakeForm(flowId, formData) {
+    const flowRef = doc(db, 'enhanced_telehealth_flows', flowId);
+    let flowData;
+
+    try {
+      // Step 1: Get current flow data
+      const flowSnap = await getDoc(flowRef);
+      if (!flowSnap.exists()) throw new Error("Flow not found.");
+      flowData = { id: flowSnap.id, ...flowSnap.data() };
+
+      // Step 2: Save the form submission
+      const submissionRef = await addDoc(collection(db, 'form_submissions'), {
+        flow_id: flowId,
+        patient_id: flowData.patient_id,
+        form_data: formData,
+        submitted_at: Timestamp.now(),
+      });
+      
+      await this.logStateTransition(flowId, flowData.current_status, FLOW_STATUSES.INTAKE_COMPLETED, { submissionId: submissionRef.id });
+
+      // Step 3: Create Consultation
+      const consultationRef = await addDoc(collection(db, 'consultations'), {
+          patient_id: flowData.patient_id,
+          provider_id: null, // To be assigned by a provider later
+          status: 'pending_review',
+          form_submission_id: submissionRef.id,
+          created_at: Timestamp.now(),
+      });
+
+      await this.logStateTransition(flowId, FLOW_STATUSES.INTAKE_COMPLETED, FLOW_STATUSES.CONSULTATION_PENDING, { consultationId: consultationRef.id });
+
+      // Step 4: Create Order
+      const orderRef = await addDoc(collection(db, 'orders'), {
+        patient_id: flowData.patient_id,
+        status: 'pending_consultation',
+        items: [{ productId: flowData.product_id, quantity: 1, price: flowData.pricing_snapshot.final_price }],
+        total: flowData.pricing_snapshot.final_price,
+        created_at: Timestamp.now(),
+        consultation_id: consultationRef.id,
+      });
+
+      await this.logStateTransition(flowId, FLOW_STATUSES.CONSULTATION_PENDING, FLOW_STATUSES.ORDER_CREATED, { orderId: orderRef.id });
+
+      // Step 5: Create Invoice
+      const invoiceRef = await addDoc(collection(db, 'invoices'), {
+          patient_id: flowData.patient_id,
+          order_id: orderRef.id,
+          amount: flowData.pricing_snapshot.final_price,
+          status: 'pending',
+          due_date: Timestamp.fromDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)), // Due in 7 days
+          created_at: Timestamp.now(),
+      });
+
+      await this.logStateTransition(flowId, FLOW_STATUSES.ORDER_CREATED, FLOW_STATUSES.INVOICE_GENERATED, { invoiceId: invoiceRef.id });
+
+      // Step 6: Update the main flow document with all new references
+      const finalUpdateData = {
+        current_status: FLOW_STATUSES.CONSULTATION_PENDING,
+        form_submission_id: submissionRef.id,
+        consultation_id: consultationRef.id,
+        order_id: orderRef.id,
+        invoice_id: invoiceRef.id,
+        last_activity_at: Timestamp.now(),
+      };
+      await updateDoc(flowRef, finalUpdateData);
+      
+      const finalFlowSnap = await getDoc(flowRef);
+      const finalFlow = { id: finalFlowSnap.id, ...finalFlowSnap.data() };
+      
+      return { 
+        success: true, 
+        flow: finalFlow, 
+        order: {id: orderRef.id}, 
+        consultation: {id: consultationRef.id}, 
+        error: null 
+      };
+
+    } catch (error) {
+      console.error('Error processing intake form:', error);
+      // Optional: Add rollback logic here if needed
+      return { success: false, flow: flowData, error };
+    }
+  }
+
+
+  /**
    * Logs a state transition for a given flow.
    * @param {string} flowId - The ID of the flow.
    * @param {string|null} fromStatus - The previous status.
@@ -106,12 +197,11 @@ class TelehealthFlowOrchestrator {
       from_status: fromStatus,
       to_status: toStatus,
       transition_data: data,
-      created_at: new Date(),
+      created_at: Timestamp.now(),
     });
   }
 
   // Future methods to be added:
-  // async processIntakeForm(flowId, formData) {}
   // async processConsultationApproval(flowId, approvalData) {}
   // async getFlowStatus(flowId) {}
 }

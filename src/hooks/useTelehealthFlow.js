@@ -12,11 +12,11 @@ export const useTelehealthFlow = (initialFlowId = null) => {
   const [error, setError] = useState(null);
   const { toast } = useToast();
 
-  const initializeFlow = useCallback(async ({ patientId, categoryId }) => {
+  const initializeFlow = useCallback(async ({ patientId, categoryId, productId }) => {
     setLoading(true);
     setError(null);
     try {
-      const result = await telehealthFlowOrchestrator.initializeFlow({ patientId, categoryId });
+      const result = await telehealthFlowOrchestrator.initializeFlow({ patientId, categoryId, productId });
       if (result.success) {
         setFlow(result.flow);
         toast({ title: "Flow Started", description: "Your telehealth journey has begun." });
@@ -60,6 +60,33 @@ export const useTelehealthFlow = (initialFlowId = null) => {
     }
   }, [flow, toast]);
 
+  const submitIntakeForm = useCallback(async (formData) => {
+    if (!flow) {
+        const err = new Error("Flow not initialized.");
+        setError(err.message);
+        toast({ variant: "destructive", title: "Error", description: err.message });
+        return { success: false, error: err };
+    }
+    setLoading(true);
+    setError(null);
+    try {
+        const result = await telehealthFlowOrchestrator.processIntakeForm(flow.id, formData);
+        if (result.success) {
+            setFlow(result.flow);
+            toast({ title: "Intake Complete", description: "Your information is now under review." });
+        } else {
+            throw result.error || new Error("Failed to submit intake form.");
+        }
+        return result;
+    } catch (err) {
+        setError(err.message);
+        toast({ variant: "destructive", title: "Submission Error", description: err.message });
+        return { success: false, error: err };
+    } finally {
+        setLoading(false);
+    }
+  }, [flow, toast]);
+
   const getProductRecommendations = useCallback(async (categoryId) => {
       setLoading(true);
       setError(null);
@@ -76,7 +103,6 @@ export const useTelehealthFlow = (initialFlowId = null) => {
   }, [toast]);
   
   // Future actions:
-  // const submitIntakeForm = useCallback(async (formData) => { ... }, [flow, toast]);
   // const approveConsultation = useCallback(async (approvalData) => { ... }, [flow, toast]);
 
   const isFlowActive = flow && flow.current_status !== FLOW_STATUSES.COMPLETED && flow.current_status !== FLOW_STATUSES.CANCELLED;
@@ -87,6 +113,7 @@ export const useTelehealthFlow = (initialFlowId = null) => {
     error,
     initializeFlow,
     selectProduct,
+    submitIntakeForm,
     getProductRecommendations,
     isFlowActive,
     // Add other actions here
