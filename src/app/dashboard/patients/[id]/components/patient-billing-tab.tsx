@@ -22,14 +22,24 @@ import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from 'date-fns';
 import { db } from "@/lib/firebase/client";
+import { useToast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
 
 interface PatientBillingTabProps {
   patientId: string;
 }
 
+type Invoice = {
+  id: string;
+  dueDate: { toDate: () => Date };
+  amount: number;
+  status: 'Paid' | 'Pending' | 'Overdue';
+}
+
 export function PatientBillingTab({ patientId }: PatientBillingTabProps) {
-  const [invoices, setInvoices] = useState<any[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     const fetchBillingData = async () => {
@@ -39,19 +49,24 @@ export function PatientBillingTab({ patientId }: PatientBillingTabProps) {
       };
       setLoading(true);
       try {
-        const q = query(collection(db, "invoices"), where("patientId", "==", patientId));
+        const q = query(collection(db, "invoices"), where("patientId", "==", patientId), orderBy("dueDate", "desc"));
         const querySnapshot = await getDocs(q);
-        const invoicesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const invoicesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Invoice));
         setInvoices(invoicesData);
       } catch (error) {
         console.error("Error fetching billing data: ", error);
+        toast({
+            variant: "destructive",
+            title: "Error",
+            description: "Could not fetch billing information.",
+        });
       } finally {
         setLoading(false);
       }
     };
 
     fetchBillingData();
-  }, [patientId]);
+  }, [patientId, toast]);
   
   return (
     <div className="space-y-6">
@@ -113,22 +128,23 @@ export function PatientBillingTab({ patientId }: PatientBillingTabProps) {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
-                      <div className="flex justify-center items-center">
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Loading invoices...
-                      </div>
-                    </TableCell>
-                </TableRow>
+                Array.from({length: 2}).map((_, i) => (
+                    <TableRow key={i}>
+                        <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                        <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                        <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                        <TableCell><Skeleton className="h-8 w-20" /></TableCell>
+                    </TableRow>
+                ))
               ) : invoices.length > 0 ? (
                 invoices.map(invoice => (
                     <TableRow key={invoice.id}>
-                        <TableCell className="font-mono">{invoice.id.substring(0,8)}</TableCell>
+                        <TableCell className="font-mono text-xs">{invoice.id.substring(0,8)}...</TableCell>
                         <TableCell>{format(invoice.dueDate.toDate(), 'MMM dd, yyyy')}</TableCell>
                         <TableCell>${invoice.amount.toFixed(2)}</TableCell>
-                        <TableCell>{invoice.status}</TableCell>
-                        <TableCell>...</TableCell>
+                        <TableCell><Badge variant={invoice.status === 'Paid' ? 'default' : 'secondary'} className={invoice.status === 'Paid' ? 'bg-green-100 text-green-800' : ''}>{invoice.status}</Badge></TableCell>
+                        <TableCell><Button variant="ghost" size="sm">View</Button></TableCell>
                     </TableRow>
                 ))
               ) : (

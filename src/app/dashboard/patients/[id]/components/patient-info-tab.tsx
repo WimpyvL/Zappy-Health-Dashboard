@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { User, Heart, FileText, Upload } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { format } from "date-fns";
 
 const InfoField = ({ label, value, isLoading }: { label: string; value: string | undefined; isLoading?: boolean }) => (
   <div>
@@ -33,7 +34,8 @@ interface PatientInfoTabProps {
 }
 
 export function PatientInfoTab({ patient, isLoading }: PatientInfoTabProps) {
-
+  const patientName = patient ? `${patient.firstName || ''} ${patient.lastName || ''}`.trim() : 'N/A';
+  
   return (
     <div className="space-y-6">
       {/* Personal Information */}
@@ -47,8 +49,8 @@ export function PatientInfoTab({ patient, isLoading }: PatientInfoTabProps) {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
-            <InfoField label="Full Name" value={patient?.name} isLoading={isLoading} />
-            <InfoField label="Date of Birth" value={patient?.dob ? new Date(patient.dob).toLocaleDateString() : 'N/A'} isLoading={isLoading} />
+            <InfoField label="Full Name" value={patientName} isLoading={isLoading} />
+            <InfoField label="Date of Birth" value={patient?.dob ? format(patient.dob, 'MM/dd/yyyy') : 'N/A'} isLoading={isLoading} />
             <InfoField label="Email" value={patient?.email} isLoading={isLoading} />
             <InfoField label="Phone" value={patient?.phone} isLoading={isLoading} />
             <InfoField label="Address" value={patient?.address} isLoading={isLoading} />
