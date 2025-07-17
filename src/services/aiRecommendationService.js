@@ -542,11 +542,4 @@ export class AIRecommendationService {
       return analytics;
     } catch (error) {
       console.error('Error getting recommendation analytics:', error);
-      return null;
-    }
-  }
-}
-
-// Export singleton instance
-export const aiRecommendationService = new AIRecommendationService();
-export default aiRecommendationService;
+      return null
