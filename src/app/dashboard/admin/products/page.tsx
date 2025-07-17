@@ -40,29 +40,9 @@ import {
 } from "@/components/ui/tabs";
 import { ProductFormModal } from "./components/product-form-modal";
 import { useToast } from "@/hooks/use-toast";
-import { initializeApp } from "firebase/app";
 import { getFirestore, collection, getDocs, addDoc, updateDoc, doc, query, orderBy, Timestamp } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
-
-// Your web app's Firebase configuration
-const firebaseConfig = {
-    apiKey: "AIzaSyBVV_vq5fjNSASYQndmbRbEtlfyOieFVTs",
-    authDomain: "zappy-health-c1kob.firebaseapp.com",
-    databaseURL: "https://zappy-health-c1kob-default-rtdb.firebaseio.com",
-    projectId: "zappy-health-c1kob",
-    storageBucket: "zappy-health-c1kob.appspot.com",
-    messagingSenderId: "833435237612",
-    appId: "1:833435237612:web:53731373b2ad7568f279c9"
-  };
-  
-  // Initialize Firebase
-  let app;
-  try {
-    app = initializeApp(firebaseConfig, "products-app");
-  } catch (e) {
-    app = initializeApp(firebaseConfig);
-  }
-  const db = getFirestore(app);
+import { db } from "@/lib/firebase/client";
 
 type Product = {
     id: string;
