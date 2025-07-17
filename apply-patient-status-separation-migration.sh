@@ -1,3 +1,4 @@
+
 #!/bin/bash
 # This script applies the patient status separation migration to your Supabase database.
 

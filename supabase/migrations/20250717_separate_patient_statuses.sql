@@ -1,60 +1,95 @@
--- This migration standardizes patient status into the tags system.
 
--- Step 1: Create status-related tags if they don't exist
-INSERT INTO tags (name, type, color, description)
+-- Migration to separate patient statuses into the tags system
+-- This script moves data from old status columns to the tags system and removes the old columns.
+
+BEGIN;
+
+-- 1. Ensure required extensions and tables exist for safety
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+CREATE TABLE IF NOT EXISTS tags (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    name TEXT NOT NULL UNIQUE,
+    color TEXT,
+    description TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS patient_tags (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    patient_id UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+    tag_id UUID NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(patient_id, tag_id)
+);
+
+-- 2. Create the status tags if they don't exist
+INSERT INTO tags (name, color, description)
 VALUES
-    ('Status: Active', 'status', '#22C55E', 'Patient is actively receiving care.'),
-    ('Status: Suspended', 'status', '#F97316', 'Patient account is temporarily suspended.'),
-    ('Status: Banned', 'status', '#EF4444', 'Patient is permanently banned.'),
-    ('Status: ID Verified', 'verification', '#10B981', 'Patient ID has been successfully verified.'),
-    ('Status: ID Pending', 'verification', '#EAB308', 'Patient ID verification is pending.'),
-    ('Status: ID Rejected', 'verification', '#DC2626', 'Patient ID verification was rejected.'),
-    ('Status: Not Required', 'verification', '#A1A1AA', 'ID verification is not required for this patient.')
+    ('Active', '#22C55E', 'Patient is currently active in a program.'),
+    ('Inactive', '#6B7280', 'Patient is not currently active.'),
+    ('Suspended', '#F59E0B', 'Patient account is temporarily suspended.'),
+    ('Blacklisted', '#EF4444', 'Patient is permanently banned.'),
+    ('ID Verified', '#3B82F6', 'Patient identity has been verified.'),
+    ('ID Pending', '#A855F7', 'Patient identity verification is pending.'),
+    ('ID Rejected', '#D946EF', 'Patient identity verification was rejected.')
 ON CONFLICT (name) DO NOTHING;
 
--- Step 2: Function to migrate a single status to a tag for a patient
-CREATE OR REPLACE FUNCTION migrate_status_to_tag(p_patient_id UUID, p_status_value TEXT, p_status_type TEXT)
-RETURNS void AS $$
-DECLARE
-    v_tag_id UUID;
-BEGIN
-    -- Find the corresponding tag ID
-    SELECT id INTO v_tag_id FROM tags WHERE name = p_status_value AND type = p_status_type LIMIT 1;
-
-    -- If tag exists, create the patient-tag relationship
-    IF v_tag_id IS NOT NULL THEN
-        INSERT INTO patient_tags (patient_id, tag_id)
-        VALUES (p_patient_id, v_tag_id)
-        ON CONFLICT (patient_id, tag_id) DO NOTHING;
-    END IF;
-END;
-$$ LANGUAGE plpgsql;
-
--- Step 3: Migrate existing statuses to tags
+-- 3. Migrate data from `account_status` to tags
 DO $$
 DECLARE
     patient_record RECORD;
+    status_tag_id UUID;
 BEGIN
-    FOR patient_record IN SELECT id, account_status, id_verification_status FROM patients LOOP
-        -- Migrate account_status
-        IF patient_record.account_status IS NOT NULL THEN
-            PERFORM migrate_status_to_tag(patient_record.id, 'Status: ' || INITCAP(patient_record.account_status), 'status');
-        END IF;
+    FOR patient_record IN SELECT id, account_status FROM patients WHERE account_status IS NOT NULL
+    LOOP
+        -- Find the corresponding tag ID
+        SELECT id INTO status_tag_id FROM tags WHERE name = INITCAP(patient_record.account_status);
 
-        -- Migrate id_verification_status
-        IF patient_record.id_verification_status IS NOT NULL THEN
-            PERFORM migrate_status_to_tag(patient_record.id, 'Status: ID ' || INITCAP(patient_record.id_verification_status), 'verification');
+        IF status_tag_id IS NOT NULL THEN
+            -- Insert into patient_tags, handling potential conflicts
+            INSERT INTO patient_tags (patient_id, tag_id)
+            VALUES (patient_record.id, status_tag_id)
+            ON CONFLICT (patient_id, tag_id) DO NOTHING;
         END IF;
     END LOOP;
 END $$;
 
--- Step 4: Drop the old status columns
+-- 4. Migrate data from `id_verification_status` to tags
+DO $$
+DECLARE
+    patient_record RECORD;
+    id_status_tag_id UUID;
+    tag_name TEXT;
+BEGIN
+    FOR patient_record IN SELECT id, id_verification_status FROM patients WHERE id_verification_status IS NOT NULL
+    LOOP
+        -- Map the verification status to a tag name
+        tag_name := CASE patient_record.id_verification_status
+            WHEN 'verified' THEN 'ID Verified'
+            WHEN 'pending' THEN 'ID Pending'
+            WHEN 'rejected' THEN 'ID Rejected'
+            ELSE NULL
+        END;
+
+        IF tag_name IS NOT NULL THEN
+            -- Find the corresponding tag ID
+            SELECT id INTO id_status_tag_id FROM tags WHERE name = tag_name;
+
+            IF id_status_tag_id IS NOT NULL THEN
+                -- Insert into patient_tags, handling potential conflicts
+                INSERT INTO patient_tags (patient_id, tag_id)
+                VALUES (patient_record.id, id_status_tag_id)
+                ON CONFLICT (patient_id, tag_id) DO NOTHING;
+            END IF;
+        END IF;
+    END LOOP;
+END $$;
+
+-- 5. Safely drop the old status columns from the patients table
 ALTER TABLE patients
 DROP COLUMN IF EXISTS account_status,
 DROP COLUMN IF EXISTS id_verification_status;
 
--- Step 5: Clean up the helper function
-DROP FUNCTION IF EXISTS migrate_status_to_tag(UUID, TEXT, TEXT);
-
--- Add a comment to the patients table to document the change
-COMMENT ON TABLE patients IS 'Patient status is now managed via the tags system. Old status columns (account_status, id_verification_status) were migrated and removed on 2025-07-17.';
+COMMIT;
