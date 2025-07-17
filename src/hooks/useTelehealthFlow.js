@@ -115,6 +115,33 @@ export const useTelehealthFlow = (initialFlowId = null) => {
     }
   }, [flow, toast]);
 
+  const approveConsultation = useCallback(async (approvalData) => {
+    if (!flow || !flow.id) {
+        const err = new Error("Flow not initialized or flow ID is missing.");
+        setError(err.message);
+        toast({ variant: "destructive", title: "Error", description: err.message });
+        return { success: false, error: err };
+    }
+    setLoading(true);
+    setError(null);
+    try {
+        const result = await telehealthFlowOrchestrator.processConsultationApproval(flow.id, approvalData);
+        if (result.success) {
+            setFlow(result.flow);
+            toast({ title: "Consultation Approved", description: "Order and invoice have been generated." });
+        } else {
+            throw result.error || new Error("Failed to approve consultation.");
+        }
+        return result;
+    } catch (err) {
+        setError(err.message);
+        toast({ variant: "destructive", title: "Approval Error", description: err.message });
+        return { success: false, error: err };
+    } finally {
+        setLoading(false);
+    }
+  }, [flow, toast]);
+
   const getProductRecommendations = useCallback(async (categoryId) => {
       setLoading(true);
       setError(null);
@@ -130,9 +157,6 @@ export const useTelehealthFlow = (initialFlowId = null) => {
       }
   }, [toast]);
   
-  // Future actions:
-  // const approveConsultation = useCallback(async (approvalData) => { ... }, [flow, toast]);
-
   const isFlowActive = flow && flow.current_status !== FLOW_STATUSES.COMPLETED && flow.current_status !== FLOW_STATUSES.CANCELLED;
 
   return {
@@ -142,8 +166,8 @@ export const useTelehealthFlow = (initialFlowId = null) => {
     initializeFlow,
     selectProduct,
     submitIntakeForm,
+    approveConsultation,
     getProductRecommendations,
     isFlowActive,
-    // Add other actions here
   };
 };
