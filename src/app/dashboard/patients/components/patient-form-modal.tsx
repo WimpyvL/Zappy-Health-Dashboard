@@ -46,8 +46,8 @@ type Patient = {
   policyNumber?: string;
   groupNumber?: string;
   insuranceHolder?: string;
-  firstName: string;
-  lastName: string;
+  firstName?: string;
+  lastName?: string;
 };
 
 interface PatientFormModalProps {
@@ -82,8 +82,8 @@ export function PatientFormModal({ isOpen, onClose, patient, onSubmit, isSubmitt
   React.useEffect(() => {
     if (isEditMode && patient) {
       form.reset({
-        firstName: patient.firstName,
-        lastName: patient.lastName,
+        firstName: patient.firstName || patient.name?.split(' ')[0] || '',
+        lastName: patient.lastName || patient.name?.split(' ').slice(1).join(' ') || '',
         email: patient.email,
         phone: patient.phone || '',
         dob: patient.dob ? new Date(patient.dob) : undefined,
@@ -109,7 +109,7 @@ export function PatientFormModal({ isOpen, onClose, patient, onSubmit, isSubmitt
         insuranceHolder: "",
       });
     }
-  }, [patient, isEditMode, form]);
+  }, [patient, isEditMode, form, isOpen]);
 
   return (
     <Dialog open={isOpen} onOpenChange={!isSubmitting ? onClose : undefined}>
