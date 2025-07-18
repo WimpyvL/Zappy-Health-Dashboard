@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview Centralized React Query hooks for database operations.
  * This file uses the centralized `dbService` to provide hooks for components.
@@ -59,6 +60,8 @@ export const usePatientById = (id, options) => {
 };
 export const useCreatePatient = (options) => useCreateEntity('patients', options);
 export const useUpdatePatient = (options) => useUpdateEntity('patients', options);
+export const useAddPatientTag = () => {}; // Placeholder
+export const useRemovePatientTag = () => {}; // Placeholder
 
 // --- Providers Hooks ---
 export const useProviders = (options) => useEntities('providers', options);
@@ -148,7 +151,7 @@ export const usePatientOrders = (patientId, options = {}) => {
       if (!patientId) return [];
       const result = await dbService.orders.getAll({ filters: [{ field: 'patientId', op: '==', value: patientId }] });
       if (result.error) throw result.error;
-      return result;
+      return result.data;
     },
     enabled: !!patientId,
     staleTime: 5 * 60 * 1000,
@@ -179,7 +182,7 @@ export const usePatientPayments = (patientId, options = {}) => {
       if (!patientId) return [];
       const result = await dbService.payments.getAll({ filters: [{ field: 'patientId', op: '==', value: patientId }] });
       if (result.error) throw result.error;
-      return result;
+      return result.data;
     },
     enabled: !!patientId,
     staleTime: 5 * 60 * 1000,
@@ -194,7 +197,7 @@ export const usePatientAlerts = (patientId, options = {}) => {
       if (!patientId) return [];
        const result = await dbService.alerts.getAll({ filters: [{ field: 'patientId', op: '==', value: patientId }] });
        if (result.error) throw result.error;
-       return result;
+       return result.data;
     },
     enabled: !!patientId,
     staleTime: 5 * 60 * 1000,

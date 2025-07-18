@@ -45,34 +45,11 @@ import {
 import { PatientFormModal } from "./components/patient-form-modal";
 import { ViewMessageModal } from "../messages/components/view-message-modal";
 import { useToast } from "@/hooks/use-toast";
-import { collection, getDocs, addDoc, updateDoc, doc, query, orderBy, Timestamp } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
-import { db } from "@/lib/firebase/client";
 
 // Import the new centralized service hooks
-import { usePatients, useCreatePatient, useUpdatePatient } from "@/services/database/hooks";
+import { usePatients, useCreatePatient, useUpdatePatient, Patient } from "@/services/database/hooks";
 
-
-type Patient = {
-  id: string;
-  firstName: string;
-  lastName: string;
-  name: string; // Combined name for display
-  email: string;
-  status: "Active" | "Inactive" | "Pending";
-  plan: string;
-  lastActive: string;
-  orders: number;
-  tags: string[];
-  phone?: string;
-  dob?: Date;
-  address?: string;
-  pharmacy?: string;
-  insuranceProvider?: string;
-  policyNumber?: string;
-  groupNumber?: string;
-  insuranceHolder?: string;
-};
 
 // This type is used by ViewMessageModal, which expects a message object.
 // We'll adapt the patient object to fit this structure for now.
@@ -136,7 +113,7 @@ export default function PatientsPage() {
   };
 
   const handleFormSubmit = async (values: any) => {
-    const patientData = { ...values, dob: Timestamp.fromDate(values.dob as Date) };
+    const patientData = { ...values };
       
     if (editingPatient) {
       updatePatientMutation.mutate({ id: editingPatient.id, ...patientData }, {
@@ -147,11 +124,11 @@ export default function PatientsPage() {
           });
           handleCloseModal();
         },
-        onError: () => {
+        onError: (e: Error) => {
            toast({
             variant: "destructive",
             title: "Error Saving Patient",
-            description: "An error occurred while saving the patient information. Please try again.",
+            description: e.message || "An error occurred while saving the patient information. Please try again.",
           });
         }
       });
@@ -164,11 +141,11 @@ export default function PatientsPage() {
           });
           handleCloseModal();
         },
-        onError: () => {
+        onError: (e: Error) => {
           toast({
             variant: "destructive",
             title: "Error Saving Patient",
-            description: "An error occurred while saving the patient information. Please try again.",
+            description: e.message || "An error occurred while saving the patient information. Please try again.",
           });
         }
       });
@@ -178,8 +155,8 @@ export default function PatientsPage() {
   const handleOpenMessageModal = (patient: Patient) => {
     const messageData: Message = {
       id: patient.id,
-      name: patient.name,
-      subject: `Conversation with ${patient.name}`,
+      name: `${patient.firstName} ${patient.lastName}`,
+      subject: `Conversation with ${patient.firstName} ${patient.lastName}`,
       preview: 'Click to view conversation history...',
       time: new Date().toLocaleTimeString(),
       unread: false,

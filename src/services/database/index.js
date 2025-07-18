@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview Centralized Database Service.
  * This service acts as the single gateway for all Firestore database operations.
@@ -184,6 +185,9 @@ class DatabaseService {
     getAll: (options) => this.getAll('payments', options),
   }
 
+  consultations = {
+    getAll: (options) => this.getAll('consultations', options),
+  }
 }
 
 export const dbService = new DatabaseService();

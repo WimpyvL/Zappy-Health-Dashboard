@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 import { collection, getDocs, query, orderBy, Timestamp, addDoc } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { db } from "@/lib/firebase/client";
+import { db } from "@/lib/firebase";
 
 type Conversation = {
   id: string;

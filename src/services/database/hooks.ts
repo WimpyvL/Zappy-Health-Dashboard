@@ -12,7 +12,9 @@ const getCollection = async (collectionName: string, options: any = {}) => {
   let q = query(collection(db, collectionName), orderBy(sortBy, sortDirection));
 
   filters.forEach((filter: any) => {
-    q = query(q, where(filter.field, filter.op, filter.value));
+    if (filter.value !== undefined && filter.value !== null) {
+      q = query(q, where(filter.field, filter.op, filter.value));
+    }
   });
 
   const snapshot = await getDocs(q);
@@ -113,11 +115,8 @@ export const useSessions = (params: any = {}, pageSize: number = 10) => {
       queryFn: async () => {
           const filters = [];
           if (status) filters.push({ field: 'status', op: '==', value: status });
-          // Note: Firestore doesn't support partial text search (LIKE) natively.
-          // A more complex solution like Algolia/Elasticsearch or a separate search field is needed for robust search.
-          // For now, we will filter client-side after fetching if a search term is provided.
           
-          const data = await getCollection("sessions", { sortBy: 'date', sortDirection: 'desc' });
+          const data = await getCollection("sessions", { sortBy: 'date', sortDirection: 'desc', filters });
           
           let filteredData = data;
           if (searchTerm) {
@@ -128,7 +127,7 @@ export const useSessions = (params: any = {}, pageSize: number = 10) => {
               );
           }
 
-          return { data: filteredData, meta: { total: filteredData.length }};
+          return { data: filteredData as Session[], meta: { total: filteredData.length }};
       }
   });
 };

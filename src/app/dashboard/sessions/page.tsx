@@ -31,24 +31,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ScheduleSessionModal } from "./components/schedule-session-modal";
 import { useToast } from "@/hooks/use-toast";
 import { collection, addDoc, query, orderBy, Timestamp, doc, updateDoc } from "firebase/firestore";
 import Link from "next/link";
-import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { Skeleton } from "@/components/ui/skeleton";
+import { useRouter, useSearchParams } from 'next/navigation';
 import { format } from "date-fns";
-import { db } from "@/lib/firebase/client";
-import { useUpdateSessionStatus, useSessions } from "@/services/database/hooks";
+import { db } from "@/lib/firebase";
+import { useUpdateSessionStatus, useSessions, Session } from "@/services/database/hooks";
 import { useTelehealthFlow } from "@/hooks/useTelehealthFlow.js";
 
 const SESSION_STATUSES = [
@@ -61,25 +53,11 @@ const SESSION_STATUSES = [
 
 type SessionStatus = typeof SESSION_STATUSES[number];
 
-type Session = {
-  id: string;
-  patientName: string;
-  patientId: string;
-  patientEmail: string;
-  type: string;
-  date: string;
-  plan: string;
-  provider: string;
-  status: SessionStatus;
-};
-
 const StatusBadge = ({ status }: { status: SessionStatus }) => {
     const statusConfig: Record<SessionStatus, { label: string; className: string }> = {
       pending: { label: "Pending", className: "bg-gray-100 text-gray-800" },
-      scheduled: { label: "Scheduled", className: "bg-blue-100 text-blue-800" },
       'in-progress': { label: "In Progress", className: "bg-blue-100 text-blue-800" },
       completed: { label: "Completed", className: "bg-green-100 text-green-800" },
-      missed: { label: "Missed", className: "bg-orange-100 text-orange-800" },
       cancelled: { label: "Cancelled", className: "bg-red-100 text-red-800" },
       followup: { label: "Follow-up", className: "bg-purple-100 text-purple-800" },
     };
@@ -117,7 +95,6 @@ const FilterDropdown = ({
 
 export default function SessionsPage() {
   const searchParams = useSearchParams();
-  const pathname = usePathname();
   const router = useRouter();
 
   const [isModalOpen, setIsModalOpen] = React.useState(false);
@@ -125,19 +102,16 @@ export default function SessionsPage() {
   const updateStatusMutation = useUpdateSessionStatus();
   const { initializeFlow, loading: flowLoading } = useTelehealthFlow();
   
-  const page = searchParams.get('page') ? parseInt(searchParams.get('page')!, 10) : 1;
   const status = searchParams.get('status');
   const searchTerm = searchParams.get('searchTerm');
   
-  const pageSize = 10; 
-
-  const { data: sessionsResponse, isLoading: loading, error: sessionsError, refetch: fetchSessions } = useSessions({ status, searchTerm }, pageSize);
+  const { data: sessionsResponse, isLoading: loading, refetch: fetchSessions } = useSessions({ status, searchTerm });
   
   const sessions: Session[] = React.useMemo(() => {
     if (!sessionsResponse?.data) return [];
     return sessionsResponse.data.map((s: any) => ({
       ...s,
-      date: s.date ? format(new Date(s.date.seconds * 1000), "MMM dd, yyyy") : "N/A",
+      date: s.date && s.date.seconds ? format(new Date(s.date.seconds * 1000), "MMM dd, yyyy") : "N/A",
     }));
   }, [sessionsResponse]);
 
@@ -174,12 +148,12 @@ export default function SessionsPage() {
 
       fetchSessions();
       setIsModalOpen(false);
-    } catch (error) {
+    } catch (error: any) {
        console.error("Error creating session or flow: ", error);
        toast({
         variant: "destructive",
         title: "Error Scheduling Session",
-        description: "An error occurred while creating the session or flow.",
+        description: error.message || "An error occurred while creating the session or flow.",
       });
     }
   };
@@ -316,22 +290,7 @@ export default function SessionsPage() {
 
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <div>Showing 1 to {sessions.length} of {sessionsResponse?.meta?.total || 0} sessions</div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <span>Show:</span>
-              <Select defaultValue="10">
-                <SelectTrigger className="w-[70px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="10">10</SelectItem>
-                  <SelectItem value="25">25</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                </SelectContent>
-              </Select>
-              <span>per page</span>
-            </div>
-          </div>
+          {/* Pagination controls can be added here */}
         </div>
       </div>
       <ScheduleSessionModal
