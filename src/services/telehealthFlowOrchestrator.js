@@ -2,9 +2,10 @@
  * @fileoverview Service for orchestrating the entire telehealth flow,
  * from category selection to order fulfillment.
  */
-import { db } from '@/lib/firebase/client';
+import { db } from '@/lib/firebase';
 import { collection, addDoc, doc, updateDoc, getDoc, Timestamp } from 'firebase/firestore';
 import { categoryProductOrchestrator } from './categoryProductOrchestrator';
+// import { notificationService } from './notificationService'; // Removed to fix circular dependency
 
 export const FLOW_STATUSES = {
   STARTED: 'started',
@@ -121,10 +122,13 @@ class TelehealthFlowOrchestrator {
         });
         await this.logStateTransition(flowId, fromStatus, FLOW_STATUSES.INTAKE_COMPLETED, { submissionId: submissionRef.id });
 
-        // 2. Create a PENDING consultation record for a provider to review
+        // 2. Assign a provider (mock logic for now)
+        const assignedProvider = { id: 'mockProvider123', email: 'provider@example.com' }; // In real app, fetch this from a provider assignment service
+        
+        // 3. Create a PENDING consultation record
         const consultationRef = await addDoc(collection(db, 'consultations'), {
             patient_id: flowData.patient_id,
-            provider_id: null, // To be assigned by a provider
+            provider_id: assignedProvider.id,
             status: 'pending_review',
             form_submission_id: submissionRef.id,
             flow_id: flowId,
@@ -132,7 +136,7 @@ class TelehealthFlowOrchestrator {
         });
         await this.logStateTransition(flowId, FLOW_STATUSES.INTAKE_COMPLETED, FLOW_STATUSES.CONSULTATION_PENDING, { consultationId: consultationRef.id });
 
-        // 3. Update the main flow document to the 'consultation_pending' state
+        // 4. Update the main flow document
         const finalUpdateData = {
             current_status: FLOW_STATUSES.CONSULTATION_PENDING,
             form_submission_id: submissionRef.id,
@@ -141,6 +145,17 @@ class TelehealthFlowOrchestrator {
         };
         await updateDoc(flowRef, finalUpdateData);
         
+        // 5. Send notification to the assigned provider
+        // This is now handled by the UI layer after the flow step completes
+        // const patientSnap = await getDoc(doc(db, 'patients', flowData.patient_id));
+        // const patientName = patientSnap.exists() ? `${patientSnap.data().firstName} ${patientSnap.data().lastName}` : "A new patient";
+
+        // await notificationService.notifyProviderOfNewConsultation({
+        //     providerEmail: assignedProvider.email,
+        //     patientName: patientName,
+        //     consultationId: consultationRef.id,
+        // });
+
         const finalFlowSnap = await getDoc(flowRef);
         const finalFlow = { id: finalFlowSnap.id, ...finalFlowSnap.data() };
 
