@@ -1,6 +1,8 @@
 // src/lib/firebase.ts
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
-import { getFirestore, Firestore } from "firebase/firestore";
+import { getFirestore, Firestore }from "firebase/firestore";
+import { getAuth, Auth } from "firebase/auth";
+import { getStorage, FirebaseStorage } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -11,18 +13,19 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// A more robust way to initialize Firebase in a Next.js environment
 let app: FirebaseApp;
+let auth: Auth;
 let db: Firestore;
+let storage: FirebaseStorage;
 
-if (typeof window !== "undefined") {
-    if (getApps().length === 0) {
-        app = initializeApp(firebaseConfig);
-    } else {
-        app = getApp();
-    }
-    db = getFirestore(app);
+if (getApps().length === 0) {
+  app = initializeApp(firebaseConfig);
+} else {
+  app = getApp();
 }
 
-// @ts-ignore
-export { app, db };
+auth = getAuth(app);
+db = getFirestore(app);
+storage = getStorage(app);
+
+export { app, auth, db, storage };
