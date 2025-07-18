@@ -1,7 +1,7 @@
 /**
  * @fileoverview Service for orchestrating logic between categories, products, and subscriptions.
  */
-import { db } from '@/lib/firebase/client';
+import { db } from '@/lib/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 
 class CategoryProductOrchestrator {

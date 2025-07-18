@@ -6,7 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { telehealthFlowOrchestrator, FLOW_STATUSES } from '@/services/telehealthFlowOrchestrator';
 import { categoryProductOrchestrator } from '@/services/categoryProductOrchestrator';
 import { doc, onSnapshot } from 'firebase/firestore';
-import { db } from '@/lib/firebase/client';
+import { db } from '@/lib/firebase';
 
 export const useTelehealthFlow = (initialFlowId = null) => {
   const [flow, setFlow] = useState(null);
