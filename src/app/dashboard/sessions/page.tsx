@@ -44,7 +44,7 @@ import { ScheduleSessionModal } from "./components/schedule-session-modal";
 import { useToast } from "@/hooks/use-toast";
 import { collection, addDoc, query, orderBy, Timestamp, doc, updateDoc } from "firebase/firestore";
 import Link from "next/link";
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { db } from "@/lib/firebase/client";
@@ -115,29 +115,32 @@ const FilterDropdown = ({
     </DropdownMenu>
 );
 
-export default function SessionsPage({ searchParams }: { searchParams?: { page?: string; status?: string; searchTerm?: string } }) {
-  
+export default function SessionsPage() {
+  const searchParams = useSearchParams();
+  const pathname = usePathname();
+  const router = useRouter();
+
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const { toast } = useToast();
   const updateStatusMutation = useUpdateSessionStatus();
-  const router = useRouter();
   const { initializeFlow, loading: flowLoading } = useTelehealthFlow();
-
-  const page = searchParams?.page ? parseInt(searchParams.page, 10) : 1;
-  const status = searchParams?.status;
-  const searchTerm = searchParams?.searchTerm;
+  
+  const page = searchParams.get('page') ? parseInt(searchParams.get('page')!, 10) : 1;
+  const status = searchParams.get('status');
+  const searchTerm = searchParams.get('searchTerm');
   
   const pageSize = 10; 
 
-  const { data: sessionsData, isLoading: loading, error: sessionsError, refetch: fetchSessions } = useSessions({ page, status, searchTerm }, pageSize);
-
+  const { data: sessionsResponse, isLoading: loading, error: sessionsError, refetch: fetchSessions } = useSessions({ status, searchTerm }, pageSize);
+  
   const sessions: Session[] = React.useMemo(() => {
-    if (!sessionsData?.data) return [];
-    return sessionsData.data.map((s: any) => ({
+    if (!sessionsResponse?.data) return [];
+    return sessionsResponse.data.map((s: any) => ({
       ...s,
-      date: s.date ? format(new Date(s.date), "MMM dd, yyyy") : "N/A",
+      date: s.date ? format(new Date(s.date.seconds * 1000), "MMM dd, yyyy") : "N/A",
     }));
-  }, [sessionsData]);
+  }, [sessionsResponse]);
+
 
   const handleCreateSession = async (values: any) => {
     try {
@@ -152,16 +155,13 @@ export default function SessionsPage({ searchParams }: { searchParams?: { page?:
           status: "pending",
       });
       
-      // Initialize telehealth flow linked to this session
       const flowResult = await initializeFlow({
         patientId: 'mock-patient-id',
-        // In a real app, you would get category/product from the session or service plan
         categoryId: 'general', 
         productId: null
       });
 
       if (flowResult.success && flowResult.flow?.id) {
-        // Link session to the flow
         await updateDoc(sessionDocRef, { flowId: flowResult.flow.id });
         toast({
             title: "Session Scheduled",
@@ -315,7 +315,7 @@ export default function SessionsPage({ searchParams }: { searchParams?: { page?:
         </Card>
 
         <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <div>Showing 1 to {sessions.length} of {sessions.length} sessions</div>
+          <div>Showing 1 to {sessions.length} of {sessionsResponse?.meta?.total || 0} sessions</div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <span>Show:</span>
