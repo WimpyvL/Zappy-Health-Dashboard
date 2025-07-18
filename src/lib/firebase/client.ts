@@ -1,20 +1,4 @@
-
 // src/lib/firebase/client.ts
-import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
-import { getFirestore, Firestore } from "firebase/firestore";
-import { firebaseConfig } from "./config";
-
-// A more robust way to initialize Firebase in a Next.js environment
-// This ensures we have a single instance of the app and db.
-let app: FirebaseApp;
-let db: Firestore;
-
-if (typeof window !== "undefined" && !getApps().length) {
-  app = initializeApp(firebaseConfig);
-} else {
-  app = getApp();
-}
-
-db = getFirestore(app);
-
-export { app, db };
+// This file is being deprecated in favor of the centralized /src/lib/firebase.ts
+// It is modified to re-export from the new standard location to maintain compatibility during transition.
+export * from '@/lib/firebase';
