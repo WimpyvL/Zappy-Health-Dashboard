@@ -88,13 +88,13 @@ const StatCard = ({
 )
 
 export default function DashboardPage() {
-  const [currentTime, setCurrentTime] = useState("")
   const [stats, setStats] = useState({
     totalPatients: 0,
     upcomingSessions: 0,
     pendingOrders: 0,
     newConsultations: 0,
   });
+  const [lastUpdated, setLastUpdated] = useState(new Date().toLocaleTimeString());
   const [loadingStats, setLoadingStats] = useState(true);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
@@ -125,7 +125,7 @@ export default function DashboardPage() {
           pendingOrders: pendingOrdersSnapshot.size,
           newConsultations: newConsultationsSnapshot.size,
         });
-
+        setLastUpdated(new Date().toLocaleTimeString());
       } catch (error) {
         console.error("Error fetching dashboard stats: ", error);
         toast({
@@ -139,11 +139,6 @@ export default function DashboardPage() {
     };
 
     fetchDashboardStats();
-
-    const timer = setInterval(() => {
-      setCurrentTime(new Date().toLocaleTimeString())
-    }, 1000)
-    return () => clearInterval(timer)
   }, [toast])
 
   const handleRefreshSessions = () => {
@@ -175,15 +170,6 @@ export default function DashboardPage() {
   return (
     <>
     <div className="flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <Clock className="h-5 w-5 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground font-medium">
-            {currentTime}
-          </span>
-        </div>
-      </div>
-
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Total Patients"
@@ -244,7 +230,7 @@ export default function DashboardPage() {
             </p>
           </CardContent>
           <p className="px-6 pb-4 text-xs text-cyan-600">
-            Last updated: {currentTime}
+            Last updated: {lastUpdated}
           </p>
         </Card>
 
