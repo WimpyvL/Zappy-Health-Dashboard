@@ -1,66 +1,73 @@
-# Supabase Service Management Migration Guide
+# Firebase Service Management Migration Guide
 
-This document provides step-by-step instructions for applying the service management database migration to your Supabase project.
+This document provides step-by-step instructions for applying the service management database schema to your Firebase project.
 
 ## Background
 
-The ServiceManagement.jsx component expects services to have relationships with products and subscription plans. The current database schema doesn't include these relationships, so we've created a migration script to add the necessary tables and fields.
+The ServiceManagement.jsx component expects services to have relationships with products and subscription plans. The current database schema doesn't include these relationships, so we've created a script to add the necessary collections and fields.
 
 ## Prerequisites
 
-- Access to your Supabase project dashboard
-- Admin privileges to run SQL queries
+- Access to your Firebase project console
+- Admin privileges to modify Firestore
 
-## Steps to Apply the Migration
+## Steps to Apply the Schema Changes
 
-1. **Log in to Supabase Dashboard**
-   - Go to https://app.supabase.com/
-   - Select your Zappy Dashboard project
+Since Firestore is schema-less, there isn't a traditional "migration" to run. Instead, you need to ensure your application code writes data in the correct structure. The API hooks have been updated to handle this.
 
-2. **Open SQL Editor**
-   - In the left sidebar, click on "SQL Editor"
-   - Click "New query" to create a new SQL script
+1. **Deploy Updated `firestore.rules`**
+   - The security of your data relies on Firestore Security Rules.
+   - Deploy the updated `firestore.rules` file which contains rules for `services`, `service_products`, and `service_plans`.
+   ```bash
+   firebase deploy --only firestore:rules
+   ```
 
-3. **Copy Migration Script**
-   - Open `supabase/migrations/20250426000000_create_service_junction_tables.sql` from your project
-   - Copy all contents of the file
+2. **Verify `firestore.indexes.json`**
+   - Ensure you have indexes that support the queries in your updated hooks.
+   - Deploy the `firestore.indexes.json` file.
+   ```bash
+   firebase deploy --only firestore:indexes
+   ```
 
-4. **Paste and Run the Script**
-   - Paste the copied SQL into the Supabase SQL Editor
-   - Click "Run" to execute the script
-   - Verify that the script executes without errors
+3. **Deploy Application Code**
+   - The updated React hooks in `src/apis/services/hooks.js` will create and manage documents in the `service_products` and `service_plans` collections as needed when you create or update a service.
 
-5. **Verify Table Creation**
-   - In the Supabase Dashboard, go to "Table Editor" 
-   - Confirm that the following tables exist:
-     - `service_products`
-     - `service_plans`
-   - Check that the `services` table now has a `requires_consultation` column
+## Data Model
 
-6. **Verify RLS Policies**
-   - Go to "Authentication" > "Policies" in the Supabase Dashboard
-   - Check that RLS is enabled for `services`, `service_products`, and `service_plans`
-   - Verify that the appropriate policies exist for each table
+The new relations between services, products, and subscription plans can be visualized as follows:
 
-## Troubleshooting
-
-If you encounter any errors during migration:
-
-1. **Duplicate table errors**: If tables already exist, you may need to drop them first with `DROP TABLE table_name CASCADE;`
-
-2. **Permission errors**: Ensure you're logged in with admin privileges
-
-3. **RLS policy errors**: If policies can't be created, check if the table exists and RLS is enabled
+```
+/services/{serviceId}
+  - name
+  - requires_consultation
+  
+/service_products/{docId}
+  - service_id
+  - product_id
+  
+/service_plans/{docId}
+  - service_id
+  - plan_id
+  - duration
+  - requires_subscription
+```
 
 ## Testing the Changes
 
-After applying the migration:
+After deploying the updated code and security rules:
 
 1. Open the Zappy Dashboard application
 2. Navigate to the Service Management page
 3. Attempt to create a new service with associated products and subscription plans
-4. Verify that the relationships are correctly saved and displayed
+4. Verify that the relationships are correctly saved and displayed by checking the `service_products` and `service_plans` collections in your Firestore console.
+
+## Troubleshooting
+
+If you encounter any issues:
+
+1. **Permission errors**: Ensure your Firestore security rules are correctly deployed and allow write access for admins. Check the "Rules" tab in your Firebase console.
+2. **Data not saving**: Check the browser's developer console for any errors from the Firebase SDK. Ensure the frontend code is passing valid data to the API hooks.
 
 ## Support
 
-If you encounter any issues with this migration, please contact the development team for assistance.
+If you encounter any issues with this process, please contact the development team for assistance.

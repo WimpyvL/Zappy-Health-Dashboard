@@ -11,21 +11,15 @@ const auditLogService = {
    * Creates a new audit log entry.
    * @param {string} action - The action being performed (e.g., 'User Login', 'Patient Updated').
    * @param {object} details - A JSON object with relevant details about the action.
-   * @param {string} [userId] - The ID of the user performing the action. If not provided, it will be inferred if possible.
+   * @param {string} [userId] - The ID of the user performing the action.
    * @returns {Promise<void>}
    */
   async log(action, details = {}, userId = null) {
     try {
-      let currentUserId = userId;
-      
-      // If no userId is passed, try to get it from the current session.
-      // This part might need to be adjusted based on how auth state is managed.
-      // For now, we assume this is handled or passed in.
-
       const logEntry = {
         action,
         details,
-        userId: currentUserId,
+        userId: userId,
         timestamp: new Date(),
       };
 

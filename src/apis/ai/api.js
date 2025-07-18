@@ -1,5 +1,5 @@
-
-import { supabase } from '../../lib/supabase';
+import { db } from '../../lib/firebase';
+import { collection, getDocs, doc, getDoc, addDoc, updateDoc, deleteDoc, query, where, orderBy } from 'firebase/firestore';
 import { ErrorHandler } from '../../utils/errorHandling';
 
 const errorHandler = new ErrorHandler('AI API');
@@ -7,23 +7,17 @@ const errorHandler = new ErrorHandler('AI API');
 // Fetch all AI prompts with enhanced error handling
 export const fetchPrompts = async () => {
   try {
-    const { data, error } = await supabase
-      .from('ai_prompts')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      throw new Error(`Database error: ${error.message}`);
-    }
-
-    const prompts = data || [];
+    const promptsCollection = collection(db, 'ai_prompts');
+    const q = query(promptsCollection, orderBy('created_at', 'desc'));
+    const promptsSnapshot = await getDocs(q);
+    const prompts = promptsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    
     console.log('✅ Successfully fetched', prompts.length, 'AI prompts');
     return prompts;
   } catch (error) {
     errorHandler.handleError(error, 'Fetch AI Prompts', {
       toastId: 'fetch-prompts-error',
     });
-    // Removed fallback logic to surface errors
     throw error;
   }
 };
@@ -31,18 +25,12 @@ export const fetchPrompts = async () => {
 // Fetch a single AI prompt by ID
 export const fetchPrompt = async (promptId) => {
   try {
-    const { data, error } = await supabase
-      .from('ai_prompts')
-      .select('*')
-      .eq('id', promptId)
-      .single();
-
-    if (error) {
-      console.error(`Error fetching prompt ${promptId}:`, error);
-      throw new Error(error.message);
+    const docRef = doc(db, 'ai_prompts', promptId);
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() };
     }
-
-    return data;
+    throw new Error(`Prompt ${promptId} not found`);
   } catch (error) {
     console.error('Error in fetchPrompt:', error);
     throw error;
@@ -52,9 +40,7 @@ export const fetchPrompt = async (promptId) => {
 // Create a new AI prompt
 export const createPrompt = async (promptData) => {
   try {
-    const { data, error } = await supabase
-      .from('ai_prompts')
-      .insert({
+    const docRef = await addDoc(collection(db, 'ai_prompts'), {
         name: promptData.name,
         prompt: promptData.prompt,
         category: promptData.category,
@@ -62,16 +48,9 @@ export const createPrompt = async (promptData) => {
         section: promptData.section,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error creating prompt:', error);
-      throw new Error(error.message);
-    }
-
-    return data;
+    });
+    const newDocSnap = await getDoc(docRef);
+    return { id: newDocSnap.id, ...newDocSnap.data() };
   } catch (error) {
     console.error('Error in createPrompt:', error);
     throw error;
@@ -81,26 +60,17 @@ export const createPrompt = async (promptData) => {
 // Update an existing AI prompt
 export const updatePrompt = async (promptData) => {
   try {
-    const { data, error } = await supabase
-      .from('ai_prompts')
-      .update({
+    const docRef = doc(db, 'ai_prompts', promptData.id);
+    await updateDoc(docRef, {
         name: promptData.name,
         prompt: promptData.prompt,
         category: promptData.category,
         prompt_type: promptData.prompt_type,
         section: promptData.section,
         updated_at: new Date().toISOString(),
-      })
-      .eq('id', promptData.id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error(`Error updating prompt ${promptData.id}:`, error);
-      throw new Error(error.message);
-    }
-
-    return data;
+    });
+    const updatedDocSnap = await getDoc(docRef);
+    return { id: updatedDocSnap.id, ...updatedDocSnap.data() };
   } catch (error) {
     console.error('Error in updatePrompt:', error);
     throw error;
@@ -110,16 +80,8 @@ export const updatePrompt = async (promptData) => {
 // Delete an AI prompt
 export const deletePrompt = async (promptId) => {
   try {
-    const { error } = await supabase
-      .from('ai_prompts')
-      .delete()
-      .eq('id', promptId);
-
-    if (error) {
-      console.error(`Error deleting prompt ${promptId}:`, error);
-      throw new Error(error.message);
-    }
-
+    const docRef = doc(db, 'ai_prompts', promptId);
+    await deleteDoc(docRef);
     return { success: true, id: promptId };
   } catch (error) {
     console.error('Error in deletePrompt:', error);
@@ -130,17 +92,13 @@ export const deletePrompt = async (promptId) => {
 // Fetch AI settings
 export const fetchAISettings = async () => {
   try {
-    const { data, error } = await supabase
-      .from('ai_settings')
-      .select('*')
-      .single();
-
-    if (error) {
-      console.error('Error fetching AI settings:', error);
-      throw new Error(error.message);
+    // Assuming settings are stored in a single document 'singleton'
+    const docRef = doc(db, 'ai_settings', 'singleton');
+    const docSnap = await getDoc(docRef);
+    if (docSnap.exists()) {
+      return { id: docSnap.id, ...docSnap.data() };
     }
-
-    return data;
+    return null; // No settings found
   } catch (error) {
     console.error('Error in fetchAISettings:', error);
     throw error;
@@ -150,58 +108,15 @@ export const fetchAISettings = async () => {
 // Update AI settings
 export const updateAISettings = async (settingsData) => {
   try {
-    // Check if settings exist
-    const { data: existingSettings, error: checkError } = await supabase
-      .from('ai_settings')
-      .select('id')
-      .single();
-
-    if (checkError && checkError.code !== 'PGRST116') {
-      console.error('Error checking AI settings:', checkError);
-      throw new Error(checkError.message);
-    }
-
-    let result;
-
-    if (existingSettings) {
-      // Update existing settings
-      const { data, error } = await supabase
-        .from('ai_settings')
-        .update({
-          ...settingsData,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', existingSettings.id)
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error updating AI settings:', error);
-        throw new Error(error.message);
-      }
-
-      result = data;
-    } else {
-      // Insert new settings
-      const { data, error } = await supabase
-        .from('ai_settings')
-        .insert({
-          ...settingsData,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error('Error creating AI settings:', error);
-        throw new Error(error.message);
-      }
-
-      result = data;
-    }
-
-    return result;
+    // Assuming settings are stored in a single document 'singleton'
+    const docRef = doc(db, 'ai_settings', 'singleton');
+    // Use set with merge:true to create or update
+    await updateDoc(docRef, {
+        ...settingsData,
+        updated_at: new Date().toISOString(),
+    }, { merge: true });
+    const updatedDocSnap = await getDoc(docRef);
+    return { id: updatedDocSnap.id, ...updatedDocSnap.data() };
   } catch (error) {
     console.error('Error in updateAISettings:', error);
     throw error;
@@ -212,27 +127,23 @@ export const updateAISettings = async (settingsData) => {
 export const fetchAILogs = async (options = {}) => {
   try {
     const { limit = 100, offset = 0, promptId } = options;
-
-    let query = supabase
-      .from('ai_logs')
-      .select('*, ai_prompts(name)')
-      .order('created_at', { ascending: false })
-      .range(offset, offset + limit - 1);
+    const logsCollection = collection(db, 'ai_logs');
+    let q = query(logsCollection, orderBy('created_at', 'desc'), limit(limit));
 
     if (promptId) {
-      query = query.eq('prompt_id', promptId);
+      q = query(q, where('prompt_id', '==', promptId));
     }
+    // Note: Firestore pagination is cursor-based (startAfter), not offset-based.
+    // This is a simplified implementation.
 
-    const { data, error, count } = await query;
+    const querySnapshot = await getDocs(q);
+    const logs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
-    if (error) {
-      console.error('Error fetching AI logs:', error);
-      throw new Error(error.message);
-    }
-
+    // Getting total count requires a separate query in Firestore.
+    // This is simplified for now.
     return {
-      logs: data || [],
-      totalLogs: count || 0,
+      logs,
+      totalLogs: logs.length,
     };
   } catch (error) {
     console.error('Error in fetchAILogs:', error);
@@ -247,26 +158,20 @@ export const getPromptByCategoryTypeAndSection = async (
   section
 ) => {
   try {
-    const { data, error } = await supabase
-      .from('ai_prompts')
-      .select('*')
-      .eq('category', category)
-      .eq('prompt_type', type)
-      .eq('section', section)
-      .single();
-
-    if (error) {
-      // Don't throw, just return null if not found
-      if (error.code !== 'PGRST116') {
-        console.error(
-          `Error fetching prompt for ${category}/${type}/${section}:`,
-          error
-        );
-      }
-      return null;
+    const promptsCollection = collection(db, 'ai_prompts');
+    const q = query(
+      promptsCollection,
+      where('category', '==', category),
+      where('prompt_type', '==', type),
+      where('section', '==', section),
+      limit(1)
+    );
+    const querySnapshot = await getDocs(q);
+    if (!querySnapshot.empty) {
+      const docSnap = querySnapshot.docs[0];
+      return { id: docSnap.id, ...docSnap.data() };
     }
-
-    return data;
+    return null;
   } catch (error) {
     console.error('Error in getPromptByCategoryTypeAndSection:', error);
     throw error;

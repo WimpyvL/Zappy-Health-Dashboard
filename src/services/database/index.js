@@ -3,11 +3,9 @@
  * This service acts as the single gateway for all Firestore database operations.
  * It abstracts the direct Firestore calls and provides a clean, consistent API
  * for different parts of the application to use.
- *
- * This aligns with the "Service Layer" defined in the architecture diagram.
  */
 
-import { db } from '@/lib/firebase/client';
+import { db } from '@/lib/firebase';
 import {
   collection,
   doc,
@@ -45,19 +43,24 @@ class DatabaseService {
     try {
       let q = query(this._getCollection(collectionName));
       
-      // Example of applying filters, can be expanded
       if (options.filters) {
         options.filters.forEach(filter => {
-          q = query(q, where(filter.field, filter.op, filter.value));
+          if(filter.value) {
+            q = query(q, where(filter.field, filter.op, filter.value));
+          }
         });
       }
 
       if (options.sortBy) {
         q = query(q, orderBy(options.sortBy, options.sortDirection || 'asc'));
       }
+      
+      // Basic limit for safety
+      q = query(q, limit(options.pageSize || 25));
 
       const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      return { data, meta: { total: data.length }};
     } catch (error) {
       console.error(`Error getting all documents from ${collectionName}:`, error);
       throw error;
@@ -75,9 +78,9 @@ class DatabaseService {
       const docRef = doc(this.db, collectionName, id);
       const docSnap = await getDoc(docRef);
       if (docSnap.exists()) {
-        return { id: docSnap.id, ...docSnap.data() };
+        return { data: { id: docSnap.id, ...docSnap.data() }};
       }
-      return null;
+      return { data: null, error: { message: "Document not found" }};
     } catch (error) {
       console.error(`Error getting document ${id} from ${collectionName}:`, error);
       throw error;
@@ -97,7 +100,8 @@ class DatabaseService {
         createdAt: new Date(),
         updatedAt: new Date(),
       });
-      return { id: docRef.id, ...data };
+      const docSnap = await getDoc(docRef);
+      return { data: { id: docSnap.id, ...docSnap.data() } };
     } catch (error) {
       console.error(`Error creating document in ${collectionName}:`, error);
       throw error;
@@ -109,7 +113,7 @@ class DatabaseService {
    * @param {string} collectionName - The name of the Firestore collection.
    * @param {string} id - The ID of the document to update.
    * @param {object} data - The data to update.
-   * @returns {Promise<void>}
+   * @returns {Promise<object>}
    */
   async update(collectionName, id, data) {
     try {
@@ -118,6 +122,8 @@ class DatabaseService {
         ...data,
         updatedAt: new Date(),
       });
+      const updatedDocSnap = await getDoc(docRef);
+      return { data: { id: updatedDocSnap.id, ...updatedDocSnap.data() } };
     } catch (error) {
       console.error(`Error updating document ${id} in ${collectionName}:`, error);
       throw error;
@@ -141,8 +147,6 @@ class DatabaseService {
   }
 
   // --- Specific Entity Services ---
-
-  // Example: Patients
   patients = {
     getAll: (options) => this.getAll('patients', options),
     getById: (id) => this.getById('patients', id),
@@ -151,7 +155,6 @@ class DatabaseService {
     delete: (id) => this.delete('patients', id),
   };
 
-  // Example: Providers
   providers = {
     getAll: (options) => this.getAll('providers', options),
     getById: (id) => this.getById('providers', id),
@@ -160,7 +163,6 @@ class DatabaseService {
     delete: (id) => this.delete('providers', id),
   };
   
-  // Example: Orders
   orders = {
     getAll: (options) => this.getAll('orders', options),
     getById: (id) => this.getById('orders', id),
@@ -168,9 +170,20 @@ class DatabaseService {
     update: (id, data) => this.update('orders', id, data),
     delete: (id) => this.delete('orders', id),
   };
+  
+  sessions = {
+    getAll: (options) => this.getAll('sessions', options),
+    update: (id, data) => this.update('sessions', id, data),
+  };
+  
+  alerts = {
+    getAll: (options) => this.getAll('alerts', options),
+  }
 
-  // Add other entities here as needed...
-  // consultations, invoices, tasks, etc.
+  payments = {
+    getAll: (options) => this.getAll('payments', options),
+  }
+
 }
 
 export const dbService = new DatabaseService();

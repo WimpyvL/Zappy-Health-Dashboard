@@ -1,139 +1,123 @@
-# CRITICAL: Row Level Security (RLS) Policy Security Issues
+# CRITICAL: Firestore Security Rule Recommendations
 
 ## SECURITY VULNERABILITIES IDENTIFIED
 
-### 1. Overly Broad RLS Policies
-**File:** `supabase-table-fix.md` (lines 81-82, 85-86)
+### 1. Overly Broad Security Rules
+**File:** `firestore.rules` (example from previous analysis)
 
 **Current Problematic Policies:**
-```sql
--- SECURITY RISK: These policies are TOO PERMISSIVE
-Policy definition: `true` (allows ANY authenticated user to read/write)
+```
+// SECURITY RISK: Example of an overly permissive rule
+match /patient_subscription/{docId} {
+  allow read, write: if true; // Allows ANY authenticated user
+}
 ```
 
 **CRITICAL IMPACT:**
-- Any authenticated user can access ANY patient's subscription data
-- No data isolation between patients
-- Violates HIPAA/healthcare data protection requirements
-- Allows unauthorized access to sensitive medical billing information
+- Any authenticated user could access ANY patient's subscription data.
+- No data isolation between patients.
+- Violates HIPAA/healthcare data protection requirements.
+- Allows unauthorized access to sensitive medical billing information.
 
 ## REQUIRED SECURITY FIXES
 
 ### 1. Patient Data Access Control
-Replace the overly broad `true` policies with proper access controls:
+Replace overly broad rules with proper access controls based on user UID and roles.
 
-#### For `patient_subscription` table:
-```sql
--- READ POLICY: Users can only read their own subscription data
-CREATE POLICY "Users can view own subscriptions" ON patient_subscription
-FOR SELECT USING (
-  patient_id = (SELECT id FROM patients WHERE user_id = auth.uid())
-);
-
--- WRITE POLICY: Users can only modify their own subscription data
-CREATE POLICY "Users can modify own subscriptions" ON patient_subscription
-FOR ALL USING (
-  patient_id = (SELECT id FROM patients WHERE user_id = auth.uid())
-);
+#### For `patient_subscription` collection:
+```
+// READ POLICY: Users can only read their own subscription data.
+// WRITE POLICY: Users can only modify their own subscription data.
+match /patient_subscription/{subscriptionId} {
+  allow read, write: if request.auth.uid == resource.data.patientId || isProviderOrAdminForPatient(resource.data.patientId);
+}
 ```
 
-#### For `treatment_package` table:
-```sql
--- READ POLICY: All authenticated users can view available packages
-CREATE POLICY "Authenticated users can view packages" ON treatment_package
-FOR SELECT USING (auth.role() = 'authenticated' AND is_active = true);
-
--- WRITE POLICY: Only admins can modify packages
-CREATE POLICY "Only admins can modify packages" ON treatment_package
-FOR ALL USING (
-  EXISTS (
-    SELECT 1 FROM profiles 
-    WHERE user_id = auth.uid() 
-    AND role IN ('admin', 'provider')
-  )
-);
+#### For `treatment_package` collection:
+```
+// READ POLICY: All authenticated users can view available packages.
+// WRITE POLICY: Only admins/providers can modify packages.
+match /treatment_package/{packageId} {
+  allow read: if request.auth != null && resource.data.is_active == true;
+  allow write: if hasRole(['admin', 'provider']);
+}
 ```
 
-#### For `subscription_duration` table:
-```sql
--- READ POLICY: All authenticated users can view durations
-CREATE POLICY "Authenticated users can view durations" ON subscription_duration
-FOR SELECT USING (auth.role() = 'authenticated');
-
--- WRITE POLICY: Only admins can modify durations
-CREATE POLICY "Only admins can modify durations" ON subscription_duration
-FOR ALL USING (
-  EXISTS (
-    SELECT 1 FROM profiles 
-    WHERE user_id = auth.uid() 
-    AND role IN ('admin', 'provider')
-  )
-);
+#### For `subscription_duration` collection:
+```
+// READ POLICY: All authenticated users can view durations.
+// WRITE POLICY: Only admins/providers can modify durations.
+match /subscription_duration/{durationId} {
+  allow read: if request.auth != null;
+  allow write: if hasRole(['admin', 'provider']);
+}
 ```
 
-### 2. Role-Based Access Control
-Ensure proper role validation in all RLS policies:
+### 2. Role-Based Access Control Functions
+Define reusable functions in your `firestore.rules` file to check user roles. This requires storing roles in Firestore or as custom claims in Firebase Auth.
 
-```sql
--- Example role check function for reuse
-CREATE OR REPLACE FUNCTION is_admin_or_provider()
-RETURNS BOOLEAN AS $$
-BEGIN
-  RETURN EXISTS (
-    SELECT 1 FROM profiles 
-    WHERE user_id = auth.uid() 
-    AND role IN ('admin', 'provider')
-  );
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Function to check user role from a 'users' collection
+    function hasRole(allowedRoles) {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role in allowedRoles;
+    }
+
+    // Function to check if a provider is assigned to a patient
+    function isProviderOrAdminForPatient(patientId) {
+      let userRole = get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+      // This is a simplified check. A real implementation would query an assignments collection.
+      return userRole == 'admin' || userRole == 'provider'; 
+    }
+    
+    // Apply these functions in your match blocks
+    // ... your rules here
+  }
+}
 ```
 
 ### 3. Patient Data Isolation
-Ensure all patient-related tables have proper isolation:
+Ensure all collections containing Patient Health Information (PHI) are protected with strict rules.
 
-```sql
--- Example pattern for patient data tables
-CREATE POLICY "Users access own data only" ON [patient_table]
-FOR ALL USING (
-  -- For patients: only their own data
-  (patient_id = (SELECT id FROM patients WHERE user_id = auth.uid()))
-  OR
-  -- For providers/admins: access to assigned patients only
-  (EXISTS (
-    SELECT 1 FROM profiles 
-    WHERE user_id = auth.uid() 
-    AND role IN ('admin', 'provider')
-  ))
-);
+```
+// Example pattern for patient data collections
+match /medical_records/{recordId} {
+  allow read, write: if request.auth.uid == resource.data.patientId 
+                      || (hasRole(['provider', 'admin']) && isProviderOrAdminForPatient(resource.data.patientId));
+}
 ```
 
 ## IMMEDIATE ACTION REQUIRED
 
-1. **STOP using `true` policies immediately** - they expose all data
-2. **Audit all existing RLS policies** across all tables
-3. **Implement proper role-based access control**
-4. **Test policies thoroughly** with different user roles
-5. **Document all security changes** for compliance
+1.  **STOP using insecure default rules** (like `allow read, write: if true;` or `if request.auth != null;` for sensitive data).
+2.  **Audit all existing Firestore security rules**.
+3.  **Implement proper role-based access control** using functions and user profile data.
+4.  **Test policies thoroughly** with different user roles using the Firebase Emulator Suite.
+5.  **Document all security changes** for compliance.
 
 ## COMPLIANCE CONSIDERATIONS
 
-- **HIPAA Compliance:** Current policies violate patient data protection
-- **Data Privacy:** No proper data isolation between users
-- **Audit Trail:** Need logging for sensitive data access
-- **Principle of Least Privilege:** Grant minimum necessary access only
+- **HIPAA Compliance:** Current example policies would violate patient data protection. The recommended changes are essential for compliance.
+- **Data Privacy:** Proper data isolation between users is mandatory.
+- **Audit Trail:** Use Cloud Functions triggered by Firestore writes to create an audit trail of data access.
+- **Principle of Least Privilege:** Grant the minimum necessary access for each role.
 
 ## TESTING RECOMMENDATIONS
 
-1. Create test users with different roles
-2. Verify data isolation between patients
-3. Test provider access to assigned patients only
-4. Ensure admin access is properly restricted
-5. Test with unauthenticated users (should be denied)
+1.  Set up the Firebase Emulator Suite locally.
+2.  Create test users with different roles ('patient', 'provider', 'admin').
+3.  Write unit tests for your security rules to verify:
+    *   Data isolation between patients.
+    *   Provider access is limited to assigned patients.
+    *   Admin access rules are correct.
+    *   Unauthenticated users are denied access.
 
 ## MONITORING
 
 Implement monitoring for:
-- Failed authentication attempts
-- Unauthorized data access attempts
-- Policy violations
-- Unusual data access patterns
+-   Failed authentication attempts (Firebase Auth logs).
+-   Security rule denials (Firestore logs in Google Cloud).
+-   Unusual data access patterns.

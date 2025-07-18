@@ -14,35 +14,27 @@ This document explains the performance optimizations implemented for the service
 // Original (inefficient) approach - N+1 queries
 servicesData.map(async (service) => {
   // Query 1 for each service: Fetch products
-  const { data: productsData } = await supabase
-    .from('service_products')
-    .select('product_id')
-    .eq('service_id', service.id);
+  const { data: productsData } = await getDocs(query(collection(db, 'service_products'), where('service_id', '==', service.id)));
     
   // Query 2 for each service: Fetch plans
-  const { data: plansData } = await supabase
-    .from('service_plans')
-    .select('plan_id, duration, requires_subscription')
-    .eq('service_id', service.id);
+  const { data: plansData } = await getDocs(query(collection(db, 'service_plans'), where('service_id', '==', service.id)));
     
   // ... process data ...
 });
 
 // New (efficient) approach - Just 3 queries total
 // 1. Fetch services
-const { data: servicesData } = await supabase.from('services')...
+const servicesSnapshot = await getDocs(collection(db, 'services'));
+const servicesData = servicesSnapshot.docs.map(doc => ({id: doc.id, ...doc.data()}));
+const serviceIds = servicesData.map(s => s.id);
 
 // 2. Batch fetch all products for these services
-const { data: productsData } = await supabase
-  .from('service_products')
-  .select('service_id, product_id')
-  .in('service_id', serviceIds);
+const productsQuery = query(collection(db, 'service_products'), where('service_id', 'in', serviceIds));
+const productsSnapshot = await getDocs(productsQuery);
 
 // 3. Batch fetch all plans for these services  
-const { data: plansData } = await supabase
-  .from('service_plans')
-  .select('service_id, plan_id, duration, requires_subscription')
-  .in('service_id', serviceIds);
+const plansQuery = query(collection(db, 'service_plans'), where('service_id', 'in', serviceIds));
+const plansSnapshot = await getDocs(plansQuery);
 ```
 
 ### 2. Parallel Requests for Single Service Details
@@ -52,9 +44,9 @@ For the `useServiceById` hook, we now fetch the service and its relationships in
 ```javascript
 const [serviceResponse, productsResponse, plansResponse] = await Promise.all([
   // Three parallel requests
-  supabase.from('services')...,
-  supabase.from('service_products')...,
-  supabase.from('service_plans')...
+  getDoc(doc(db, 'services', serviceId)),
+  getDocs(query(collection(db, 'service_products'), where('service_id', '==', serviceId))),
+  getDocs(query(collection(db, 'service_plans'), where('service_id', '==', serviceId))),
 ]);
 ```
 
@@ -86,7 +78,7 @@ We've improved error handling to ensure the UI doesn't break if one part of the 
 We now immediately return empty results when the service list is empty:
 
 ```javascript
-if (!servicesData?.length) {
+if (!servicesSnapshot.docs.length) {
   return {
     data: [],
     meta: {...},
@@ -116,7 +108,7 @@ To verify these improvements:
 
 Consider these additional improvements:
 
-1. **Custom PostgreSQL Function:** Create a database function to fetch services with relationships in a single query
+1. **Custom Cloud Function:** Create a Firebase Cloud Function to fetch services with relationships in a single call.
 2. **Infinite Scrolling:** Replace pagination with infinite scroll for smoother UX
 3. **Background Refresh:** Keep UI responsive by refreshing data in the background
 

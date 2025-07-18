@@ -1,4 +1,5 @@
-import { supabase } from '../lib/supabase';
+import { db } from '../lib/firebase';
+import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
 import { bundleOptimizationService } from './bundleOptimizationService';
 
 /**
@@ -100,13 +101,11 @@ export class AIRecommendationService {
    */
   async getBaseRecommendations(patientProfile) {
     try {
-      const { data: rules, error } = await supabase
-        .from('product_recommendation_rules')
-        .select('*')
-        .order('priority', { ascending: false });
-
-      if (error) throw error;
-
+      const rulesCollection = collection(db, 'product_recommendation_rules');
+      const q = query(rulesCollection, orderBy('priority', 'desc'));
+      const rulesSnapshot = await getDocs(q);
+      const rules = rulesSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
       const matchingRecommendations = [];
 
       for (const rule of rules) {
@@ -508,16 +507,16 @@ export class AIRecommendationService {
    */
   async getRecommendationAnalytics(patientId, timeRange = 30) {
     try {
-      const { data, error } = await supabase
-        .from('bundle_optimization_history')
-        .select('*')
-        .eq('patient_id', patientId)
-        .gte(
-          'created_at',
-          new Date(Date.now() - timeRange * 24 * 60 * 60 * 1000).toISOString()
-        );
+      const historyCollection = collection(db, 'bundle_optimization_history');
+      const timeLimit = new Date(Date.now() - timeRange * 24 * 60 * 60 * 1000);
+      const q = query(
+        historyCollection,
+        where('patient_id', '==', patientId),
+        where('created_at', '>=', timeLimit)
+      );
 
-      if (error) throw error;
+      const querySnapshot = await getDocs(q);
+      const data = querySnapshot.docs.map(doc => doc.data());
 
       const analytics = {
         totalRecommendations: data.length,
@@ -543,3 +542,8 @@ export class AIRecommendationService {
     } catch (error) {
       console.error('Error getting recommendation analytics:', error);
       return null
+    }
+  }
+}
+
+export const aiRecommendationService = new AIRecommendationService();
