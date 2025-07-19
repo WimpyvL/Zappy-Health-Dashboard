@@ -6,7 +6,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dbService } from './index';
-import { toast } from 'react-toastify';
+import { useToast } from '@/hooks/use-toast';
 import auditLogService from './auditLogService';
 
 // --- Query Keys Factory ---
@@ -108,7 +108,7 @@ export const useUpdateSessionStatus = (options = {}) => {
         return result.data;
       },
       onSuccess: (data, variables) => {
-        toast.success(`Session status successfully changed.`);
+        // toast.success - replaced with useToast hook(`Session status successfully changed.`);
         queryClient.invalidateQueries({ queryKey: ['sessions', 'list'] });
         queryClient.invalidateQueries({ queryKey: ['sessions', 'detail', variables.sessionId] });
         if (options.onSuccess) options.onSuccess(data, variables);

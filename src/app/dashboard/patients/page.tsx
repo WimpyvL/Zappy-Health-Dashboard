@@ -92,7 +92,8 @@ export default function PatientsPage() {
   const { toast } = useToast();
 
   // Use the new centralized hooks
-  const { data: patients = [], isLoading: loading } = usePatients();
+  const { data: patientsResponse, isLoading: loading } = usePatients();
+  const patients = patientsResponse?.data || [];
   const createPatientMutation = useCreatePatient();
   const updatePatientMutation = useUpdatePatient();
 

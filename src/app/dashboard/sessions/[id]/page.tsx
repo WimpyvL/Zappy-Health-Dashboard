@@ -40,10 +40,12 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { doc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase/client";
+import { db } from "@/lib/firebase";
 import { useRouter } from 'next/navigation';
 import Loading from "./loading";
 import Error from "../error";
+import { intakeIntegrationService } from "@/services/intakeIntegrationService";
+import { consultationAI } from "@/services/consultationAI";
 
 type MedicationDosageProps = {
     dose: string;
@@ -87,8 +89,20 @@ export default function EditSessionPage({ params }: { params: { id: string } }) 
   const { toast } = useToast();
   const router = useRouter();
 
+  // Intake integration state
+  const [intakeData, setIntakeData] = React.useState<any>(null);
+  const [isLoadingIntakeData, setIsLoadingIntakeData] = React.useState(false);
+  const [intakeDataError, setIntakeDataError] = React.useState<string | null>(null);
+
+  // Form state
   const [currentDose, setCurrentDose] = React.useState("0.5");
   const [currentFollowUp, setCurrentFollowUp] = React.useState("4w");
+  const [progressNotes, setProgressNotes] = React.useState("");
+  const [assessmentPlan, setAssessmentPlan] = React.useState("");
+  const [patientMessage, setPatientMessage] = React.useState("");
+
+  // AI state
+  const [isGeneratingAI, setIsGeneratingAI] = React.useState(false);
 
   React.useEffect(() => {
     const fetchSessionData = async () => {
@@ -103,8 +117,13 @@ export default function EditSessionPage({ params }: { params: { id: string } }) 
                 throw new Error("Session not found.");
             }
             
-            const sessionData = { id: sessionSnap.id, ...sessionSnap.data() };
+            const sessionData = { id: sessionSnap.id, ...sessionSnap.data() } as any;
             setSession(sessionData);
+
+            // Initialize form state with existing data
+            setProgressNotes(sessionData.progressNotes || "");
+            setAssessmentPlan(sessionData.assessmentAndPlan || "");
+            setPatientMessage(sessionData.patientMessage || "");
 
             if (sessionData.patientId) {
                 const patientRef = doc(db, "patients", sessionData.patientId);
@@ -112,6 +131,34 @@ export default function EditSessionPage({ params }: { params: { id: string } }) 
                 if (patientSnap.exists()) {
                     setPatient({ id: patientSnap.id, ...patientSnap.data() });
                 }
+            }
+
+            // Load intake data
+            setIsLoadingIntakeData(true);
+            try {
+                const consultationData = await intakeIntegrationService.getIntakeConsultationData(params.id);
+                if (consultationData) {
+                    setIntakeData(consultationData);
+                    
+                    // Pre-populate fields if they're empty
+                    if (!sessionData.progressNotes && consultationData.patientHistory) {
+                        setProgressNotes(consultationData.patientHistory);
+                    }
+                    if (!sessionData.assessmentAndPlan && consultationData.assessment) {
+                        setAssessmentPlan(consultationData.assessment);
+                    }
+                    if (!sessionData.patientMessage && consultationData.patientMessage) {
+                        setPatientMessage(consultationData.patientMessage);
+                    }
+                    if (consultationData.selectedFollowup) {
+                        setCurrentFollowUp(consultationData.selectedFollowup);
+                    }
+                }
+            } catch (intakeError: any) {
+                console.error("Error loading intake data:", intakeError);
+                setIntakeDataError(intakeError.message);
+            } finally {
+                setIsLoadingIntakeData(false);
             }
 
         } catch (err: any) {
@@ -130,13 +177,110 @@ export default function EditSessionPage({ params }: { params: { id: string } }) 
     fetchSessionData();
   }, [params.id, toast]);
 
+  // AI generation functions
+  const handleAICompose = async () => {
+    if (!intakeData?.rawIntakeData) {
+      toast({
+        variant: "destructive",
+        title: "No intake data",
+        description: "No intake form data available for AI generation.",
+      });
+      return;
+    }
+
+    setIsGeneratingAI(true);
+    try {
+      const aiNotes = await consultationAI.enhanceProgressNotes(intakeData.rawIntakeData, progressNotes);
+      setProgressNotes(aiNotes);
+      toast({
+        title: "AI Generated",
+        description: "Progress notes have been generated based on intake data.",
+      });
+    } catch (error: any) {
+      console.error("AI generation failed:", error);
+      toast({
+        variant: "destructive",
+        title: "AI Generation Failed",
+        description: "Failed to generate progress notes. Please try again.",
+      });
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
+
+  const handleAIAssessment = async () => {
+    if (!intakeData?.rawIntakeData) {
+      toast({
+        variant: "destructive",
+        title: "No intake data",
+        description: "No intake form data available for AI generation.",
+      });
+      return;
+    }
+
+    setIsGeneratingAI(true);
+    try {
+      const aiAssessment = await consultationAI.generateAssessmentPlan(intakeData.rawIntakeData, progressNotes);
+      setAssessmentPlan(aiAssessment);
+      toast({
+        title: "AI Generated",
+        description: "Assessment and plan have been generated based on intake data.",
+      });
+    } catch (error: any) {
+      console.error("AI generation failed:", error);
+      toast({
+        variant: "destructive",
+        title: "AI Generation Failed",
+        description: "Failed to generate assessment. Please try again.",
+      });
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
+
+  const handleAIPatientMessage = async () => {
+    if (!intakeData?.rawIntakeData) {
+      toast({
+        variant: "destructive",
+        title: "No intake data",
+        description: "No intake form data available for AI generation.",
+      });
+      return;
+    }
+
+    setIsGeneratingAI(true);
+    try {
+      const aiMessage = await consultationAI.generatePatientMessage(intakeData.rawIntakeData, assessmentPlan);
+      setPatientMessage(aiMessage);
+      toast({
+        title: "AI Generated",
+        description: "Patient message has been generated based on intake data.",
+      });
+    } catch (error: any) {
+      console.error("AI generation failed:", error);
+      toast({
+        variant: "destructive",
+        title: "AI Generation Failed",
+        description: "Failed to generate patient message. Please try again.",
+      });
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
+
 
   if (loading) {
     return <Loading />;
   }
 
   if (error) {
-    return <Error error={new Error(error)} reset={() => window.location.reload()} />;
+    return (
+      <div className="text-center p-8">
+        <h2 className="text-xl font-bold text-red-600 mb-2">Error Loading Session</h2>
+        <p className="text-gray-600 mb-4">{error}</p>
+        <Button onClick={() => window.location.reload()}>Try Again</Button>
+      </div>
+    );
   }
   
   if (!session) {
@@ -161,6 +305,52 @@ export default function EditSessionPage({ params }: { params: { id: string } }) 
         </div>
       </div>
 
+      {/* Intake Data Loading Indicator */}
+      {isLoadingIntakeData && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
+          <p className="text-sm text-green-700">🌱 Loading intake form data to populate consultation notes...</p>
+        </div>
+      )}
+
+      {/* Intake Data Error Indicator */}
+      {intakeDataError && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
+          <p className="text-sm text-red-700">⚠️ Error loading intake form data: {intakeDataError}</p>
+        </div>
+      )}
+
+      {/* Intake Data Summary */}
+      {intakeData && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Patient Intake Summary</CardTitle>
+            <CardDescription>Information from patient's intake form</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <h4 className="font-semibold text-sm mb-2">Chief Complaint</h4>
+                <p className="text-sm bg-blue-50 p-3 rounded border">
+                  {intakeData.rawIntakeData?.chief_complaint || "No chief complaint provided"}
+                </p>
+              </div>
+              <div>
+                <h4 className="font-semibold text-sm mb-2">Current Medications</h4>
+                <p className="text-sm bg-green-50 p-3 rounded border">
+                  {intakeData.rawIntakeData?.medications || "None reported"}
+                </p>
+              </div>
+              <div>
+                <h4 className="font-semibold text-sm mb-2">Allergies</h4>
+                <p className="text-sm bg-red-50 p-3 rounded border text-red-800">
+                  {intakeData.rawIntakeData?.allergies || "None reported"}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Left Column */}
         <div className="lg:col-span-3 flex flex-col gap-6">
@@ -169,12 +359,33 @@ export default function EditSessionPage({ params }: { params: { id: string } }) 
               <CardTitle>Treatment Progress</CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="border rounded-lg p-4 flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">{session.progressNotes || "No treatment progress notes yet."}</p>
-                    <div className="flex gap-2">
-                        <Button variant="outline" size="sm"><Sparkles className="h-4 w-4 mr-2" /> AI Compose</Button>
-                        <Button variant="outline" size="sm"><Edit className="h-4 w-4 mr-2" /> Edit</Button>
+                <div className="space-y-4">
+                  {intakeData && (
+                    <div className="text-sm text-green-600 bg-green-50 p-2 rounded border">
+                      ✅ Populated from intake form data
                     </div>
+                  )}
+                  <Textarea
+                    value={progressNotes}
+                    onChange={(e) => setProgressNotes(e.target.value)}
+                    placeholder="Treatment progress notes..."
+                    rows={4}
+                    className="text-sm"
+                  />
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={handleAICompose}
+                      disabled={isGeneratingAI}
+                    >
+                      <Sparkles className="h-4 w-4 mr-2" /> 
+                      {isGeneratingAI ? "Generating..." : "AI Compose"}
+                    </Button>
+                    <Button variant="outline" size="sm">
+                      <Edit className="h-4 w-4 mr-2" /> Edit
+                    </Button>
+                  </div>
                 </div>
             </CardContent>
           </Card>
@@ -292,7 +503,28 @@ export default function EditSessionPage({ params }: { params: { id: string } }) 
                     </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <Textarea placeholder="Patient message..." rows={4} />
+                    {intakeData && (
+                      <div className="text-sm text-green-600 bg-green-50 p-2 rounded border">
+                        ✅ Populated from intake form data
+                      </div>
+                    )}
+                    <Textarea 
+                      value={patientMessage}
+                      onChange={(e) => setPatientMessage(e.target.value)}
+                      placeholder="Patient message..." 
+                      rows={4} 
+                    />
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={handleAIPatientMessage}
+                        disabled={isGeneratingAI}
+                      >
+                        <Sparkles className="h-4 w-4 mr-2" /> 
+                        {isGeneratingAI ? "Generating..." : "AI Generate"}
+                      </Button>
+                    </div>
                      <div>
                         <label className="text-sm font-medium mb-2 block">Follow-up</label>
                         <div className="flex gap-2">
@@ -330,6 +562,15 @@ export default function EditSessionPage({ params }: { params: { id: string } }) 
                 <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle>Assessment & Plan</CardTitle>
                     <div className="flex gap-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={handleAIAssessment}
+                          disabled={isGeneratingAI}
+                        >
+                          <Sparkles className="mr-2 h-4 w-4" /> 
+                          {isGeneratingAI ? "Generating..." : "AI Generate"}
+                        </Button>
                         <Button variant="outline" size="sm">
                             <Save className="mr-2 h-4 w-4" /> Save
                         </Button>
@@ -339,17 +580,20 @@ export default function EditSessionPage({ params }: { params: { id: string } }) 
                     </div>
                 </CardHeader>
                 <CardContent>
-                    <Textarea 
-                        rows={10} 
-                        className="text-xs leading-5"
-                        defaultValue={session.assessmentAndPlan || `Weight Management:
-• BMI 32.4, A1C 5.6%
-• Semaglutide 0.25mg wkly (6mo)
-• Metformin 500mg daily (6mo)
-• Goal: 15-20 lb loss
-
-ED:`}
-                    />
+                    <div className="space-y-4">
+                      {intakeData && (
+                        <div className="text-sm text-green-600 bg-green-50 p-2 rounded border">
+                          ✅ Populated from intake form data
+                        </div>
+                      )}
+                      <Textarea 
+                          value={assessmentPlan}
+                          onChange={(e) => setAssessmentPlan(e.target.value)}
+                          rows={10} 
+                          className="text-xs leading-5"
+                          placeholder="Assessment and treatment plan..."
+                      />
+                    </div>
                 </CardContent>
             </Card>
         </div>
