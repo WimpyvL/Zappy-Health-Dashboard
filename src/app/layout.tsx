@@ -1,17 +1,18 @@
-import type { Metadata } from "next";
+import { ClientOnly } from "@/components/client-only";
+import { FirebaseProvider } from "@/components/firebase-provider";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 
-export const metadata: Metadata = {
+export const metadata = {
   title: "HealthFlow Dashboard",
   description: "A web app dashboard for managing a small healthcare business.",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
@@ -23,7 +24,9 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased" suppressHydrationWarning>
-        {children}
+        <ClientOnly>
+          <FirebaseProvider>{children}</FirebaseProvider>
+        </ClientOnly>
         <Toaster />
       </body>
     </html>

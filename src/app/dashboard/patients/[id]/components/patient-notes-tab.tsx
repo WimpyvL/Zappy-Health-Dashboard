@@ -21,7 +21,7 @@ import { Badge } from "@/components/ui/badge";
 import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from 'date-fns';
-import { db } from "@/lib/firebase/client";
+import { db } from "@/lib/firebase";
 
 interface PatientNotesTabProps {
   patientId: string;

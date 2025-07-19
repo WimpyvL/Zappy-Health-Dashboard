@@ -61,6 +61,9 @@ const PasswordInput = React.forwardRef<HTMLInputElement, React.ComponentProps<"i
 PasswordInput.displayName = "PasswordInput";
 
 
+import { auth } from "@/lib/firebase";
+import { EmailAuthProvider, reauthenticateWithCredential, updatePassword } from "firebase/auth";
+
 export function SecuritySettingsForm() {
   const { toast } = useToast();
   const form = useForm<PasswordFormValues>({
@@ -82,13 +85,31 @@ export function SecuritySettingsForm() {
     { text: "At least one special character", met: /[^A-Za-z0-9]/.test(newPassword) },
   ];
 
-  function onSubmit(data: PasswordFormValues) {
-    console.log("Password change submitted:", data);
-    toast({
-      title: "Password Changed",
-      description: "Your password has been successfully updated.",
-    });
-    form.reset();
+  async function onSubmit(data: PasswordFormValues) {
+    const user = auth.currentUser;
+    if (!user || !user.email) {
+      toast({ variant: "destructive", title: "Error", description: "No user is signed in." });
+      return;
+    }
+
+    const credential = EmailAuthProvider.credential(user.email, data.currentPassword);
+
+    try {
+      await reauthenticateWithCredential(user, credential);
+      await updatePassword(user, data.newPassword);
+      toast({
+        title: "Password Changed",
+        description: "Your password has been successfully updated.",
+      });
+      form.reset();
+    } catch (error: any) {
+      console.error("Password change error:", error);
+      toast({
+        variant: "destructive",
+        title: "Error Changing Password",
+        description: error.message,
+      });
+    }
   }
 
   return (

@@ -41,7 +41,7 @@ import { TaskFormModal } from "./components/task-form-modal";
 import { collection, getDocs, addDoc, query, orderBy, Timestamp, doc, deleteDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { db } from "@/lib/firebase/client";
+import { db } from "@/lib/firebase";
 
 type Task = {
   id: string;
