@@ -37,12 +37,16 @@ import { cn } from "@/lib/utils";
 import { SecuritySettingsForm } from "./security-settings-form";
 import { AccountManagementForm } from "./account-management-form";
 
+import { auth, db } from "@/lib/firebase";
+import { doc, onSnapshot, setDoc } from "firebase/firestore";
+import { useToast } from "@/hooks/use-toast";
+
 const accountFormSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   email: z.string().email(),
   phone: z.string().optional(),
-  dob: z.date({ required_error: "Date of birth is required." }),
+  dob: z.date({ required_error: "Date of birth is required." }).optional(),
   address: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
@@ -51,26 +55,54 @@ const accountFormSchema = z.object({
 
 type AccountFormValues = z.infer<typeof accountFormSchema>;
 
-const defaultValues: Partial<AccountFormValues> = {
-  firstName: "Mock",
-  lastName: "User",
-  email: "mock.user@example.com",
-  phone: "111-222-3333",
-  dob: new Date("1990-01-01"),
-  address: "123 Mock St",
-  city: "Mockville",
-  state: "MK",
-  zip: "12345",
-};
-
 export function AccountSettingsForm() {
   const form = useForm<AccountFormValues>({
     resolver: zodResolver(accountFormSchema),
-    defaultValues,
+    defaultValues: {
+      email: auth.currentUser?.email || "",
+    },
   });
+  const { toast } = useToast();
 
-  function onSubmit(data: AccountFormValues) {
-    console.log("Account settings updated:", data);
+  React.useEffect(() => {
+    if (auth.currentUser) {
+      const userDocRef = doc(db, "users", auth.currentUser.uid);
+      const unsubscribe = onSnapshot(userDocRef, (doc) => {
+        if (doc.exists()) {
+          const data = doc.data();
+          form.reset({
+            firstName: data.firstName,
+            lastName: data.lastName,
+            email: data.email,
+            phone: data.phone,
+            dob: data.dob?.toDate(),
+            address: data.address,
+            city: data.city,
+            state: data.state,
+            zip: data.zip,
+          });
+        }
+      });
+      return unsubscribe;
+    }
+  }, [form]);
+
+  async function onSubmit(data: AccountFormValues) {
+    if (auth.currentUser) {
+      try {
+        await setDoc(doc(db, "users", auth.currentUser.uid), data, { merge: true });
+        toast({
+          title: "Success",
+          description: "Your account settings have been updated.",
+        });
+      } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Failed to update account settings.",
+        });
+      }
+    }
   }
 
   return (

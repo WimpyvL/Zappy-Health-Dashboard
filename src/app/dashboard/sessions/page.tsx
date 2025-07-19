@@ -45,7 +45,7 @@ import { collection, getDocs, addDoc, query, orderBy, Timestamp } from "firebase
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { db } from "@/lib/firebase/client";
+import { db } from "@/lib/firebase";
 
 type Session = {
   id: string;

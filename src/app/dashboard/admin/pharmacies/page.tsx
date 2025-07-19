@@ -57,7 +57,7 @@ import { useToast } from "@/hooks/use-toast";
 import { collection, getDocs, addDoc, updateDoc, doc, query, orderBy, deleteDoc } from "firebase/firestore";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { db } from "@/lib/firebase/client";
+import { db } from "@/lib/firebase";
 
 type Pharmacy = {
   id: string;
@@ -319,6 +319,7 @@ export default function PharmacyPage() {
           </div>
         </div>
       </div>
+    </div>
     <PharmacyFormModal 
         isOpen={isModalOpen} 
         onClose={handleCloseModal}

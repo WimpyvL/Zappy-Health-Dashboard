@@ -14,7 +14,9 @@ import { DashboardNav } from "@/components/dashboard-nav";
 import { Leaf } from "lucide-react";
 import { Toaster } from "@/components/ui/toaster";
 
-export default function DashboardLayout({
+import withAuth from "@/components/withAuth";
+
+function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -51,3 +53,5 @@ export default function DashboardLayout({
     </SidebarProvider>
   );
 }
+
+export default withAuth(DashboardLayout);
