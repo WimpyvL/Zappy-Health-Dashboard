@@ -22,7 +22,7 @@ import { CreditCard, FileStack, History, Plus } from "lucide-react";
 import { collection, query, where, getDocs } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from 'date-fns';
-import { db } from "@/lib/firebase/client";
+import { db } from "@/lib/firebase";
 
 interface PatientBillingTabProps {
   patientId: string;

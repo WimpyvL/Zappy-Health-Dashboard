@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { collection, getDocs, query, where, Timestamp, orderBy } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import { db } from "@/lib/firebase/client";
+import { db } from "@/lib/firebase";
 
 type Appointment = {
     time: string;

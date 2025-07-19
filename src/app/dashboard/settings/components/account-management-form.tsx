@@ -39,8 +39,13 @@ const InfoRow = ({ label, value }: { label: string; value: string }) => (
   </div>
 );
 
+import { auth } from "@/lib/firebase";
+import { signOut, deleteUser } from "firebase/auth";
+import { useRouter } from "next/navigation";
+
 export function AccountManagementForm() {
   const { toast } = useToast();
+  const router = useRouter();
 
   const handleChangeRole = () => {
     toast({
@@ -50,12 +55,42 @@ export function AccountManagementForm() {
     setTimeout(() => window.location.reload(), 1500);
   };
 
-  const handleSignOut = () => {
-    toast({
-      title: "Signed Out",
-      description: "You have been successfully signed out.",
-    });
-    // Add actual sign out logic here
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+      toast({
+        title: "Signed Out",
+        description: "You have been successfully signed out.",
+      });
+      router.push("/");
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Failed to sign out.",
+      });
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    const user = auth.currentUser;
+    if (user) {
+      try {
+        await deleteUser(user);
+        toast({
+          variant: "destructive",
+          title: "Account Deleted",
+          description: "Your account has been permanently deleted.",
+        });
+        router.push("/");
+      } catch (error: any) {
+        toast({
+          variant: "destructive",
+          title: "Error Deleting Account",
+          description: error.message,
+        });
+      }
+    }
   };
 
 
@@ -141,15 +176,7 @@ export function AccountManagementForm() {
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                        onClick={() => {
-                        toast({
-                            variant: "destructive",
-                            title: "Account Deleted",
-                            description: "Your account has been permanently deleted.",
-                        })
-                        }}
-                    >
+                    <AlertDialogAction onClick={handleDeleteAccount}>
                         Continue
                     </AlertDialogAction>
                     </AlertDialogFooter>

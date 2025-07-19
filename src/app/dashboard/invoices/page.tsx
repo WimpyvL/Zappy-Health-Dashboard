@@ -44,7 +44,7 @@ import { useToast } from "@/hooks/use-toast";
 import { collection, getDocs, addDoc, query, orderBy, Timestamp } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
-import { db } from "@/lib/firebase/client";
+import { db } from "@/lib/firebase";
 
 type Invoice = {
   id: string;
