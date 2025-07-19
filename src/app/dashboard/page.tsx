@@ -26,29 +26,10 @@ import { useToast } from "@/hooks/use-toast"
 import { useRouter } from 'next/navigation'
 import { TaskFormModal } from "./tasks/components/task-form-modal"
 import { CreateOrderModal } from "./orders/components/create-order-modal"
-import { initializeApp } from "firebase/app";
-import { getFirestore, collection, getDocs, query, where, Timestamp } from "firebase/firestore";
+import { shouldUseDemoData, demoDataService } from "@/lib/demo-data";
+import { getFirebaseFirestore } from "@/lib/firebase";
+import { collection, getDocs, query, where, Timestamp } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton"
-
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyBVV_vq5fjNSASYQndmbRbEtlfyOieFVTs",
-  authDomain: "zappy-health-c1kob.firebaseapp.com",
-  databaseURL: "https://zappy-health-c1kob-default-rtdb.firebaseio.com",
-  projectId: "zappy-health-c1kob",
-  storageBucket: "zappy-health-c1kob.appspot.com",
-  messagingSenderId: "833435237612",
-  appId: "1:833435237612:web:53731373b2ad7568f279c9"
-};
-
-// Initialize Firebase
-let app;
-try {
-  app = initializeApp(firebaseConfig, "dashboard-app");
-} catch (e) {
-  app = initializeApp(firebaseConfig);
-}
-const db = getFirestore(app);
 
 
 const StatCard = ({
@@ -105,6 +86,25 @@ export default function DashboardPage() {
     const fetchDashboardStats = async () => {
       setLoadingStats(true);
       try {
+        // Use demo data in development mode
+        if (shouldUseDemoData()) {
+          console.log('📊 Using demo data for dashboard stats');
+          const demoStats = await demoDataService.getDashboardStats();
+          setStats({
+            totalPatients: demoStats.totalPatients,
+            upcomingSessions: demoStats.upcomingSessions,
+            pendingOrders: demoStats.pendingOrders,
+            newConsultations: demoStats.newConsultations,
+          });
+          return;
+        }
+
+        // Real Firebase data for production
+        const db = getFirebaseFirestore();
+        if (!db) {
+          throw new Error('Firestore not initialized');
+        }
+
         const patientsCollection = collection(db, "patients");
         const patientsSnapshot = await getDocs(patientsCollection);
         

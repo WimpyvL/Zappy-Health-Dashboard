@@ -12,6 +12,8 @@
 
 # testing
 /coverage
+*.lcov
+/jest_results
 
 # next.js
 /.next/
@@ -19,6 +21,7 @@
 
 # production
 /build
+/dist
 
 # misc
 .DS_Store
@@ -30,6 +33,13 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# local env files
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
 # vercel
 .vercel
 
@@ -37,13 +47,38 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# genkit
 .genkit/*
-.env*
 
 # firebase
 firebase-debug.log
 firestore-debug.log
+ui-debug.log
 
 # functions
 /functions/node_modules
 /functions/lib
+
+# IDE files
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# temporary files
+*.tmp
+*.temp
+*.log
+*.backup
+*.bak
+*.orig
+
+# test results
+/test-results/
+/playwright-report/
+/playwright/.cache/
