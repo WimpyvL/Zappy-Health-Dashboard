@@ -319,8 +319,9 @@ export default function PharmacyPage() {
           </div>
         </div>
       </div>
-    <PharmacyFormModal 
-        isOpen={isModalOpen} 
+    </div>
+    <PharmacyFormModal
+        isOpen={isModalOpen}
         onClose={handleCloseModal}
         pharmacy={editingPharmacy}
         onSubmit={handleFormSubmit}

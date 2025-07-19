@@ -116,22 +116,18 @@ const patientNavGroups = [
     }
 ]
 
-// This is a placeholder for a real auth context
-const useAuth = () => {
-    // In a real app, this would come from a context provider.
-    // For now, we can simulate it.
-    // To test the patient view, change this to 'patient'
-    return { role: 'admin' };
-}
-
+import { useAuth } from "@/lib/auth-context";
 
 export function DashboardNav() {
   const pathname = usePathname();
-  const { role } = useAuth();
+  const { user } = useAuth();
+  const role = user?.role || 'patient';
 
   const navGroups = role === 'admin' || role === 'provider' ? adminNavGroups : patientNavGroups;
 
   const isActive = (href: string) => {
+    if (!pathname) return false;
+    
     // Exact match for the dashboard, otherwise startsWith for nested routes
     if (href === "/dashboard") {
       return pathname === href;

@@ -1,11 +1,20 @@
+"use client";
+
 import type { Metadata } from "next";
 import "./globals.css";
+import { AuthProvider } from "@/lib/auth-context";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import React from "react";
 
-
-export const metadata: Metadata = {
-  title: "HealthFlow Dashboard",
-  description: "A web app dashboard for managing a small healthcare business.",
-};
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      gcTime: 10 * 60 * 1000, // 10 minutes
+      retry: 3,
+    },
+  },
+});
 
 export default function RootLayout({
   children,
@@ -21,9 +30,15 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
+        <title>HealthFlow Dashboard</title>
+        <meta name="description" content="A web app dashboard for managing a small healthcare business." />
       </head>
       <body className="font-body antialiased bg-slate-50" suppressHydrationWarning>
-        {children}
+        <QueryClientProvider client={queryClient}>
+          <AuthProvider>
+            {children}
+          </AuthProvider>
+        </QueryClientProvider>
       </body>
     </html>
   );
