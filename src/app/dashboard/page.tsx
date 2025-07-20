@@ -20,7 +20,7 @@ import {
   ClipboardList,
   ClipboardPlus,
 } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
@@ -94,6 +94,7 @@ const fetchDashboardStats = async () => {
 export default function DashboardPage() {
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const router = useRouter();
   const { toast } = useToast()
 
@@ -102,6 +103,11 @@ export default function DashboardPage() {
     queryFn: fetchDashboardStats,
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
+
+  useEffect(() => {
+    // Set time on client-side to avoid hydration mismatch
+    setLastUpdated(new Date().toLocaleTimeString());
+  }, []);
 
   if (error) {
     toast({
@@ -112,6 +118,7 @@ export default function DashboardPage() {
   }
 
   const handleRefreshSessions = () => {
+    setLastUpdated(new Date().toLocaleTimeString());
     toast({
       title: "Sessions Refreshed",
       description: "The list of today's sessions has been updated.",
@@ -206,7 +213,7 @@ export default function DashboardPage() {
             </p>
           </CardContent>
           <p className="px-6 pb-4 text-xs text-cyan-600">
-            Last updated: {new Date().toLocaleTimeString()}
+            Last updated: {lastUpdated || <Skeleton className="h-4 w-20 inline-block" />}
           </p>
         </Card>
 
