@@ -1,34 +1,12 @@
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /patients/{patientId} {
-      allow read: if true;
-
-      allow create: if 
-        request.resource.data.firstName is string &&
-        request.resource.data.lastName is string &&
-        request.resource.data.email is string &&
-        request.resource.data.phone is string &&
-        request.resource.data.dob is timestamp &&
-        request.resource.data.address is string &&
-        (!('pharmacy' in request.resource.data) || request.resource.data.pharmacy is string) &&
-        (!('insuranceProvider' in request.resource.data) || request.resource.data.insuranceProvider is string) &&
-        (!('policyNumber' in request.resource.data) || request.resource.data.policyNumber is string) &&
-        (!('groupNumber' in request.resource.data) || request.resource.data.groupNumber is string) &&
-        (!('insuranceHolder' in request.resource.data) || request.resource.data.insuranceHolder is string);
-
-      allow update: if
-        request.resource.data.firstName is string &&
-        request.resource.data.lastName is string &&
-        request.resource.data.email is string &&
-        request.resource.data.phone is string &&
-        request.resource.data.dob is timestamp &&
-        request.resource.data.address is string &&
-        (!('pharmacy' in request.resource.data) || request.resource.data.pharmacy is string) &&
-        (!('insuranceProvider' in request.resource.data) || request.resource.data.insuranceProvider is string) &&
-        (!('policyNumber' in request.resource.data) || request.resource.data.policyNumber is string) &&
-        (!('groupNumber' in request.resource.data) || request.resource.data.groupNumber is string) &&
-        (!('insuranceHolder' in request.resource.data) || request.resource.data.insuranceHolder is string);
+    // Allow read and write access for all authenticated users.
+    // This is a permissive rule suitable for development.
+    // For production, you should implement more granular, role-based security rules.
+    match /{document=**} {
+      allow read, write: if request.auth != null;
     }
   }
 }
