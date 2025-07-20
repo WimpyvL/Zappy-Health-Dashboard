@@ -1,4 +1,3 @@
-
 /**
  * @fileoverview Centralized React Query hooks for database operations.
  * This file uses the centralized `dbService` to provide hooks for components.
@@ -6,7 +5,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dbService } from './index';
-import { toast } from 'react-toastify';
+import { useToast } from '@/hooks/use-toast';
 import auditLogService from './auditLogService';
 
 // --- Query Keys Factory ---
@@ -100,6 +99,7 @@ export const useSessions = (params = {}, pageSize = 10) => {
 
 export const useUpdateSessionStatus = (options = {}) => {
     const queryClient = useQueryClient();
+    const { toast } = useToast();
     return useMutation({
       mutationFn: async ({ sessionId, status }) => {
         if (!sessionId) throw new Error('Session ID is required for status update.');
@@ -108,13 +108,13 @@ export const useUpdateSessionStatus = (options = {}) => {
         return result.data;
       },
       onSuccess: (data, variables) => {
-        toast.success(`Session status successfully changed.`);
+        toast({title: "Session status successfully changed."});
         queryClient.invalidateQueries({ queryKey: ['sessions', 'list'] });
         queryClient.invalidateQueries({ queryKey: ['sessions', 'detail', variables.sessionId] });
         if (options.onSuccess) options.onSuccess(data, variables);
       },
       onError: (error, variables) => {
-        toast.error(`Error updating status: ${error.message}`);
+        toast({variant: "destructive", title: `Error updating status: ${error.message}`});
         if (options.onError) options.onError(error, variables);
       },
     });
@@ -123,6 +123,7 @@ export const useUpdateSessionStatus = (options = {}) => {
 // --- Consultation Hooks ---
 export const useConsultations = (options = {}) => {
   const { page = 1, pageSize = 20, filters = {}, ...queryOptions } = options;
+  const { toast } = useToast();
   return useQuery({
     queryKey: ['consultations', 'list', { page, pageSize, filters }],
     queryFn: async () => {
@@ -138,7 +139,7 @@ export const useConsultations = (options = {}) => {
     staleTime: 30 * 1000,
     onError: (error) => {
       console.error('Fetch consultations error:', error);
-      toast.error(error.message || 'Failed to fetch consultations');
+      toast({variant: "destructive", title: error.message || 'Failed to fetch consultations'});
     },
     ...queryOptions,
   });
