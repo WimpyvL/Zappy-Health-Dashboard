@@ -105,17 +105,19 @@ export default function DashboardPage() {
   });
 
   useEffect(() => {
+    if (error) {
+      toast({
+        variant: "destructive",
+        title: "Error loading dashboard data",
+        description: "Could not retrieve summary data from the database.",
+      });
+    }
+  }, [error, toast]);
+
+  useEffect(() => {
     // Set time on client-side to avoid hydration mismatch
     setLastUpdated(new Date().toLocaleTimeString());
   }, []);
-
-  if (error) {
-    toast({
-      variant: "destructive",
-      title: "Error loading dashboard data",
-      description: "Could not retrieve summary data from the database.",
-    });
-  }
 
   const handleRefreshSessions = () => {
     setLastUpdated(new Date().toLocaleTimeString());
