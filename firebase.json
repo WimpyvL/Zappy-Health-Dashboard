@@ -1,21 +1,9 @@
 {
-  "functions": {
-    "source": "functions",
-    "runtime": "nodejs20"
-  },
-  "dataconnect": {
-    "source": "dataconnect"
-  },
-  "hosting": {
-    "source": ".",
-    "ignore": [
-      "firebase.json",
-      "**/.*",
-      "**/node_modules/**"
-    ]
-  },
   "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
+  },
+  "storage": {
+    "rules": "storage.rules"
   }
 }

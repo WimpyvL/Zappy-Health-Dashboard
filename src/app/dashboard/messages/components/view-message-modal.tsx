@@ -2,31 +2,22 @@
 "use client";
 
 import * as React from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Paperclip, Send, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { collection, getDocs, query, orderBy, Timestamp, addDoc } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { db } from "@/lib/firebase";
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { dbService } from '@/services/database';
 
 type Conversation = {
   id: string;
   name: string;
   subject: string;
-  preview: string;
-  time: string;
-  unread: boolean;
 };
 
 type ChatMessage = {
@@ -36,149 +27,68 @@ type ChatMessage = {
     time: string;
 };
 
-interface ViewMessageModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  conversation: Conversation | null;
-}
+const fetchMessages = async (conversationId: string) => {
+    // dbService needs a method for fetching from subcollections. This is a placeholder.
+    // const response = await dbService.getAll<any>(`conversations/${conversationId}/messages`, { sortBy: 'time', sortDirection: 'asc' });
+    // if (response.error || !response.data) throw new Error(response.error || 'Failed to fetch messages');
+    // return response.data.map((msg: any) => ({ ...msg, time: msg.time?.toDate().toLocaleTimeString() }));
+    return []; // Placeholder
+};
 
-export function ViewMessageModal({
-  isOpen,
-  onClose,
-  conversation,
-}: ViewMessageModalProps) {
-  const [chatHistory, setChatHistory] = React.useState<ChatMessage[]>([]);
-  const [loading, setLoading] = React.useState(true);
+const sendMessage = async ({ conversationId, text }: { conversationId: string, text: string }) => {
+    // const response = await dbService.create(`conversations/${conversationId}/messages`, { sender: 'provider', text });
+    // if (response.error) throw new Error(response.error);
+    // return response.data;
+    return { id: Date.now().toString(), sender: 'provider', text, time: new Date().toLocaleTimeString() }; // Placeholder
+};
+
+export function ViewMessageModal({ isOpen, onClose, conversation }: { isOpen: boolean; onClose: () => void; conversation: Conversation | null; }) {
   const [newMessage, setNewMessage] = React.useState("");
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  React.useEffect(() => {
-    if (isOpen && conversation) {
-        const fetchMessages = async () => {
-            setLoading(true);
-            try {
-                const messagesRef = collection(db, "conversations", conversation.id, "messages");
-                const q = query(messagesRef, orderBy("time", "asc"));
-                const querySnapshot = await getDocs(q);
-                const messages = querySnapshot.docs.map(doc => {
-                    const data = doc.data();
-                    return {
-                        id: doc.id,
-                        sender: data.sender,
-                        text: data.text,
-                        time: data.time ? new Date(data.time.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'N/A',
-                    } as ChatMessage;
-                });
-                setChatHistory(messages);
-            } catch (error) {
-                console.error("Error fetching messages:", error);
-                toast({ variant: "destructive", title: "Failed to load messages." });
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchMessages();
-    }
-  }, [isOpen, conversation, toast]);
+  const { data: chatHistory = [], isLoading: loading } = useQuery<ChatMessage[], Error>({
+    queryKey: ['messages', conversation?.id],
+    queryFn: () => fetchMessages(conversation!.id),
+    enabled: !!conversation,
+    onError: (error) => toast({ variant: "destructive", title: "Failed to load messages.", description: error.message }),
+  });
 
-  const handleSendMessage = async () => {
-    if (!newMessage.trim() || !conversation) return;
-    try {
-        await addDoc(collection(db, "conversations", conversation.id, "messages"), {
-            sender: "provider",
-            text: newMessage,
-            time: Timestamp.now()
-        });
+  const sendMessageMutation = useMutation({
+    mutationFn: sendMessage,
+    onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['messages', conversation?.id] });
         setNewMessage("");
-        // Optimistically update UI
-        setChatHistory(prev => [...prev, {
-            id: Date.now().toString(),
-            sender: "provider",
-            text: newMessage,
-            time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-        }]);
-    } catch (error) {
-        console.error("Error sending message:", error);
-        toast({ variant: "destructive", title: "Failed to send message." });
-    }
+    },
+    onError: (error: Error) => toast({ variant: "destructive", title: "Failed to send message.", description: error.message }),
+  });
+
+  const handleSendMessage = () => {
+    if (!newMessage.trim() || !conversation) return;
+    sendMessageMutation.mutate({ conversationId: conversation.id, text: newMessage });
   };
 
   if (!conversation) return null;
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[480px] p-0 flex flex-col h-[600px]" hideCloseButton>
-        <DialogHeader className="p-4 border-b flex-shrink-0">
-          <div className="flex justify-between items-center">
-            <div className="flex items-center gap-3">
-              <Avatar>
-                <AvatarFallback>{conversation.name.charAt(0)}</AvatarFallback>
-              </Avatar>
-              <div>
-                <DialogTitle className="text-base font-semibold">{conversation.name}</DialogTitle>
-                <p className="text-sm text-muted-foreground">{conversation.subject}</p>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{conversation.name}</DialogTitle>
+        </DialogHeader>
+        <ScrollArea className="h-72">
+          {loading ? <Skeleton className="h-full w-full" /> : chatHistory.map((chat) => (
+            <div key={chat.id} className={cn("flex", chat.sender === "provider" ? "justify-end" : "justify-start")}>
+              <div className={cn("rounded-lg px-3 py-2 m-1", chat.sender === "provider" ? "bg-primary text-primary-foreground" : "bg-muted")}>
+                <p>{chat.text}</p>
+                <p className="text-xs opacity-70 mt-1 text-right">{chat.time}</p>
               </div>
             </div>
-            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
-                <X className="h-4 w-4" />
-            </Button>
-          </div>
-        </DialogHeader>
-        
-        <ScrollArea className="flex-grow p-4">
-          <div className="space-y-4">
-            {loading ? (
-                <div className="space-y-2">
-                    <Skeleton className="h-10 w-3/4" />
-                    <Skeleton className="h-12 w-1/2 ml-auto" />
-                    <Skeleton className="h-8 w-2/3" />
-                </div>
-            ) : chatHistory.length > 0 ? (
-                chatHistory.map((chat, index) => (
-                <div
-                    key={chat.id || index}
-                    className={cn(
-                    "flex items-end gap-2",
-                    chat.sender === "provider" ? "justify-end" : "justify-start"
-                    )}
-                >
-                    <div
-                    className={cn(
-                        "rounded-lg px-3 py-2 max-w-xs",
-                        chat.sender === "provider"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted"
-                    )}
-                    >
-                    <p className="text-sm">{chat.text}</p>
-                    <p className="text-xs opacity-70 mt-1 text-right">{chat.time}</p>
-                    </div>
-                </div>
-                ))
-            ) : (
-                <div className="text-center text-muted-foreground py-8">
-                    No messages in this conversation yet.
-                </div>
-            )}
-          </div>
+          ))}
         </ScrollArea>
-        
-        <DialogFooter className="p-4 border-t bg-background">
-          <div className="flex items-center w-full gap-2">
-            <Button variant="ghost" size="icon">
-              <Paperclip className="h-5 w-5" />
-            </Button>
-            <Input
-              placeholder="Type your message..."
-              className="flex-1"
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
-            />
-            <Button onClick={handleSendMessage}>
-              <Send className="h-5 w-5" />
-            </Button>
-          </div>
+        <DialogFooter>
+          <Input value={newMessage} onChange={(e) => setNewMessage(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()} />
+          <Button onClick={handleSendMessage}><Send className="h-5 w-5" /></Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -1,47 +1,22 @@
 
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogCancel,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-    AlertDialogTrigger,
-  } from "@/components/ui/alert-dialog";
+import { Card, CardContent } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Plus, MoreHorizontal, Search, ChevronDown, Trash2 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TaskFormModal } from "./components/task-form-modal";
-import { collection, getDocs, addDoc, query, orderBy, Timestamp, doc, deleteDoc } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { db } from "@/lib/firebase/client";
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { dbService } from '@/services/database';
 
 type Task = {
   id: string;
@@ -63,87 +38,86 @@ const statusColorMap: { [key: string]: string } = {
   "Completed": "bg-green-100 text-green-800",
 };
 
+const fetchTasks = async () => {
+    const response = await dbService.getAll<Omit<Task, 'dueDate'> & { dueDate: any }>('tasks', { sortBy: 'dueDate', sortDirection: 'asc' });
+    if (response.error || !response.data) {
+        throw new Error(response.error || 'Failed to fetch tasks');
+    }
+    return response.data.map(task => ({
+        ...task,
+        dueDate: task.dueDate ? format(task.dueDate.toDate(), "MMM dd, yyyy") : "N/A",
+    }));
+};
+
+const createTask = async (newTask: { assignee: string; task: string; dueDate?: Date }) => {
+    const response = await dbService.create('tasks', {
+        ...newTask,
+        status: "Pending",
+        createdAt: new Date(),
+    });
+    if (response.error) throw new Error(response.error);
+    return response.data;
+}
+
+const deleteTask = async (taskId: string) => {
+    const response = await dbService.delete('tasks', taskId);
+    if (response.error) throw new Error(response.error);
+}
 
 export default function TasksPage() {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const fetchTasks = async () => {
-    setLoading(true);
-    try {
-        const tasksCollection = collection(db, "tasks");
-        const taskSnapshot = await getDocs(query(tasksCollection, orderBy("dueDate", "asc")));
-        const taskList = taskSnapshot.docs.map(doc => {
-            const data = doc.data();
-            return {
-                id: doc.id,
-                dueDate: data.dueDate ? format(data.dueDate.toDate(), "MMM dd, yyyy") : "N/A",
-                ...data,
-            } as Task;
-        });
-        setTasks(taskList);
-    } catch(error) {
-        console.error("Error fetching tasks: ", error);
+  const { data: tasks = [], isLoading: loading } = useQuery<Task[], Error>({
+    queryKey: ['tasks'],
+    queryFn: fetchTasks,
+    onError: (error) => {
         toast({
             variant: "destructive",
             title: "Error fetching tasks",
-            description: "Could not retrieve task data from the database.",
+            description: error.message,
         });
-    } finally {
-        setLoading(false);
     }
-  };
+  });
 
-  useEffect(() => {
-    fetchTasks();
-  }, []);
-
-  const handleCreateTask = async (values: { assignee: string; task: string; dueDate?: Date }) => {
-    try {
-      await addDoc(collection(db, "tasks"), {
-        assignee: values.assignee,
-        task: values.task,
-        status: "Pending",
-        dueDate: values.dueDate ? Timestamp.fromDate(values.dueDate) : Timestamp.now(),
-        createdAt: Timestamp.now(),
-      });
-      toast({
-        title: "Task Created",
-        description: `A new task has been assigned to ${values.assignee}.`,
-      });
-      fetchTasks();
-      setIsModalOpen(false);
-    } catch (error) {
-      console.error("Error creating task: ", error);
-      toast({
-        variant: "destructive",
-        title: "Error Creating Task",
-        description: "An error occurred while creating the task.",
-      });
+  const createMutation = useMutation({
+    mutationFn: createTask,
+    onSuccess: (data) => {
+        queryClient.invalidateQueries({ queryKey: ['tasks'] });
+        toast({
+            title: "Task Created",
+            description: `A new task has been assigned to ${data?.assignee}.`,
+        });
+        setIsModalOpen(false);
+    },
+    onError: (error: Error) => {
+        toast({
+            variant: "destructive",
+            title: "Error Creating Task",
+            description: error.message,
+        });
     }
-  };
+  });
 
-  const handleDeleteTask = async (taskId: string) => {
-    try {
-        await deleteDoc(doc(db, "tasks", taskId));
+  const deleteMutation = useMutation({
+    mutationFn: deleteTask,
+    onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['tasks'] });
         toast({
             title: "Task Deleted",
             description: "The task has been successfully deleted.",
         });
-        fetchTasks();
-    } catch(error) {
-        console.error("Error deleting task: ", error);
+    },
+    onError: (error: Error) => {
         toast({
             variant: "destructive",
             title: "Error Deleting Task",
-            description: "Could not delete the task.",
+            description: error.message,
         });
     }
-  };
-
+  });
 
   const filteredTasks = tasks.filter(task => 
     task.task.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -248,7 +222,7 @@ export default function TasksPage() {
                                   </AlertDialogHeader>
                                   <AlertDialogFooter>
                                     <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction onClick={() => handleDeleteTask(task.id)}>Delete</AlertDialogAction>
+                                    <AlertDialogAction onClick={() => deleteMutation.mutate(task.id)}>Delete</AlertDialogAction>
                                   </AlertDialogFooter>
                                 </AlertDialogContent>
                               </AlertDialog>
@@ -296,7 +270,7 @@ export default function TasksPage() {
           </div>
         </div>
       </div>
-      <TaskFormModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSubmit={handleCreateTask} />
+      <TaskFormModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSubmit={(values) => createMutation.mutate(values)} />
     </>
   );
 }

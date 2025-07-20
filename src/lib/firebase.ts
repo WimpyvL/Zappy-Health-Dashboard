@@ -1,9 +1,10 @@
 // src/lib/firebase.ts
-// This is the single source of truth for Firebase client-side initialization.
-import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
-import { getFirestore, Firestore } from "firebase/firestore";
+import { initializeApp, getApps, getApp } from 'firebase/app';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
-// Your web app's Firebase configuration should be in environment variables
+// Your web app's Firebase configuration
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -13,19 +14,12 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-// A robust singleton pattern for Firebase initialization
-let app: FirebaseApp;
-let db: Firestore;
+// Initialize Firebase
+// We add a check to see if the app is already initialized to prevent errors during hot-reloads in development.
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
-if (typeof window !== "undefined" && !getApps().length) {
-  // This code runs only in the browser and only if Firebase hasn't been initialized yet.
-  app = initializeApp(firebaseConfig);
-  db = getFirestore(app);
-} else if (getApps().length > 0) {
-  // If the app is already initialized (e.g., on subsequent renders), get the existing instance.
-  app = getApp();
-  db = getFirestore(app);
-}
+const db = getFirestore(app);
+const auth = getAuth(app);
+const storage = getStorage(app);
 
-// @ts-ignore - We initialize 'app' and 'db' inside the conditional logic, but TS can't infer it.
-export { app, db };
+export { app, db, auth, storage };

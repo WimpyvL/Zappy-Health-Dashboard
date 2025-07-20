@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
@@ -21,35 +20,15 @@ import {
   ClipboardList,
   ClipboardPlus,
 } from "lucide-react"
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from 'next/navigation'
+import { useQuery } from '@tanstack/react-query'
+import { dbService } from '@/services/database'
 import { TaskFormModal } from "./tasks/components/task-form-modal"
 import { CreateOrderModal } from "./orders/components/create-order-modal"
-import { initializeApp } from "firebase/app";
-import { getFirestore, collection, getDocs, query, where, Timestamp } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton"
-
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "AIzaSyBVV_vq5fjNSASYQndmbRbEtlfyOieFVTs",
-  authDomain: "zappy-health-c1kob.firebaseapp.com",
-  databaseURL: "https://zappy-health-c1kob-default-rtdb.firebaseio.com",
-  projectId: "zappy-health-c1kob",
-  storageBucket: "zappy-health-c1kob.appspot.com",
-  messagingSenderId: "833435237612",
-  appId: "1:833435237612:web:53731373b2ad7568f279c9"
-};
-
-// Initialize Firebase
-let app;
-try {
-  app = initializeApp(firebaseConfig, "dashboard-app");
-} catch (e) {
-  app = initializeApp(firebaseConfig);
-}
-const db = getFirestore(app);
-
+import { Timestamp } from "firebase/firestore"
 
 const StatCard = ({
   title,
@@ -87,59 +66,50 @@ const StatCard = ({
   </Card>
 )
 
+const fetchDashboardStats = async () => {
+  const [
+    patientsRes,
+    upcomingSessionsRes,
+    pendingOrdersRes,
+    newConsultationsRes,
+  ] = await Promise.all([
+    dbService.getAll('patients'),
+    dbService.getAll('sessions', { filters: [{ field: 'date', op: '>=', value: Timestamp.now() }] }),
+    dbService.getAll('orders', { filters: [{ field: 'status', op: 'in', value: ['Processing', 'Pending'] }] }),
+    dbService.getAll('sessions', { filters: [{ field: 'status', op: 'in', value: ['Scheduled', 'Pending'] }] }),
+  ]);
+
+  if (patientsRes.error || upcomingSessionsRes.error || pendingOrdersRes.error || newConsultationsRes.error) {
+    throw new Error('Failed to fetch dashboard stats');
+  }
+
+  return {
+    totalPatients: patientsRes.data?.length || 0,
+    upcomingSessions: upcomingSessionsRes.data?.length || 0,
+    pendingOrders: pendingOrdersRes.data?.length || 0,
+    newConsultations: newConsultationsRes.data?.length || 0,
+  };
+};
+
 export default function DashboardPage() {
-  const [stats, setStats] = useState({
-    totalPatients: 0,
-    upcomingSessions: 0,
-    pendingOrders: 0,
-    newConsultations: 0,
-  });
-  const [lastUpdated, setLastUpdated] = useState(new Date().toLocaleTimeString());
-  const [loadingStats, setLoadingStats] = useState(true);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const router = useRouter();
   const { toast } = useToast()
 
-  useEffect(() => {
-    const fetchDashboardStats = async () => {
-      setLoadingStats(true);
-      try {
-        const patientsCollection = collection(db, "patients");
-        const patientsSnapshot = await getDocs(patientsCollection);
-        
-        const sessionsCollection = collection(db, "sessions");
-        const upcomingSessionsQuery = query(sessionsCollection, where("date", ">=", Timestamp.now()));
-        const upcomingSessionsSnapshot = await getDocs(upcomingSessionsQuery);
-        
-        const ordersCollection = collection(db, "orders");
-        const pendingOrdersQuery = query(ordersCollection, where("status", "in", ["Processing", "Pending"]));
-        const pendingOrdersSnapshot = await getDocs(pendingOrdersQuery);
+  const { data: stats, isLoading: loadingStats, error } = useQuery({
+    queryKey: ['dashboardStats'],
+    queryFn: fetchDashboardStats,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+  });
 
-        const newConsultationsQuery = query(sessionsCollection, where("status", "in", ["Scheduled", "Pending"]));
-        const newConsultationsSnapshot = await getDocs(newConsultationsQuery);
-
-        setStats({
-          totalPatients: patientsSnapshot.size,
-          upcomingSessions: upcomingSessionsSnapshot.size,
-          pendingOrders: pendingOrdersSnapshot.size,
-          newConsultations: newConsultationsSnapshot.size,
-        });
-        setLastUpdated(new Date().toLocaleTimeString());
-      } catch (error) {
-        console.error("Error fetching dashboard stats: ", error);
-        toast({
-          variant: "destructive",
-          title: "Error loading dashboard data",
-          description: "Could not retrieve summary data from the database.",
-        });
-      } finally {
-        setLoadingStats(false);
-      }
-    };
-
-    fetchDashboardStats();
-  }, [toast])
+  if (error) {
+    toast({
+      variant: "destructive",
+      title: "Error loading dashboard data",
+      description: "Could not retrieve summary data from the database.",
+    });
+  }
 
   const handleRefreshSessions = () => {
     toast({
@@ -166,6 +136,12 @@ export default function DashboardPage() {
     setIsOrderModalOpen(false);
   };
 
+  const displayStats = {
+    totalPatients: stats?.totalPatients ?? 0,
+    upcomingSessions: stats?.upcomingSessions ?? 0,
+    pendingOrders: stats?.pendingOrders ?? 0,
+    newConsultations: stats?.newConsultations ?? 0,
+  };
 
   return (
     <>
@@ -173,28 +149,28 @@ export default function DashboardPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title="Total Patients"
-          value={stats.totalPatients.toString()}
+          value={displayStats.totalPatients.toString()}
           description="+2 since last week"
           icon={Users}
           loading={loadingStats}
         />
         <StatCard
           title="Upcoming Sessions"
-          value={stats.upcomingSessions.toString()}
+          value={displayStats.upcomingSessions.toString()}
           description="No sessions today"
           icon={Calendar}
           loading={loadingStats}
         />
         <StatCard
           title="Pending Orders"
-          value={stats.pendingOrders.toString()}
+          value={displayStats.pendingOrders.toString()}
           description="Awaiting processing"
           icon={Package}
           loading={loadingStats}
         />
         <StatCard
           title="New Consultations"
-          value={stats.newConsultations.toString()}
+          value={displayStats.newConsultations.toString()}
           description="Pending review"
           icon={MessageSquarePlus}
           loading={loadingStats}
@@ -230,7 +206,7 @@ export default function DashboardPage() {
             </p>
           </CardContent>
           <p className="px-6 pb-4 text-xs text-cyan-600">
-            Last updated: {lastUpdated}
+            Last updated: {new Date().toLocaleTimeString()}
           </p>
         </Card>
 
