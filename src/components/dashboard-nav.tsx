@@ -41,7 +41,6 @@ const adminNavGroups = [
         label: "Overview",
         items: [
             { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-            { href: "/dashboard/calendar", label: "Calendar", icon: Calendar },
         ]
     },
     {
