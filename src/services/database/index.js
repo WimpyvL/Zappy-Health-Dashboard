@@ -44,7 +44,7 @@ class DatabaseService {
     try {
       let q = query(this._getCollection(collectionName));
       
-      if (options.filters) {
+      if (options.filters && Array.isArray(options.filters)) {
         options.filters.forEach(filter => {
           if(filter.value) {
             q = query(q, where(filter.field, filter.op, filter.value));

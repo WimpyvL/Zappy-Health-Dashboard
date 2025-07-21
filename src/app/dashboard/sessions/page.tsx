@@ -35,13 +35,14 @@ import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { ScheduleSessionModal } from "./components/schedule-session-modal";
 import { useToast } from "@/hooks/use-toast";
-import { collection, addDoc, query, orderBy, Timestamp, doc, updateDoc } from "firebase/firestore";
+import { Timestamp, addDoc, collection, updateDoc, doc } from "firebase/firestore";
 import Link from "next/link";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { format } from "date-fns";
-import { db } from "@/lib/firebase";
-import { useUpdateSessionStatus, useSessions, Session } from "@/services/database/hooks";
+import { useUpdateSessionStatus, useSessions, useCreateSession, Session } from "@/services/database/hooks";
 import { useTelehealthFlow } from "@/hooks/useTelehealthFlow.js";
+import { Skeleton } from "@/components/ui/skeleton";
+import { db } from "@/lib/firebase";
 
 const SESSION_STATUSES = [
   'pending',
@@ -53,23 +54,28 @@ const SESSION_STATUSES = [
 
 type SessionStatus = typeof SESSION_STATUSES[number];
 
-const StatusBadge = ({ status }: { status: SessionStatus }) => {
-    const statusConfig: Record<SessionStatus, { label: string; className: string }> = {
+const StatusBadge = React.memo(({ status }: { status: SessionStatus }) => {
+    const statusConfig: Record<SessionStatus, { label: string; className: string }> = React.useMemo(() => ({
       pending: { label: "Pending", className: "bg-gray-100 text-gray-800" },
       'in-progress': { label: "In Progress", className: "bg-blue-100 text-blue-800" },
       completed: { label: "Completed", className: "bg-green-100 text-green-800" },
       cancelled: { label: "Cancelled", className: "bg-red-100 text-red-800" },
       followup: { label: "Follow-up", className: "bg-purple-100 text-purple-800" },
-    };
+    }), []);
   
-    const currentStatus = statusConfig[status] || statusConfig.pending;
+    const currentStatus = React.useMemo(() =>
+      statusConfig[status] || statusConfig.pending,
+      [status, statusConfig]
+    );
   
     return (
       <Badge variant="secondary" className={`${currentStatus.className} hover:${currentStatus.className}`}>
         {currentStatus.label}
       </Badge>
     );
-};
+});
+
+StatusBadge.displayName = 'StatusBadge';
 
 const FilterDropdown = ({
     label,
@@ -102,12 +108,15 @@ export default function SessionsPage() {
   const updateStatusMutation = useUpdateSessionStatus();
   const { initializeFlow, loading: flowLoading } = useTelehealthFlow();
   
-  const status = searchParams.get('status');
-  const searchTerm = searchParams.get('searchTerm');
+  const status = searchParams?.get('status') || undefined;
+  const searchTerm = searchParams?.get('searchTerm') || undefined;
   
-  const { data: sessionsResponse, isLoading: loading, refetch: fetchSessions } = useSessions({ status, searchTerm });
+  const { data: sessionsResponse, isLoading: loading, refetch: fetchSessions } = useSessions({
+    status: status || undefined,
+    searchTerm: searchTerm || undefined
+  });
   
-  const sessions: Session[] = React.useMemo(() => {
+  const sessions: (Session & { date: string })[] = React.useMemo(() => {
     if (!sessionsResponse?.data) return [];
     return sessionsResponse.data.map((s: any) => ({
       ...s,
@@ -116,11 +125,11 @@ export default function SessionsPage() {
   }, [sessionsResponse]);
 
 
-  const handleCreateSession = async (values: any) => {
+  const handleCreateSession = React.useCallback(async (values: any) => {
     try {
       const sessionDocRef = await addDoc(collection(db, "sessions"), {
-          patientName: values.patient, 
-          patientId: 'mock-patient-id', 
+          patientName: values.patient,
+          patientId: 'mock-patient-id',
           patientEmail: 'mock-email@example.com',
           type: values.sessionType,
           plan: values.servicePlan,
@@ -131,19 +140,19 @@ export default function SessionsPage() {
       
       const flowResult = await initializeFlow({
         patientId: 'mock-patient-id',
-        categoryId: 'general', 
+        categoryId: 'general',
         productId: null
       });
 
-      if (flowResult.success && flowResult.flow?.id) {
-        await updateDoc(sessionDocRef, { flowId: flowResult.flow.id });
+      if (flowResult.success && (flowResult.flow as any)?.id) {
+        await updateDoc(sessionDocRef, { flowId: (flowResult.flow as any).id });
         toast({
             title: "Session Scheduled",
             description: `A new session has been scheduled and a telehealth flow has been initiated.`,
         });
         router.push(`/dashboard/sessions/${sessionDocRef.id}`);
       } else {
-        throw new Error(flowResult.error?.message || "Failed to initiate telehealth flow.");
+        throw new Error((flowResult.error as any)?.message || "Failed to initiate telehealth flow.");
       }
 
       fetchSessions();
@@ -156,15 +165,11 @@ export default function SessionsPage() {
         description: error.message || "An error occurred while creating the session or flow.",
       });
     }
-  };
+  }, [initializeFlow, toast, router, fetchSessions, setIsModalOpen]);
 
-  const handleUpdateStatus = async (sessionId: string, newStatus: SessionStatus) => {
-    updateStatusMutation.mutate({ sessionId, status: newStatus }, {
-        onSuccess: () => {
-            fetchSessions();
-        }
-    });
-  };
+  const handleUpdateStatus = React.useCallback(async (sessionId: string, newStatus: SessionStatus) => {
+    updateStatusMutation.mutate({ sessionId, status: newStatus });
+  }, [updateStatusMutation]);
 
 
   return (
