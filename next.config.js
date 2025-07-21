@@ -1,6 +1,5 @@
-import type {NextConfig} from 'next';
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   /* config options here */
   typescript: {
     ignoreBuildErrors: true,
@@ -28,6 +27,25 @@ const nextConfig: NextConfig = {
     // This allows requests from the Firebase Studio development environment.
     allowedDevOrigins: ["*.cloudworkstations.dev"],
   },
+  webpack: (config, { isServer }) => {
+    // Handle undici package compatibility issues
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        net: false,
+        tls: false,
+      };
+    }
+    
+    // Ignore problematic packages in client-side builds
+    config.externals = config.externals || [];
+    config.externals.push({
+      undici: 'undici',
+    });
+
+    return config;
+  },
 };
 
-export default nextConfig;
+module.exports = nextConfig;

@@ -40,12 +40,14 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { doc, getDoc } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { getFirebaseFirestore } from "@/lib/firebase";
 import { useRouter } from 'next/navigation';
 import Loading from "./loading";
-import Error from "../error";
 import { intakeIntegrationService } from "@/services/intakeIntegrationService";
 import { consultationAI } from "@/services/consultationAI";
+import { saveConsultationData, autoSaveConsultationData, publishConsultationToPatient } from "@/services/consultationService";
+import AlertCenterCard from "@/components/consultation/AlertCenterCard";
+import EnhancedMedicationsCard from "@/components/consultation/EnhancedMedicationsCard";
 
 type MedicationDosageProps = {
     dose: string;
@@ -104,12 +106,108 @@ export default function EditSessionPage({ params }: { params: { id: string } }) 
   // AI state
   const [isGeneratingAI, setIsGeneratingAI] = React.useState(false);
 
+  // Save state
+  const [isSaving, setIsSaving] = React.useState(false);
+  const [lastSaved, setLastSaved] = React.useState<Date | null>(null);
+
+  // Auto-save effect
+  React.useEffect(() => {
+    if (!params.id || !session) return;
+
+    const consultationData = {
+      progressNotes,
+      assessmentAndPlan: assessmentPlan,
+      patientMessage,
+      followUpPeriod: currentFollowUp,
+      currentDose,
+      patientId: session.patientId
+    };
+
+    // Auto-save after 2 seconds of inactivity
+    autoSaveConsultationData(params.id, consultationData);
+  }, [progressNotes, assessmentPlan, patientMessage, currentFollowUp, currentDose, params.id, session]);
+
+  // Manual save function
+  const handleSave = async () => {
+    if (!params.id || !session) return;
+
+    setIsSaving(true);
+    try {
+      const consultationData = {
+        progressNotes,
+        assessmentAndPlan: assessmentPlan,
+        patientMessage,
+        followUpPeriod: currentFollowUp,
+        currentDose,
+        patientId: session.patientId
+      };
+
+      await saveConsultationData(params.id, consultationData);
+      setLastSaved(new Date());
+      
+      toast({
+        title: "Saved",
+        description: "Consultation data has been saved successfully.",
+      });
+    } catch (error: any) {
+      console.error("Save failed:", error);
+      toast({
+        variant: "destructive",
+        title: "Save Failed",
+        description: "Failed to save consultation data. Please try again.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Publish consultation function
+  const handlePublish = async () => {
+    if (!params.id || !session || !patient) return;
+
+    setIsSaving(true);
+    try {
+      const consultationData = {
+        progressNotes,
+        assessmentAndPlan: assessmentPlan,
+        patientMessage,
+        followUpPeriod: currentFollowUp,
+        currentDose,
+        patientId: session.patientId
+      };
+
+      await publishConsultationToPatient(params.id, patient.id, consultationData);
+      
+      toast({
+        title: "Published",
+        description: "Consultation has been completed and sent to patient.",
+      });
+
+      // Redirect back to sessions list
+      router.push('/dashboard/sessions');
+    } catch (error: any) {
+      console.error("Publish failed:", error);
+      toast({
+        variant: "destructive",
+        title: "Publish Failed",
+        description: "Failed to publish consultation. Please try again.",
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   React.useEffect(() => {
     const fetchSessionData = async () => {
         if (!params.id) return;
         setLoading(true);
         setError(null);
         try {
+            const db = getFirebaseFirestore();
+            if (!db) {
+                throw new Error("Firebase not initialized");
+            }
+
             const sessionRef = doc(db, "sessions", params.id);
             const sessionSnap = await getDoc(sessionRef);
 
@@ -354,6 +452,19 @@ export default function EditSessionPage({ params }: { params: { id: string } }) 
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
         {/* Left Column */}
         <div className="lg:col-span-3 flex flex-col gap-6">
+          {/* Alert Center Card */}
+          <AlertCenterCard
+            patientAllergies={intakeData?.rawIntakeData?.allergies ? [intakeData.rawIntakeData.allergies] : []}
+            currentMedications={intakeData?.rawIntakeData?.medications ? [intakeData.rawIntakeData.medications] : []}
+            selectedMedications={['Semaglutide', 'Wegovy']} // This would come from form state
+            onAlertAction={(alertId, action) => {
+              console.log(`Alert ${alertId} action: ${action}`);
+              toast({
+                title: "Alert Action",
+                description: `${action} action taken for alert ${alertId}`,
+              });
+            }}
+          />
           <Card>
             <CardHeader>
               <CardTitle>Treatment Progress</CardTitle>
@@ -494,8 +605,14 @@ export default function EditSessionPage({ params }: { params: { id: string } }) 
                 <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle>Message to Patient</CardTitle>
                      <div className="flex gap-2">
-                        <Button variant="outline" size="sm">
-                        <Save className="mr-2 h-4 w-4" /> Save
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          onClick={handleSave}
+                          disabled={isSaving}
+                        >
+                          <Save className="mr-2 h-4 w-4" /> 
+                          {isSaving ? "Saving..." : "Save"}
                         </Button>
                         <Button variant="ghost" size="sm">
                         <X className="mr-2 h-4 w-4" /> Cancel
@@ -600,14 +717,40 @@ export default function EditSessionPage({ params }: { params: { id: string } }) 
       </div>
       
       <div className="flex justify-between items-center bg-slate-100 p-4 rounded-lg sticky bottom-0 border-t">
-          <p className="text-sm text-slate-600 flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-purple-500" /> 
-            AI-generated content • Review before signing
-            <Badge variant="outline" className="text-xs ml-2">Auto-saved</Badge>
-          </p>
+          <div className="flex items-center gap-4">
+            <p className="text-sm text-slate-600 flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-purple-500" /> 
+              AI-generated content • Review before signing
+            </p>
+            <div className="flex items-center gap-2">
+              <Badge variant="outline" className="text-xs">
+                {isSaving ? "Saving..." : "Auto-saved"}
+              </Badge>
+              {lastSaved && (
+                <span className="text-xs text-slate-500">
+                  Last saved: {lastSaved.toLocaleTimeString()}
+                </span>
+              )}
+            </div>
+          </div>
           <div className="flex gap-2">
-            <Button variant="outline">Cancel</Button>
-            <Button>Save</Button>
+            <Button variant="outline" onClick={() => router.back()}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSave}
+              disabled={isSaving}
+              variant="outline"
+            >
+              <Save className="mr-2 h-4 w-4" />
+              {isSaving ? "Saving..." : "Save Draft"}
+            </Button>
+            <Button 
+              onClick={handlePublish}
+              disabled={isSaving || !patientMessage.trim()}
+            >
+              {isSaving ? "Publishing..." : "Complete & Send to Patient"}
+            </Button>
           </div>
       </div>
     </div>

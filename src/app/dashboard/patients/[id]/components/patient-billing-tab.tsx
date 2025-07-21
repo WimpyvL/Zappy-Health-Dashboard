@@ -21,9 +21,10 @@ import { CreditCard, FileStack, History, Plus, Loader2 } from "lucide-react";
 import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from 'date-fns';
-import { db } from "@/lib/firebase/client";
+import { getFirebaseFirestore } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
+import { PaymentModal } from "@/components/billing/PaymentModal";
 
 interface PatientBillingTabProps {
   patientId: string;
@@ -39,6 +40,9 @@ type Invoice = {
 export function PatientBillingTab({ patientId }: PatientBillingTabProps) {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<Invoice | null>(null);
+  const [patientName, setPatientName] = useState<string>('');
   const { toast } = useToast();
 
   useEffect(() => {
@@ -47,12 +51,31 @@ export function PatientBillingTab({ patientId }: PatientBillingTabProps) {
           setLoading(false);
           return;
       };
+      
+      const db = getFirebaseFirestore();
+      if (!db) {
+        console.warn("Firebase not initialized - using demo data for billing");
+        setLoading(false);
+        return;
+      }
+      
       setLoading(true);
       try {
+        // Fetch invoices
         const q = query(collection(db, "invoices"), where("patientId", "==", patientId), orderBy("dueDate", "desc"));
         const querySnapshot = await getDocs(q);
         const invoicesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Invoice));
         setInvoices(invoicesData);
+
+        // Fetch patient info for payment modal
+        const patientQuery = query(collection(db, "patients"), where("__name__", "==", patientId));
+        const patientSnapshot = await getDocs(patientQuery);
+        if (!patientSnapshot.empty) {
+          const patientData = patientSnapshot.docs[0]?.data();
+          if (patientData) {
+            setPatientName(`${patientData.firstName || ''} ${patientData.lastName || ''}`.trim());
+          }
+        }
       } catch (error) {
         console.error("Error fetching billing data: ", error);
         toast({
@@ -67,6 +90,48 @@ export function PatientBillingTab({ patientId }: PatientBillingTabProps) {
 
     fetchBillingData();
   }, [patientId, toast]);
+
+  // Calculate total balance due
+  const totalBalance = invoices
+    .filter(invoice => invoice.status !== 'Paid')
+    .reduce((sum, invoice) => sum + invoice.amount, 0);
+
+  // Handle payment modal
+  const handlePayInvoice = (invoice: Invoice) => {
+    setSelectedInvoice(invoice);
+    setPaymentModalOpen(true);
+  };
+
+  const handlePayBalance = () => {
+    const unpaidInvoices = invoices.filter(invoice => invoice.status !== 'Paid');
+    if (unpaidInvoices.length > 0) {
+      // For balance payment, we'll use the oldest unpaid invoice
+      const oldestInvoice = unpaidInvoices[unpaidInvoices.length - 1];
+      if (oldestInvoice) {
+        handlePayInvoice(oldestInvoice);
+      }
+    }
+  };
+
+  const handlePaymentSuccess = () => {
+    setPaymentModalOpen(false);
+    setSelectedInvoice(null);
+    // Refresh billing data
+    const fetchBillingData = async () => {
+      const db = getFirebaseFirestore();
+      if (!db) return;
+      
+      try {
+        const q = query(collection(db, "invoices"), where("patientId", "==", patientId), orderBy("dueDate", "desc"));
+        const querySnapshot = await getDocs(q);
+        const invoicesData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Invoice));
+        setInvoices(invoicesData);
+      } catch (error) {
+        console.error("Error refreshing billing data: ", error);
+      }
+    };
+    fetchBillingData();
+  };
   
   return (
     <div className="space-y-6">
@@ -77,13 +142,18 @@ export function PatientBillingTab({ patientId }: PatientBillingTabProps) {
             <CreditCard className="w-5 h-5 text-muted-foreground" />
             <CardTitle className="text-lg">Billing Summary</CardTitle>
           </div>
-          <Button>Pay Balance</Button>
+          <Button
+            onClick={handlePayBalance}
+            disabled={totalBalance === 0}
+          >
+            Pay Balance
+          </Button>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div>
             <p className="text-xs text-muted-foreground font-semibold uppercase">Current Balance Due</p>
-            {loading ? <Skeleton className="h-8 w-24 mt-1" /> : <p className="text-3xl font-bold text-yellow-600 mt-1">$0.00</p>}
-            {loading ? <Skeleton className="h-4 w-32 mt-1" /> : <p className="text-xs text-muted-foreground">Due by N/A</p>}
+            {loading ? <Skeleton className="h-8 w-24 mt-1" /> : <p className="text-3xl font-bold text-yellow-600 mt-1">${totalBalance.toFixed(2)}</p>}
+            {loading ? <Skeleton className="h-4 w-32 mt-1" /> : <p className="text-xs text-muted-foreground">Due by {invoices.length > 0 ? format(invoices.find(i => i.status !== 'Paid')?.dueDate?.toDate() || new Date(), 'MMM dd, yyyy') : 'N/A'}</p>}
           </div>
           <div className="md:col-span-2 space-y-4">
              <div>
@@ -144,7 +214,20 @@ export function PatientBillingTab({ patientId }: PatientBillingTabProps) {
                         <TableCell>{format(invoice.dueDate.toDate(), 'MMM dd, yyyy')}</TableCell>
                         <TableCell>${invoice.amount.toFixed(2)}</TableCell>
                         <TableCell><Badge variant={invoice.status === 'Paid' ? 'default' : 'secondary'} className={invoice.status === 'Paid' ? 'bg-green-100 text-green-800' : ''}>{invoice.status}</Badge></TableCell>
-                        <TableCell><Button variant="ghost" size="sm">View</Button></TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            <Button variant="ghost" size="sm">View</Button>
+                            {invoice.status !== 'Paid' && (
+                              <Button
+                                variant="default"
+                                size="sm"
+                                onClick={() => handlePayInvoice(invoice)}
+                              >
+                                Pay
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
                     </TableRow>
                 ))
               ) : (
@@ -188,6 +271,22 @@ export function PatientBillingTab({ patientId }: PatientBillingTabProps) {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Payment Modal */}
+      {paymentModalOpen && selectedInvoice && (
+        <PaymentModal
+          isOpen={paymentModalOpen}
+          onClose={() => setPaymentModalOpen(false)}
+          invoice={{
+            id: selectedInvoice.id,
+            amount: selectedInvoice.amount,
+            patientName: patientName || 'Unknown Patient',
+            dueDate: format(selectedInvoice.dueDate.toDate(), 'MMM dd, yyyy')
+          }}
+          patientId={patientId}
+          onPaymentSuccess={handlePaymentSuccess}
+        />
+      )}
     </div>
   );
 }
