@@ -1,5 +1,13 @@
 import '@testing-library/jest-dom'
 
+// Unset Firebase env vars to ensure development mode
+delete process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
+delete process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN;
+delete process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
+
+// Set env var to use emulator
+process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR = 'true';
+
 // Mock Firebase
 global.fetch = jest.fn()
 

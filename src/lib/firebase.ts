@@ -78,7 +78,7 @@ const initializeFirestore = (firebaseApp: FirebaseApp | null) => {
     const firestore = getFirestore(firebaseApp);
     
     // Only connect to emulator if explicitly enabled via environment variable
-    if (isDevelopmentMode && typeof window !== "undefined" && process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true') {
+    if (isDevelopmentMode && process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true') {
       try {
         connectFirestoreEmulator(firestore, 'localhost', 8080);
         console.log('📡 Connected to Firestore emulator');
@@ -102,7 +102,7 @@ const initializeAuth = (firebaseApp: FirebaseApp | null) => {
     const authentication = getAuth(firebaseApp);
     
     // Only connect to emulator if explicitly enabled via environment variable
-    if (isDevelopmentMode && typeof window !== "undefined" && process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true') {
+    if (isDevelopmentMode && process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true') {
       try {
         connectAuthEmulator(authentication, 'http://localhost:9099');
         console.log('🔐 Connected to Auth emulator');
@@ -119,26 +119,24 @@ const initializeAuth = (firebaseApp: FirebaseApp | null) => {
 };
 
 // Initialize Firebase services
-if (typeof window !== "undefined") {
-  // Client-side initialization
-  app = initializeFirebaseApp();
-  db = initializeFirestore(app);
-  auth = initializeAuth(app);
-}
+app = initializeFirebaseApp();
+db = initializeFirestore(app);
+auth = initializeAuth(app);
+
 
 // Export services with null checks
 export { app, db, auth, isDevelopmentMode };
 
 // Export safe getter functions
 export const getFirebaseApp = () => {
-  if (!app && typeof window !== "undefined") {
+  if (!app) {
     app = initializeFirebaseApp();
   }
   return app;
 };
 
 export const getFirebaseFirestore = () => {
-  if (!db && typeof window !== "undefined") {
+  if (!db) {
     const firebaseApp = getFirebaseApp();
     db = initializeFirestore(firebaseApp);
   }
@@ -146,9 +144,16 @@ export const getFirebaseFirestore = () => {
 };
 
 export const getFirebaseAuth = () => {
-  if (!auth && typeof window !== "undefined") {
+  if (!auth) {
     const firebaseApp = getFirebaseApp();
     auth = initializeAuth(firebaseApp);
   }
   return auth;
 };
+
+
+// Example of how to use in a component:
+// import { getFirebaseFirestore } from '@/lib/firebase';
+// const db = getFirebaseFirestore();
+// Now you can use `db` to interact with Firestore.
+

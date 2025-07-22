@@ -12,13 +12,9 @@ import {
   MessageSquare,
   Check,
 } from "lucide-react";
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,11 +43,11 @@ import { ViewMessageModal } from "../messages/components/view-message-modal";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { User } from '@/dataconnect-generated/js/default-connector'
+import { useAuth } from "@/lib/auth-context";
 
 // Import the new centralized service hooks
 import { useCreatePatient, useUpdatePatient, Patient } from "@/services/database/hooks";
 import { useListUsers } from "@firebasegen/default-connector/react";
-
 
 // This type is used by ViewMessageModal, which expects a message object.
 // We'll adapt the patient object to fit this structure for now.
@@ -92,9 +88,10 @@ export default function PatientsPage() {
   const [isMessageModalOpen, setIsMessageModalOpen] = React.useState(false);
   const [selectedMessage, setSelectedMessage] = React.useState<Message | null>(null);
   const { toast } = useToast();
+  const { dataConnect } = useAuth(); // Use the configured DataConnect instance from auth context
 
   // Use the new centralized hooks
-  const { data: queryData, isLoading: loading, error } = useListUsers();
+  const { data: queryData, isLoading: loading, error } = useListUsers(dataConnect); // Pass the instance here
   const patients = queryData?.users;
   const createPatientMutation = useCreatePatient();
   const updatePatientMutation = useUpdatePatient();
@@ -175,13 +172,15 @@ export default function PatientsPage() {
 
   const isSubmitting = createPatientMutation.isPending || updatePatientMutation.isPending;
   
-  if (error) {
-    toast({
-        variant: "destructive",
-        title: "Error loading patients",
-        description: error.message
-    });
-  }
+  React.useEffect(() => {
+    if (error) {
+      toast({
+          variant: "destructive",
+          title: "Error loading patients",
+          description: error.message
+      });
+    }
+  }, [error, toast]);
 
   return (
     <>
@@ -355,4 +354,3 @@ export default function PatientsPage() {
     </>
   );
 }
-

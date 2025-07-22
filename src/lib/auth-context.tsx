@@ -15,6 +15,9 @@ import { getFirebaseAuth, getFirebaseFirestore } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
+import { getDataConnect, connectDataConnectEmulator, DataConnect } from 'firebase/data-connect';
+import { connectorConfig } from '@firebasegen/default-connector';
+
 
 // User roles
 export type UserRole = 'admin' | 'provider' | 'patient';
@@ -62,6 +65,7 @@ export interface AuthUser extends User {
 interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
+  dataConnect: DataConnect | null;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, userData: Partial<AuthUser>) => Promise<void>;
   logout: () => Promise<void>;
@@ -150,6 +154,7 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [dataConnect, setDataConnect] = useState<DataConnect | null>(null);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -217,6 +222,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
       return () => {};
     }
+
+    const dc = getDataConnect(connectorConfig);
+    // When using the Firebase Emulator Suite, connect to the Data Connect emulator
+    if (process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true') {
+        console.log("Connecting to Data Connect emulator");
+        connectDataConnectEmulator(dc, '127.0.0.1', 9399);
+    }
+    setDataConnect(dc);
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       try {
         if (firebaseUser) {
@@ -240,9 +254,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signIn = async (email: string, password: string) => {
     try {
       setLoading(true);
-      
+      const auth = getFirebaseAuth();
+      if (!auth) {
+        throw new Error('Firebase Auth not initialized');
+      }
+
       // Demo mode authentication bypass for development
-      if (email.includes('@healthflow.com')) {
+      if (email.includes('@healthflow.com') && process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true') {
         console.log('🔓 Demo authentication mode');
         
         const role = email.includes('admin') ? 'admin' :
@@ -250,41 +268,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                      'patient';
         const name = role.charAt(0).toUpperCase() + role.slice(1);
 
-        // This object needs to match the structure of a real Firebase User object
-        const demoUser: AuthUser = {
+        const mockUser = {
           uid: `demo-${role}`,
           email,
           displayName: `Demo ${name}`,
           emailVerified: true,
-          isAnonymous: false,
-          metadata: {} as any, // Mock metadata
-          providerData: [],
-          providerId: 'password',
-          tenantId: null,
-          delete: async () => {},
-          getIdToken: async () => `demo-token-for-${role}`,
-          getIdTokenResult: async () => ({} as any),
-          reload: async () => {},
-          toJSON: () => ({}),
+        };
+
+        // This is a simplified sign-in for the emulator.
+        // It won't create a real user, but it will provide an auth state.
+        setUser({
+          ...mockUser,
+          getIdToken: async () => 'mock-token',
           role: role as UserRole,
           firstName: 'Demo',
           lastName: name,
-        };
-        
-        setUser(demoUser);
+        } as AuthUser);
+
         toast({
           title: "Demo Login Successful",
-          description: `Logged in as ${demoUser.role}`,
+          description: `Logged in as ${role}`,
         });
         router.push('/dashboard');
         return;
       }
-      
+
       // Real Firebase authentication for production
-      const auth = getFirebaseAuth();
-      if (!auth) {
-        throw new Error('Firebase Auth not initialized');
-      }
       const result = await signInWithEmailAndPassword(auth, email, password);
       const userData = await loadUserData(result.user);
       setUser(userData);
@@ -650,6 +659,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const value = {
     user,
     loading,
+    dataConnect,
     signIn,
     signUp,
     logout,
