@@ -1,4 +1,6 @@
 
+'use server';
+
 /**
  * @fileoverview Orchestrator for the entire telehealth flow, from initiation to completion.
  */

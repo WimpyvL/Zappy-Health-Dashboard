@@ -1,4 +1,4 @@
-import { ai } from './genkit';
+import { ai } from '@/ai/genkit';
 
 /**
  * Generate content using the configured AI model

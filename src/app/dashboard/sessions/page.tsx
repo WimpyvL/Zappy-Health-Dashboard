@@ -14,7 +14,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { format } from "date-fns";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { dbService } from '@/services/database';
+import { dbService } from '@/services/database/hooks';
 import { telehealthFlowOrchestrator } from '@/services/telehealthFlowOrchestrator';
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -135,6 +135,14 @@ export default function SessionsPage() {
         toast({ variant: "destructive", title: "Error Updating Status", description: error.message });
     }
   });
+  
+  const handleCreateSession = async (values: any) => {
+    try {
+      await createMutation.mutateAsync(values);
+    } catch(e) {
+      // Error is handled by the mutation's onError
+    }
+  }
 
   return (
     <>
@@ -200,7 +208,8 @@ export default function SessionsPage() {
           </CardContent>
         </Card>
       </div>
-      <ScheduleSessionModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSubmit={createMutation.mutate} />
+      <ScheduleSessionModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onSubmit={handleCreateSession} />
     </>
   );
 }
+
