@@ -123,7 +123,7 @@ class TelehealthFlowOrchestrator {
         await dbService.update(this.flowCollection, flowId, updateData);
         
         await notificationService.sendNotification(flow.patientId, {
-            type: 'consultation_approved',
+            type: 'consultation_approved' as any,
             title: 'Consultation Approved',
             message: 'Your consultation has been approved and your order is being processed.',
             data: { flowId, orderId: orderResult.orderId }
@@ -137,7 +137,7 @@ class TelehealthFlowOrchestrator {
         });
 
         await notificationService.sendNotification(flow.patientId, {
-            type: 'consultation_rejected',
+            type: 'consultation_rejected' as any,
             title: 'Consultation Update',
             message: 'There was an issue with your consultation. Please check your messages.',
             data: { flowId, reason: approvalData.notes }

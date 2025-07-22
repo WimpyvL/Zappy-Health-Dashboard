@@ -1,7 +1,10 @@
-export interface Order {
-  id: string;
+
+import { Timestamp } from 'firebase/firestore';
+import { BaseDocument } from './global';
+
+export interface Order extends BaseDocument {
   patientId: string;
-  providerId: string;
+  providerId?: string;
   status: OrderStatus;
   type: OrderType;
   items: OrderItem[];
@@ -10,13 +13,11 @@ export interface Order {
   shippingAddress?: Address;
   billingAddress?: Address;
   paymentMethod?: string;
-  paymentStatus: PaymentStatus;
+  paymentStatus?: PaymentStatus;
   trackingNumber?: string;
   estimatedDelivery?: Date;
   actualDelivery?: Date;
   notes?: string;
-  createdAt: Date;
-  updatedAt: Date;
   metadata?: Record<string, any>;
 }
 

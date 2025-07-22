@@ -1,70 +1,4 @@
-<<<<<<< HEAD
-import { dbService } from './database';
-import { bundleOptimizationService } from './bundleOptimizationService';
 
-// --- Type Definitions ---
-interface BasicInfo {
-  height?: number;
-  weight?: number;
-  heightFeet?: number;
-  heightInches?: number;
-  age?: number;
-}
-
-interface FormData {
-  basicInfo?: BasicInfo;
-  goals?: string | string[];
-  treatmentPreferences?: { goals?: string | string[] };
-  healthHistory?: { goals?: string | string[]; conditions?: string | string[]; medicalConditions?: string | string[] };
-  patientId?: string;
-}
-
-interface Product {
-  id: string;
-  name?: string;
-}
-
-interface RecommendationRule {
-  id: string;
-  priority: number;
-  condition_type: string;
-  condition_value: any;
-  product_title: string;
-  product_description: string;
-  reason_text: string;
-}
-
-interface Recommendation {
-  id: string;
-  ruleId: string;
-  name: string;
-  description: string;
-  reason: string;
-  priority: number;
-  confidence: number;
-  category: string;
-  product_type: string;
-  price: number;
-  source: string;
-}
-
-interface PatientProfile {
-  bmi: number | null;
-  goals: string[];
-  conditions: string[];
-  age?: number;
-  formData: FormData;
-}
-
-/**
- * Enhanced AI Recommendation Service
- */
-export class AIRecommendationService {
-  private recommendationCache = new Map<string, { data: any; timestamp: number }>();
-  private cacheTimeout = 5 * 60 * 1000; // 5 minutes
-
-  async generateRecommendations(formData: FormData, selectedProducts: Product[] = [], availablePlans: any[] = []) {
-=======
 import { databaseService } from '@/lib/database';
 import { generateContent, generateStructuredContent } from '@/ai/generate';
 
@@ -126,7 +60,6 @@ export class AIRecommendationService {
     selectedProducts: any[] = [],
     availablePlans: any[] = []
   ) {
->>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
     try {
       const cacheKey = this.generateCacheKey(formData, selectedProducts);
       const cached = this.recommendationCache.get(cacheKey);
@@ -135,12 +68,6 @@ export class AIRecommendationService {
         return cached.data;
       }
 
-<<<<<<< HEAD
-      const bmi = this.calculateBMI(formData.basicInfo);
-      const goals = this.extractGoals(formData);
-      const conditions = this.extractConditions(formData);
-
-=======
       // Calculate BMI if height and weight are available
       const bmi = this.calculateBMI(formData.basicInfo);
 
@@ -149,7 +76,6 @@ export class AIRecommendationService {
       const conditions = this.extractConditions(formData);
 
       // Get base AI recommendations using Firebase and AI
->>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
       const baseRecommendations = await this.getBaseRecommendations({
         bmi,
         goals,
@@ -158,14 +84,6 @@ export class AIRecommendationService {
         formData,
       });
 
-<<<<<<< HEAD
-      const newRecommendations = this.filterExistingProducts(baseRecommendations, selectedProducts);
-      const categorized = this.categorizeRecommendations(newRecommendations);
-
-      let bundleOptimization = null;
-      if (selectedProducts.length > 0 && availablePlans.length > 0) {
-        bundleOptimization = await bundleOptimizationService.optimizeCart(
-=======
       // Filter out already selected products
       const newRecommendations = this.filterExistingProducts(
         baseRecommendations,
@@ -179,7 +97,6 @@ export class AIRecommendationService {
       let bundleOptimization = null;
       if (selectedProducts.length > 0 && availablePlans.length > 0) {
         bundleOptimization = await this.optimizeCart(
->>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
           selectedProducts,
           availablePlans,
           { id: formData.patientId, goals, conditions, bmi }
@@ -198,11 +115,6 @@ export class AIRecommendationService {
         },
       };
 
-<<<<<<< HEAD
-      this.recommendationCache.set(cacheKey, { data: result, timestamp: Date.now() });
-      return result;
-    } catch (error: any) {
-=======
       // Cache the result
       this.recommendationCache.set(cacheKey, {
         data: result,
@@ -211,74 +123,50 @@ export class AIRecommendationService {
 
       return result;
     } catch (error) {
->>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
       console.error('Error generating AI recommendations:', error);
       return {
         subscriptionUpgrades: [],
         oneTimeAddons: [],
         bundleOptimizations: [],
         bundleOptimization: null,
-<<<<<<< HEAD
-        metadata: { error: error.message },
-=======
         metadata: { error: error instanceof Error ? error.message : 'Unknown error' },
->>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
       };
     }
   }
 
-<<<<<<< HEAD
-  async getBaseRecommendations(patientProfile: PatientProfile): Promise<Recommendation[]> {
-    try {
-      const rulesRes = await dbService.getAll<RecommendationRule>('product_recommendation_rules', { sortBy: 'priority', sortDirection: 'desc' });
-      if (rulesRes.error || !rulesRes.data) {
-        throw new Error(rulesRes.error || 'Failed to fetch recommendation rules.');
-      }
-      
-      const matchingRecommendations: Recommendation[] = [];
-
-      for (const rule of rulesRes.data) {
-=======
   /**
    * Get base recommendations using Firebase and AI
    */
   async getBaseRecommendations(patientProfile: any) {
     try {
       // Get product recommendation rules from Firebase
-      const rulesResponse = await databaseService.products.getMany({
+      const rulesResponse = await databaseService.products.getAll({
         filters: [
-          { field: 'type', operator: '==', value: 'recommendation_rule' }
+          { field: 'type', op: '==', value: 'recommendation_rule' }
         ],
-        orderBy: { field: 'priority', direction: 'desc' }
+        sortBy: 'priority', 
+        sortDirection: 'desc' 
       });
 
-      if (!rulesResponse.success || !rulesResponse.data) {
+      if (!rulesResponse.data) {
         // Fallback to AI-generated recommendations
         return await this.generateAIRecommendations(patientProfile);
       }
 
-      const rules = rulesResponse.data;
+      const rules = rulesResponse.data as any[];
       const matchingRecommendations = [];
 
       for (const rule of rules) {
->>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
         const isMatch = await this.evaluateRule(rule, patientProfile);
 
         if (isMatch.matches) {
           matchingRecommendations.push({
             id: `recommendation_${rule.id}`,
             ruleId: rule.id,
-<<<<<<< HEAD
-            name: rule.product_title,
-            description: rule.product_description,
-            reason: rule.reason_text,
-            priority: rule.priority,
-=======
             name: rule.product_title || rule.name,
             description: rule.product_description || rule.description,
             reason: rule.reason_text || rule.reason,
             priority: rule.priority || 1,
->>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
             confidence: isMatch.confidence,
             category: this.inferCategoryFromRule(rule),
             product_type: this.inferProductType(rule),
@@ -291,8 +179,6 @@ export class AIRecommendationService {
       return matchingRecommendations;
     } catch (error) {
       console.error('Error fetching base recommendations:', error);
-<<<<<<< HEAD
-=======
       // Fallback to AI-generated recommendations
       return await this.generateAIRecommendations(patientProfile);
     }
@@ -337,38 +223,10 @@ export class AIRecommendationService {
       })) || [];
     } catch (error) {
       console.error('Error generating AI recommendations:', error);
->>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
       return [];
     }
   }
 
-<<<<<<< HEAD
-  async evaluateRule(rule: RecommendationRule, patientProfile: PatientProfile): Promise<{ matches: boolean; confidence: number }> {
-    // Implementation remains the same, but with added type safety.
-    // ... (evaluation logic from the original file)
-    return { matches: false, confidence: 0 }; // Placeholder
-  }
-
-  // ... (All other helper and evaluation methods from the original file, now with types)
-
-  calculateBMI(basicInfo?: BasicInfo): number | null {
-    if (!basicInfo?.height && !(basicInfo?.heightFeet && basicInfo?.heightInches)) return null;
-    // ... implementation
-    return null;
-  }
-
-  extractGoals(formData: FormData): string[] {
-    // ... implementation
-    return [];
-  }
-
-  extractConditions(formData: FormData): string[] {
-    // ... implementation
-    return [];
-  }
-  
-  generateCacheKey(formData: FormData, selectedProducts: Product[]): string {
-=======
   /**
    * Evaluate if a recommendation rule matches the patient profile
    */
@@ -533,13 +391,13 @@ export class AIRecommendationService {
    * Helper methods
    */
   private calculateBMI(basicInfo: any) {
-    if (!basicInfo?.height || !basicInfo?.weight) return null;
+    if (!basicInfo?.height && !basicInfo?.weight && !(basicInfo?.heightFeet && basicInfo?.heightInches)) return null;
 
     try {
       // Handle different height formats
       let heightInches;
       if (basicInfo.heightFeet && basicInfo.heightInches) {
-        heightInches = basicInfo.heightFeet * 12 + basicInfo.heightInches;
+        heightInches = parseFloat(basicInfo.heightFeet) * 12 + parseFloat(basicInfo.heightInches);
       } else if (basicInfo.height) {
         // Assume height is in inches if single value
         heightInches = parseFloat(basicInfo.height);
@@ -669,18 +527,12 @@ export class AIRecommendationService {
   }
 
   private generateCacheKey(formData: any, selectedProducts: any[]) {
->>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
     const keyData = {
       bmi: this.calculateBMI(formData.basicInfo),
       goals: this.extractGoals(formData).sort(),
       conditions: this.extractConditions(formData).sort(),
       selectedProductIds: selectedProducts.map((p) => p.id).sort(),
     };
-<<<<<<< HEAD
-    return JSON.stringify(keyData);
-  }
-
-=======
 
     return JSON.stringify(keyData);
   }
@@ -723,54 +575,29 @@ export class AIRecommendationService {
   /**
    * Clear recommendation cache
    */
->>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
   clearCache() {
     this.recommendationCache.clear();
   }
 
-<<<<<<< HEAD
-  async getRecommendationAnalytics(patientId: string, timeRange = 30) {
-    try {
-      const timeLimit = new Date(Date.now() - timeRange * 24 * 60 * 60 * 1000);
-      const historyRes = await dbService.getAll('bundle_optimization_history', {
-        filters: [
-          { field: 'patient_id', op: '==', value: patientId },
-          { field: 'created_at', op: '>=', value: timeLimit },
-        ]
-      });
-
-      if (historyRes.error || !historyRes.data) return null;
-      
-      const data = historyRes.data;
-      const acceptedCount = data.filter((d) => d.optimization_accepted).length;
-
-      return {
-        totalRecommendations: data.length,
-        acceptedRecommendations: acceptedCount,
-        totalSavingsOffered: data.reduce((sum, d) => sum + (d.savings_offered || 0), 0),
-        totalSavingsRealized: data.reduce((sum, d) => sum + (d.savings_realized || 0), 0),
-        acceptanceRate: data.length > 0 ? (acceptedCount / data.length) * 100 : 0,
-      };
-=======
   /**
    * Get recommendation analytics
    */
   async getRecommendationAnalytics(patientId: string, timeRange = 30) {
     try {
       // Get analytics from Firebase
-      const analyticsResponse = await databaseService.auditLogs.getMany({
+      const analyticsResponse = await databaseService.auditLogs.getAll({
         filters: [
-          { field: 'patientId', operator: '==', value: patientId },
-          { field: 'action', operator: '==', value: 'recommendation_generated' },
-          { field: 'createdAt', operator: '>=', value: new Date(Date.now() - timeRange * 24 * 60 * 60 * 1000) }
+          { field: 'patientId', op: '==', value: patientId },
+          { field: 'action', op: '==', value: 'recommendation_generated' },
+          { field: 'createdAt', op: '>=', value: new Date(Date.now() - timeRange * 24 * 60 * 60 * 1000) }
         ]
       });
 
-      if (!analyticsResponse.success) {
+      if (!analyticsResponse.data) {
         return null;
       }
 
-      const data = analyticsResponse.data;
+      const data = analyticsResponse.data as any[];
       const analytics = {
         totalRecommendations: data.length,
         acceptedRecommendations: data.filter((d: any) => d.optimization_accepted).length,
@@ -782,17 +609,11 @@ export class AIRecommendationService {
       };
 
       return analytics;
->>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
     } catch (error) {
       console.error('Error getting recommendation analytics:', error);
       return null;
     }
   }
-<<<<<<< HEAD
-}
-
-export const aiRecommendationService = new AIRecommendationService();
-=======
 
   /**
    * Get subscription plans with popularity indicators
@@ -800,13 +621,13 @@ export const aiRecommendationService = new AIRecommendationService();
   async getSubscriptionPlans() {
     try {
       // Try to get plans from Firebase first
-      const plansResponse = await databaseService.products.getMany({
+      const plansResponse = await databaseService.products.getAll({
         filters: [
-          { field: 'type', operator: '==', value: 'subscription_plan' }
+          { field: 'type', op: '==', value: 'subscription_plan' }
         ]
       });
 
-      if (plansResponse.success && plansResponse.data.length > 0) {
+      if (plansResponse.data && plansResponse.data.length > 0) {
         return plansResponse.data;
       }
 
@@ -890,4 +711,3 @@ export const aiRecommendationService = new AIRecommendationService();
 // Export singleton instance
 export const aiRecommendationService = new AIRecommendationService();
 export default aiRecommendationService;
->>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
