@@ -53,7 +53,10 @@ export interface UIState {
 }
 
 // Extended user interface
-export interface AuthUser extends User {
+export interface AuthUser extends Partial<User> {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
   role?: UserRole;
   firstName?: string;
   lastName?: string;
@@ -169,350 +172,58 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     activeFilters: {},
   });
 
-  // Load user data from Firestore
-  const loadUserData = async (firebaseUser: User): Promise<AuthUser> => {
-    try {
-      const firestore = getFirebaseFirestore();
-      if (!firestore) {
-        console.warn('Firestore not initialized, skipping user document fetch');
-        return firebaseUser as AuthUser;
-      }
-      const userDocRef = doc(firestore, 'users', firebaseUser.uid);
-      const userDoc = await getDoc(userDocRef);
-      
-      if (userDoc.exists()) {
-        const userData = userDoc.data();
-        return {
-          ...firebaseUser,
-          role: userData.role || 'patient',
-          firstName: userData.firstName,
-          lastName: userData.lastName,
-          specialty: userData.specialty,
-          license: userData.license,
-        } as AuthUser;
-      } else {
-        // Create default user document for new users
-        const defaultUserData = {
-          email: firebaseUser.email,
-          role: 'patient' as UserRole,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-        
-        await setDoc(userDocRef, defaultUserData);
-        return {
-          ...firebaseUser,
-          role: 'patient',
-        } as AuthUser;
-      }
-    } catch (error) {
-      console.error('Error loading user data:', error);
-      return {
-        ...firebaseUser,
-        role: 'patient',
-      } as AuthUser;
-    }
-  };
-
-  // Auth state listener
+  // Auth state listener - TEMPORARILY DISABLED
   useEffect(() => {
-    const auth = getFirebaseAuth();
-    if (!auth) {
-      console.warn('Firebase Auth not initialized');
-      setLoading(false);
-      return () => {};
-    }
-
+    // Initialize Data Connect
     const dc = getDataConnect(connectorConfig);
-    // When using the Firebase Emulator Suite, connect to the Data Connect emulator
     if (process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true') {
         console.log("Connecting to Data Connect emulator");
-        connectDataConnectEmulator(dc, '127.0.0.1', 9399);
+        try {
+          connectDataConnectEmulator(dc, '127.0.0.1', 9399);
+        } catch (e) {
+          console.error("Failed to connect to Data Connect emulator", e);
+        }
     }
     setDataConnect(dc);
 
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      try {
-        if (firebaseUser) {
-          const userData = await loadUserData(firebaseUser);
-          setUser(userData);
-        } else {
-          setUser(null);
-        }
-      } catch (error) {
-        console.error('Auth state change error:', error);
-        setUser(null);
-      } finally {
-        setLoading(false);
-      }
-    });
-
-    return unsubscribe;
+    // Immediately set a mock admin user to bypass login
+    console.warn("Authentication is temporarily disabled. A mock admin user is being used.");
+    const mockAdminUser: AuthUser = {
+      uid: 'mock-admin-uid',
+      email: 'admin@healthflow.dev',
+      displayName: 'Admin User',
+      role: 'admin',
+      firstName: 'Admin',
+      lastName: 'User'
+    };
+    setUser(mockAdminUser);
+    setLoading(false);
   }, []);
 
-  // Sign in function
+
+  // Sign in function - will not be used while auth is disabled
   const signIn = async (email: string, password: string) => {
-    try {
-      setLoading(true);
-      const auth = getFirebaseAuth();
-      if (!auth) {
-        throw new Error('Firebase Auth not initialized');
-      }
-
-      // Demo mode authentication bypass for development
-      if (email.includes('@healthflow.com') && process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true') {
-        console.log('🔓 Demo authentication mode');
-        
-        const role = email.includes('admin') ? 'admin' :
-                     email.includes('provider') ? 'provider' :
-                     'patient';
-        const name = role.charAt(0).toUpperCase() + role.slice(1);
-
-        const mockUser = {
-          uid: `demo-${role}`,
-          email,
-          displayName: `Demo ${name}`,
-          emailVerified: true,
-        };
-
-        // This is a simplified sign-in for the emulator.
-        // It won't create a real user, but it will provide an auth state.
-        setUser({
-          ...mockUser,
-          getIdToken: async () => 'mock-token',
-          role: role as UserRole,
-          firstName: 'Demo',
-          lastName: name,
-        } as AuthUser);
-
-        toast({
-          title: "Demo Login Successful",
-          description: `Logged in as ${role}`,
-        });
-        router.push('/dashboard');
-        return;
-      }
-
-      // Real Firebase authentication for production
-      const result = await signInWithEmailAndPassword(auth, email, password);
-      const userData = await loadUserData(result.user);
-      setUser(userData);
-      
-      toast({
-        title: "Welcome back!",
-        description: "You have successfully signed in.",
-      });
-
-    } catch (error: any) {
-      let errorMessage = 'Failed to sign in';
-      
-      switch (error.code) {
-        case 'auth/user-not-found':
-          errorMessage = 'No account found with this email address';
-          break;
-        case 'auth/wrong-password':
-          errorMessage = 'Incorrect password';
-          break;
-        case 'auth/invalid-email':
-          errorMessage = 'Invalid email address';
-          break;
-        case 'auth/user-disabled':
-          errorMessage = 'This account has been disabled';
-          break;
-        case 'auth/too-many-requests':
-          errorMessage = 'Too many failed attempts. Please try again later';
-          break;
-      }
-
-      toast({
-        title: "Sign In Failed",
-        description: errorMessage,
-        variant: "destructive",
-      });
-      
-      throw new Error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
+    toast({ title: "Auth Disabled", description: "Login is temporarily disabled." });
   };
 
   // Sign up function
   const signUp = async (email: string, password: string, userData: Partial<AuthUser>) => {
-    try {
-      setLoading(true);
-      const auth = getFirebaseAuth();
-      if (!auth) {
-        throw new Error('Firebase Auth not initialized');
-      }
-      const result = await createUserWithEmailAndPassword(auth, email, password);
-      
-      // Update Firebase Auth profile
-      if (userData.firstName && userData.lastName) {
-        await updateProfile(result.user, {
-          displayName: `${userData.firstName} ${userData.lastName}`,
-        });
-      }
-
-      // Create user document in Firestore
-      const userDocData = {
-        email,
-        role: userData.role || 'patient',
-        firstName: userData.firstName,
-        lastName: userData.lastName,
-        specialty: userData.specialty,
-        license: userData.license,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-
-      const firestore = getFirebaseFirestore();
-      if (firestore) {
-        await setDoc(doc(firestore, 'users', result.user.uid), userDocData);
-      }
-      
-      const completeUserData = await loadUserData(result.user);
-      setUser(completeUserData);
-
-      toast({
-        title: "Account Created",
-        description: "Your account has been successfully created.",
-      });
-
-      router.push('/dashboard');
-    } catch (error: any) {
-      let errorMessage = 'Failed to create account';
-      
-      switch (error.code) {
-        case 'auth/email-already-in-use':
-          errorMessage = 'An account with this email already exists';
-          break;
-        case 'auth/invalid-email':
-          errorMessage = 'Invalid email address';
-          break;
-        case 'auth/weak-password':
-          errorMessage = 'Password is too weak. Please use at least 6 characters';
-          break;
-      }
-
-      toast({
-        title: "Sign Up Failed",
-        description: errorMessage,
-        variant: "destructive",
-      });
-      
-      throw new Error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
+    toast({ title: "Auth Disabled", description: "Sign up is temporarily disabled." });
   };
 
   // Logout function
   const logout = async () => {
-    try {
-      setLoading(true);
-      const auth = getFirebaseAuth();
-      if (!auth) {
-        throw new Error('Firebase Auth not initialized');
-      }
-      await signOut(auth);
-      setUser(null);
-      
-      toast({
-        title: "Signed Out",
-        description: "You have been successfully signed out.",
-      });
-      
-      router.push('/');
-    } catch (error: any) {
-      toast({
-        title: "Sign Out Failed",
-        description: "Failed to sign out. Please try again.",
-        variant: "destructive",
-      });
-      throw error;
-    } finally {
-      setLoading(false);
-    }
+    toast({ title: "Auth Disabled", description: "Logout is temporarily disabled." });
   };
 
   // Reset password function
   const resetPassword = async (email: string) => {
-    try {
-      const auth = getFirebaseAuth();
-      if (!auth) {
-        throw new Error('Firebase Auth not initialized');
-      }
-      await sendPasswordResetEmail(auth, email);
-      
-      toast({
-        title: "Password Reset Sent",
-        description: "Check your email for password reset instructions.",
-      });
-    } catch (error: any) {
-      let errorMessage = 'Failed to send password reset email';
-      
-      switch (error.code) {
-        case 'auth/user-not-found':
-          errorMessage = 'No account found with this email address';
-          break;
-        case 'auth/invalid-email':
-          errorMessage = 'Invalid email address';
-          break;
-      }
-
-      toast({
-        title: "Password Reset Failed",
-        description: errorMessage,
-        variant: "destructive",
-      });
-      
-      throw new Error(errorMessage);
-    }
+    toast({ title: "Auth Disabled", description: "Password reset is temporarily disabled." });
   };
 
   // Update user profile
   const updateUserProfile = async (userData: Partial<AuthUser>) => {
-    if (!user) throw new Error('No user signed in');
-
-    try {
-      setLoading(true);
-      
-      // Update Firestore document
-      const firestore = getFirebaseFirestore();
-      if (!firestore) {
-        throw new Error('Firestore not initialized');
-      }
-      const userDocRef = doc(firestore, 'users', user.uid);
-      await setDoc(userDocRef, {
-        ...userData,
-        updatedAt: new Date(),
-      }, { merge: true });
-
-      // Update Firebase Auth profile if display name changed
-      if (userData.firstName && userData.lastName) {
-        await updateProfile(user, {
-          displayName: `${userData.firstName} ${userData.lastName}`,
-        });
-      }
-
-      // Reload user data
-      const updatedUser = await loadUserData(user);
-      setUser(updatedUser);
-
-      toast({
-        title: "Profile Updated",
-        description: "Your profile has been successfully updated.",
-      });
-    } catch (error: any) {
-      toast({
-        title: "Update Failed",
-        description: "Failed to update profile. Please try again.",
-        variant: "destructive",
-      });
-      throw error;
-    } finally {
-      setLoading(false);
-    }
+    toast({ title: "Auth Disabled", description: "Profile updates are temporarily disabled." });
   };
 
   // Check if user has specific role
