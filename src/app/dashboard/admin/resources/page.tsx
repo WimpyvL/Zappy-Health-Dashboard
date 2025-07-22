@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -15,14 +14,10 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
-<<<<<<< HEAD
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dbService } from '@/services/database';
-=======
-import { db } from "@/lib/firebase";
 import { DefaultFormSetup } from "@/components/admin/DefaultFormSetup";
 import { JsonBFormDemo } from "@/components/admin/JsonBFormDemo";
->>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
 
 type Resource = {
   id: string;
@@ -106,8 +101,6 @@ export default function EducationalResourcesPage() {
           <h1 className="text-3xl font-bold">Educational Resources</h1>
           <Button onClick={() => setIsModalOpen(true)}><Plus className="mr-2 h-4 w-4" /> Create Content</Button>
         </div>
-<<<<<<< HEAD
-=======
 
         {/* Dynamic Form Templates Setup */}
         <DefaultFormSetup />
@@ -115,7 +108,6 @@ export default function EducationalResourcesPage() {
         {/* JSONB Form Processing Demo */}
         <JsonBFormDemo />
 
->>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
         <Card>
           <CardHeader><CardTitle>Content Library</CardTitle></CardHeader>
           <CardContent>
