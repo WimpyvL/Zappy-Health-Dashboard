@@ -7,62 +7,66 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Leaf, Eye, EyeOff } from "lucide-react";
+import { Leaf, Eye, EyeOff, Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
 
 export default function LoginPage() {
-  const { signIn, loading, user } = useAuth();
+  const { signIn, user, loading } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [showPassword, setShowPassword] = React.useState(false);
-  const [isLoading, setIsLoading] = React.useState(false);
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
 
-  // Redirect if already logged in
+  // Redirect if already logged in and not loading
   React.useEffect(() => {
-    if (user) {
+    if (!loading && user) {
       router.push("/dashboard");
     }
-  }, [user, router]);
+  }, [user, loading, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) return;
 
-    setIsLoading(true);
+    setIsSubmitting(true);
     try {
       await signIn(email, password);
-    } catch (error) {
-      // Error handling is done in the auth context
-      console.error("Login error:", error);
+      // The redirect will be handled by the useEffect hook
+    } catch (error: any) {
+      // The useAuth hook handles the toast notification for errors
+      console.error("Login page caught an error:", error.message);
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   const handleDemoLogin = async (role: 'admin' | 'provider' | 'patient') => {
-    setIsLoading(true);
+    setIsSubmitting(true);
     try {
-      // Demo accounts for different roles
       const demoAccounts = {
-        admin: { email: "admin@healthflow.com", password: "admin123" },
-        provider: { email: "provider@healthflow.com", password: "provider123" },
-        patient: { email: "patient@healthflow.com", password: "patient123" }
+        admin: { email: "admin@healthflow.com", password: "adminPassword123!" },
+        provider: { email: "provider@healthflow.com", password: "providerPassword123!" },
+        patient: { email: "patient@healthflow.com", password: "patientPassword123!" }
       };
       
       const account = demoAccounts[role];
       await signIn(account.email, account.password);
     } catch (error) {
+      // Error is handled in auth context
       console.error("Demo login error:", error);
     } finally {
-      setIsLoading(false);
+      setIsSubmitting(false);
     }
   };
 
-  if (loading) {
+  // Render nothing or a loading spinner while checking auth state
+  if (loading || user) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        <Loader2 className="animate-spin rounded-full h-8 w-8 text-primary" />
       </div>
     );
   }
@@ -91,7 +95,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter your email"
-                disabled={isLoading}
+                disabled={isSubmitting}
                 required
               />
             </div>
@@ -104,7 +108,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
-                  disabled={isLoading}
+                  disabled={isSubmitting}
                   required
                 />
                 <Button
@@ -113,7 +117,7 @@ export default function LoginPage() {
                   size="sm"
                   className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 p-0"
                   onClick={() => setShowPassword(!showPassword)}
-                  disabled={isLoading}
+                  disabled={isSubmitting}
                 >
                   {showPassword ? (
                     <EyeOff className="h-4 w-4" />
@@ -126,9 +130,9 @@ export default function LoginPage() {
             <Button
               type="submit"
               className="w-full"
-              disabled={isLoading || !email || !password}
+              disabled={isSubmitting || !email || !password}
             >
-              {isLoading ? "Signing in..." : "Sign In"}
+              {isSubmitting ? "Signing in..." : "Sign In"}
             </Button>
           </form>
 
@@ -146,7 +150,7 @@ export default function LoginPage() {
               variant="outline"
               size="sm"
               onClick={() => handleDemoLogin('admin')}
-              disabled={isLoading}
+              disabled={isSubmitting}
               className="text-xs"
             >
               Admin
@@ -155,7 +159,7 @@ export default function LoginPage() {
               variant="outline"
               size="sm"
               onClick={() => handleDemoLogin('provider')}
-              disabled={isLoading}
+              disabled={isSubmitting}
               className="text-xs"
             >
               Provider
@@ -164,7 +168,7 @@ export default function LoginPage() {
               variant="outline"
               size="sm"
               onClick={() => handleDemoLogin('patient')}
-              disabled={isLoading}
+              disabled={isSubmitting}
               className="text-xs"
             >
               Patient

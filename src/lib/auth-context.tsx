@@ -245,25 +245,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (email.includes('@healthflow.com')) {
         console.log('🔓 Demo authentication mode');
         
-        // Create mock user for demo purposes
+        const role = email.includes('admin') ? 'admin' :
+                     email.includes('provider') ? 'provider' :
+                     'patient';
+        const name = role.charAt(0).toUpperCase() + role.slice(1);
+
+        // This object needs to match the structure of a real Firebase User object
         const demoUser: AuthUser = {
-          uid: `demo-${email.split('@')[0]}`,
+          uid: `demo-${role}`,
           email,
-          displayName: email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1),
-          role: email.includes('admin') ? 'admin' :
-                email.includes('provider') ? 'provider' :
-                'patient',
+          displayName: `Demo ${name}`,
           emailVerified: true,
           isAnonymous: false,
-          metadata: {},
+          metadata: {}, // Mock metadata
           providerData: [],
           providerId: 'password',
           tenantId: null,
           delete: async () => {},
-          getIdToken: async () => 'demo-token',
-          getIdTokenResult: async () => ({ token: 'demo-token', claims: {}, authTime: '', expirationTime: '', issuedAtTime: '', signInProvider: null, signInSecondFactor: null }),
+          getIdToken: async () => `demo-token-for-${role}`,
+          getIdTokenResult: async () => ({} as any),
           reload: async () => {},
           toJSON: () => ({}),
+          role: role as UserRole,
+          firstName: 'Demo',
+          lastName: name,
         };
         
         setUser(demoUser);
@@ -271,19 +276,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           title: "Demo Login Successful",
           description: `Logged in as ${demoUser.role}`,
         });
-
-        // Redirect based on role
-        switch (demoUser.role) {
-          case 'admin':
-          case 'provider':
-            router.push('/dashboard');
-            break;
-          case 'patient':
-            router.push('/dashboard/shop');
-            break;
-          default:
-            router.push('/dashboard');
-        }
+        
         return;
       }
       
@@ -301,18 +294,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: "You have successfully signed in.",
       });
 
-      // Redirect based on role
-      switch (userData.role) {
-        case 'admin':
-        case 'provider':
-          router.push('/dashboard');
-          break;
-        case 'patient':
-          router.push('/dashboard/shop');
-          break;
-        default:
-          router.push('/dashboard');
-      }
     } catch (error: any) {
       let errorMessage = 'Failed to sign in';
       
