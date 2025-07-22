@@ -47,7 +47,7 @@ import { templateBlocks, templateSections } from "./form-template-blocks";
 import type { FormSchema, FormPage, FormElement } from "@/lib/form-validator";
 import { useToast } from "@/hooks/use-toast";
 import { collection, addDoc, Timestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase/client";
+import { getFirebaseFirestore } from "@/lib/firebase";
 
 interface FormBuilderSheetProps {
   isOpen: boolean;
@@ -201,6 +201,11 @@ export function FormBuilderSheet({ isOpen, onClose, initialData }: FormBuilderSh
 
     setIsCreating(true);
     try {
+        const db = getFirebaseFirestore();
+        if (!db) {
+            throw new Error('Firebase not initialized');
+        }
+        
         await addDoc(collection(db, "resources"), {
             title: formSchema.title,
             description: formSchema.description,
@@ -344,7 +349,9 @@ export function FormBuilderSheet({ isOpen, onClose, initialData }: FormBuilderSh
                         </div>
                     </div>
                 ) : (
-                    <FormRenderer schema={{...formSchema, pages: [formSchema.pages[activePageIndex]]}} />
+                    formSchema.pages[activePageIndex] && (
+                        <FormRenderer schema={{...formSchema, pages: [formSchema.pages[activePageIndex]]}} />
+                    )
                 )}
               </ScrollArea>
             </main>

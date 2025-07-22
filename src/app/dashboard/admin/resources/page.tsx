@@ -48,7 +48,9 @@ import { useToast } from "@/hooks/use-toast";
 import { collection, getDocs, addDoc, query, orderBy, Timestamp } from "firebase/firestore";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
-import { db } from "@/lib/firebase/client";
+import { db } from "@/lib/firebase";
+import { DefaultFormSetup } from "@/components/admin/DefaultFormSetup";
+import { JsonBFormDemo } from "@/components/admin/JsonBFormDemo";
 
 type Resource = {
   id: string;
@@ -230,6 +232,12 @@ export default function EducationalResourcesPage() {
             Create New Content
           </Button>
         </div>
+
+        {/* Dynamic Form Templates Setup */}
+        <DefaultFormSetup />
+        
+        {/* JSONB Form Processing Demo */}
+        <JsonBFormDemo />
 
         <Card>
           <CardHeader className="border-b">

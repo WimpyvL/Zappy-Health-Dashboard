@@ -19,7 +19,6 @@ import {
   CheckCircle2,
   Clock,
   ClipboardList,
-  ClipboardPlus,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
@@ -273,7 +272,7 @@ export default function DashboardPage() {
         <Card className="shadow-md border-l-4 border-purple-500">
           <CardHeader className="flex flex-row items-center justify-between">
             <div className="flex items-center gap-3">
-              <ClipboardPlus className="h-6 w-6 text-purple-700" />
+              <ClipboardList className="h-6 w-6 text-purple-700" />
               <CardTitle className="text-lg text-purple-900">
                 Pending Consultations
               </CardTitle>

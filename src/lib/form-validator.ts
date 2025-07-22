@@ -1,11 +1,11 @@
 
-interface FormElementOption {
+export interface FormElementOption {
     id: string;
     value: string;
     label: string;
   }
   
-  interface FormElement {
+  export interface FormElement {
     id: string;
     type: string;
     label: string;
@@ -14,7 +14,7 @@ interface FormElementOption {
     options?: FormElementOption[];
   }
   
-  interface FormPage {
+  export interface FormPage {
     id: string;
     title: string;
     elements: FormElement[];
