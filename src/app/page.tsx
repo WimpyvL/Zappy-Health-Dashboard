@@ -47,9 +47,9 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       const demoAccounts = {
-        admin: { email: "admin@healthflow.com", password: "adminPassword123!" },
-        provider: { email: "provider@healthflow.com", password: "providerPassword123!" },
-        patient: { email: "patient@healthflow.com", password: "patientPassword123!" }
+        admin: { email: "admin@zappy.com", password: "adminPassword123!" },
+        provider: { email: "provider@zappy.com", password: "providerPassword123!" },
+        patient: { email: "patient@zappy.com", password: "patientPassword123!" }
       };
       
       const account = demoAccounts[role];
@@ -80,7 +80,7 @@ export default function LoginPage() {
               <Leaf className="h-6 w-6 text-white" />
             </div>
           </div>
-          <CardTitle className="text-2xl font-bold">Welcome to HealthFlow</CardTitle>
+          <CardTitle className="text-2xl font-bold">Welcome to Zappy</CardTitle>
           <CardDescription>
             Sign in to your account to continue
           </CardDescription>

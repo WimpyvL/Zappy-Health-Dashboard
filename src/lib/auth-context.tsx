@@ -242,7 +242,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(true);
       
       // Demo mode authentication bypass for development
-      if (email.includes('@healthflow.com')) {
+      if (email.includes('@zappy.com')) {
         console.log('🔓 Demo authentication mode');
         
         const role = email.includes('admin') ? 'admin' :

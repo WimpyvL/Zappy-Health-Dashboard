@@ -19,7 +19,8 @@ import {
   DocumentSnapshot,
   FirestoreError,
   writeBatch,
-  getCountFromServer
+  getCountFromServer,
+  WhereFilterOp
 } from "firebase/firestore";
 import { getFirebaseFirestore, isDevelopmentMode } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
@@ -37,7 +38,7 @@ export interface BaseDocument {
 export interface QueryOptions {
   filters?: Array<{
     field: string;
-    op: FirebaseFirestore.WhereFilterOp;
+    op: WhereFilterOp;
     value: any;
   }>;
   sortBy?: string;
@@ -198,7 +199,7 @@ const getCollection = async <T extends BaseDocument>(
     return {
       data,
       hasMore,
-      lastDocument: dataSlice.length > 0 ? dataSlice[dataSlice.length - 1] : null,
+      lastDocument: dataSlice.length > 0 ? (dataSlice[dataSlice.length - 1] as DocumentSnapshot) : null,
       total: data.length,
       error: null,
       success: true,
@@ -844,7 +845,7 @@ export const adminServices = {
     } catch (error) {
       // Fallback to regular query if count aggregation fails
       const result = await this.fetchCollection(collectionName, {
-        filters,
+        ...(filters && { filters }),
         limit: 1000 // Reasonable limit for counting
       }, false);
       return result.length;
@@ -853,4 +854,20 @@ export const adminServices = {
 
   // Cache management
   invalidateCache
+};
+
+// Export dbService for backward compatibility
+export const dbService = {
+  // Collection operations
+  getCollection,
+  getDocumentById,
+  createDocument,
+  updateDocument,
+  deleteDocument,
+  
+  // Admin services
+  ...adminServices,
+  
+  // Query utilities
+  queryKeys,
 };

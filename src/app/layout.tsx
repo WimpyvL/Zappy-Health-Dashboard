@@ -25,12 +25,12 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
-        <title>HealthFlow Dashboard</title>
+        <title>Zappy Dashboard</title>
         <meta name="description" content="A web app dashboard for managing a small healthcare business." />
       </head>
       <body className="font-body antialiased bg-slate-50" suppressHydrationWarning>
