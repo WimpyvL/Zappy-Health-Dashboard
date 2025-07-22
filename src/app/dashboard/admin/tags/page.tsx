@@ -41,7 +41,7 @@ import { useToast } from "@/hooks/use-toast";
 import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import { format } from 'date-fns';
 import { Skeleton } from "@/components/ui/skeleton";
-import { db } from "@/lib/firebase/client";
+import { db } from "@/lib/firebase";
 
 type TagItem = {
   id: string;

@@ -59,7 +59,7 @@ import { ProviderFormModal } from "./components/provider-form-modal";
 import { useToast } from "@/hooks/use-toast";
 import { collection, getDocs, addDoc, updateDoc, doc, query, orderBy, deleteDoc } from "firebase/firestore";
 import { Skeleton } from "@/components/ui/skeleton";
-import { db } from "@/lib/firebase/client";
+import { db } from "@/lib/firebase";
 
 type Provider = {
   id: string;

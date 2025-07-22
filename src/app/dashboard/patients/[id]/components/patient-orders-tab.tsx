@@ -21,7 +21,7 @@ import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
 import { Table, TableBody, TableCell, TableHeader, TableHead, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format } from 'date-fns';
-import { db } from "@/lib/firebase/client";
+import { db } from "@/lib/firebase";
 
 interface PatientOrdersTabProps {
   patientId: string;

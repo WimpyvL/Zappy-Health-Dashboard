@@ -13,16 +13,80 @@ import {
   updateDoc, 
   orderBy,
   Timestamp,
-  onSnapshot 
+  onSnapshot,
+  DocumentReference,
+  QuerySnapshot,
+  Unsubscribe
 } from 'firebase/firestore';
-import { prescriptionOrchestrator } from './prescriptionOrchestrator';
+import { 
+  Order, 
+  OrderStatus, 
+  OrderType, 
+  CreateOrderData, 
+  OrderUpdateData, 
+  OrderFilters, 
+  OrderAnalytics 
+} from '@/types/order';
+
+/**
+ * Workflow-specific interfaces
+ */
+interface WorkflowStep {
+  status: string;
+  timestamp: Timestamp;
+  triggeredBy: string;
+  notes: string;
+  previousStatus?: string;
+  metadata?: Record<string, any>;
+}
+
+interface WorkflowProgress {
+  currentStep: number;
+  totalSteps: number;
+  percentage: number;
+  estimatedCompletion: Date;
+}
+
+interface OrderWithWorkflow extends Order {
+  workflowPath: string[];
+  currentStepIndex: number;
+  statusHistory: WorkflowStep[];
+  workflowProgress: WorkflowProgress;
+  statusCategory: string;
+  nextPossibleActions: string[];
+  timeInCurrentStatus: number;
+  estimatedCompletion: Date;
+}
+
+interface WorkflowTriggerData {
+  triggeredBy?: string;
+  notes?: string;
+  previousStatus?: string;
+  stepIndex?: number;
+  additionalData?: Record<string, any>;
+}
+
+interface CreateOrderResult {
+  success: boolean;
+  orderId: string;
+  initialStatus: string;
+  workflowPath: string[];
+}
+
+interface StatusAdvanceResult {
+  success: boolean;
+  previousStatus?: string;
+  newStatus?: string;
+  stepIndex?: number;
+  reason?: string;
+}
 
 class OrderWorkflowOrchestrator {
   
   /**
    * Order Status Workflow States
    */
-  static ORDER_STATES = {
+  static readonly ORDER_STATES = {
     // Initial States
     CONSULTATION_PENDING: 'consultation_pending',
     INTAKE_COMPLETED: 'intake_completed',
@@ -53,23 +117,23 @@ class OrderWorkflowOrchestrator {
     COMPLETED: 'completed',
     CANCELLED: 'cancelled',
     REFUNDED: 'refunded'
-  };
+  } as const;
 
   /**
    * Status Categories for UI Display
    */
-  static STATUS_CATEGORIES = {
+  static readonly STATUS_CATEGORIES = {
     PENDING: 'pending',
     IN_PROGRESS: 'in_progress', 
     READY: 'ready',
     COMPLETED: 'completed',
     CANCELLED: 'cancelled'
-  };
+  } as const;
 
   /**
    * Workflow Paths by Product Type
    */
-  static WORKFLOW_PATHS = {
+  static readonly WORKFLOW_PATHS = {
     prescription: [
       'consultation_pending',
       'intake_completed', 
@@ -91,22 +155,32 @@ class OrderWorkflowOrchestrator {
       'order_delivered',
       'completed'
     ]
-  };
+  } as const;
+
+  private readonly collectionName = 'orders';
 
   /**
    * Creates order with proper workflow initialization
    */
-  async createOrderWithWorkflow(orderData) {
+  async createOrderWithWorkflow(orderData: CreateOrderData & { 
+    requiresPrescription?: boolean;
+    createdBy?: string;
+    medication?: any;
+  }): Promise<CreateOrderResult> {
     try {
+      if (!db) {
+        throw new Error('Firebase not initialized');
+      }
+
       // Determine workflow path based on product type
-      const workflowPath = orderData.requiresPrescription ? 
+      const workflowPath = [...(orderData.requiresPrescription ? 
         OrderWorkflowOrchestrator.WORKFLOW_PATHS.prescription :
-        OrderWorkflowOrchestrator.WORKFLOW_PATHS.otc;
+        OrderWorkflowOrchestrator.WORKFLOW_PATHS.otc)];
 
       // Create order with workflow metadata
       const enhancedOrderData = {
         ...orderData,
-        status: workflowPath[0], // Start with first status in workflow
+        status: workflowPath[0] as OrderStatus, // Start with first status in workflow
         workflowPath: workflowPath,
         currentStepIndex: 0,
         statusHistory: [{
@@ -117,10 +191,13 @@ class OrderWorkflowOrchestrator {
         }],
         estimatedCompletionDate: this.calculateEstimatedCompletion(workflowPath),
         createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now()
+        updatedAt: Timestamp.now(),
+        totalAmount: orderData.items.reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0),
+        currency: 'USD',
+        paymentStatus: 'pending' as const
       };
 
-      const orderRef = await addDoc(collection(db, "orders"), enhancedOrderData);
+      const orderRef = await addDoc(collection(db, this.collectionName), enhancedOrderData);
       
       // Trigger initial workflow step
       await this.triggerWorkflowStep(orderRef.id, workflowPath[0], {
@@ -132,21 +209,25 @@ class OrderWorkflowOrchestrator {
         success: true,
         orderId: orderRef.id,
         initialStatus: workflowPath[0],
-        workflowPath: workflowPath
+        workflowPath: [...workflowPath]
       };
 
     } catch (error) {
       console.error('Error creating order with workflow:', error);
-      throw error;
+      throw new Error(`Failed to create order: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   /**
    * Advances order to next workflow step
    */
-  async advanceOrderStatus(orderId, triggerData = {}) {
+  async advanceOrderStatus(orderId: string, triggerData: WorkflowTriggerData = {}): Promise<StatusAdvanceResult> {
     try {
-      const orderRef = doc(db, "orders", orderId);
+      if (!db) {
+        throw new Error('Firebase not initialized');
+      }
+
+      const orderRef = doc(db, this.collectionName, orderId);
       const orderSnap = await getDoc(orderRef);
       
       if (!orderSnap.exists()) {
@@ -166,10 +247,14 @@ class OrderWorkflowOrchestrator {
       const nextIndex = currentIndex + 1;
       const nextStatus = workflowPath[nextIndex];
 
+      if (!nextStatus) {
+        return { success: false, reason: 'Invalid workflow step' };
+      }
+
       // Update order status
       await this.updateOrderStatus(orderId, nextStatus, {
         ...triggerData,
-        previousStatus: order.status,
+        previousStatus: order.status || '',
         stepIndex: nextIndex
       });
 
@@ -178,23 +263,27 @@ class OrderWorkflowOrchestrator {
 
       return {
         success: true,
-        previousStatus: order.status,
+        previousStatus: order.status || '',
         newStatus: nextStatus,
         stepIndex: nextIndex
       };
 
     } catch (error) {
       console.error('Error advancing order status:', error);
-      throw error;
+      throw new Error(`Failed to advance order status: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   /**
    * Updates order status with history tracking
    */
-  async updateOrderStatus(orderId, newStatus, metadata = {}) {
+  async updateOrderStatus(orderId: string, newStatus: string, metadata: WorkflowTriggerData = {}): Promise<{ success: boolean }> {
     try {
-      const orderRef = doc(db, "orders", orderId);
+      if (!db) {
+        throw new Error('Firebase not initialized');
+      }
+
+      const orderRef = doc(db, this.collectionName, orderId);
       const orderSnap = await getDoc(orderRef);
       
       if (!orderSnap.exists()) {
@@ -202,7 +291,7 @@ class OrderWorkflowOrchestrator {
       }
 
       const order = orderSnap.data();
-      const statusHistoryEntry = {
+      const statusHistoryEntry: WorkflowStep = {
         status: newStatus,
         timestamp: Timestamp.now(),
         triggeredBy: metadata.triggeredBy || 'system',
@@ -212,7 +301,7 @@ class OrderWorkflowOrchestrator {
       };
 
       // Update order with new status
-      const updateData = {
+      const updateData: any = {
         status: newStatus,
         currentStepIndex: metadata.stepIndex !== undefined ? metadata.stepIndex : order.currentStepIndex,
         statusHistory: [...(order.statusHistory || []), statusHistoryEntry],
@@ -237,14 +326,14 @@ class OrderWorkflowOrchestrator {
 
     } catch (error) {
       console.error('Error updating order status:', error);
-      throw error;
+      throw new Error(`Failed to update order status: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   /**
    * Handles side effects when status changes
    */
-  async handleStatusSideEffects(orderId, newStatus, orderData) {
+  private async handleStatusSideEffects(orderId: string, newStatus: string, orderData: any): Promise<void> {
     try {
       switch (newStatus) {
         case OrderWorkflowOrchestrator.ORDER_STATES.PROVIDER_APPROVED:
@@ -292,8 +381,12 @@ class OrderWorkflowOrchestrator {
   /**
    * Creates prescription from approved order
    */
-  async createPrescriptionFromOrder(orderId, orderData) {
+  private async createPrescriptionFromOrder(orderId: string, orderData: any): Promise<{ success: boolean }> {
     try {
+      if (!db) {
+        throw new Error('Firebase not initialized');
+      }
+
       // This would integrate with the prescription orchestrator
       const prescriptionData = {
         orderId: orderId,
@@ -304,7 +397,7 @@ class OrderWorkflowOrchestrator {
       };
 
       // Update order with prescription ID
-      const orderRef = doc(db, "orders", orderId);
+      const orderRef = doc(db, this.collectionName, orderId);
       await updateDoc(orderRef, {
         prescriptionCreated: true,
         prescriptionCreatedAt: Timestamp.now()
@@ -313,16 +406,20 @@ class OrderWorkflowOrchestrator {
       return { success: true };
     } catch (error) {
       console.error('Error creating prescription from order:', error);
-      throw error;
+      throw new Error(`Failed to create prescription: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   /**
    * Gets comprehensive order details with workflow information
    */
-  async getOrderWithWorkflow(orderId) {
+  async getOrderWithWorkflow(orderId: string): Promise<OrderWithWorkflow> {
     try {
-      const orderRef = doc(db, "orders", orderId);
+      if (!db) {
+        throw new Error('Firebase not initialized');
+      }
+
+      const orderRef = doc(db, this.collectionName, orderId);
       const orderSnap = await getDoc(orderRef);
       
       if (!orderSnap.exists()) {
@@ -342,7 +439,27 @@ class OrderWorkflowOrchestrator {
 
       return {
         id: orderId,
-        ...order,
+        patientId: order.patientId,
+        providerId: order.providerId,
+        status: order.status,
+        type: order.type,
+        items: order.items || [],
+        totalAmount: order.totalAmount || 0,
+        currency: order.currency || 'USD',
+        paymentStatus: order.paymentStatus || 'pending',
+        shippingAddress: order.shippingAddress,
+        billingAddress: order.billingAddress,
+        paymentMethod: order.paymentMethod,
+        trackingNumber: order.trackingNumber,
+        notes: order.notes,
+        metadata: order.metadata,
+        workflowPath: order.workflowPath || [],
+        currentStepIndex: order.currentStepIndex || 0,
+        statusHistory: order.statusHistory || [],
+        createdAt: order.createdAt?.toDate() || new Date(),
+        updatedAt: order.updatedAt?.toDate() || new Date(),
+        estimatedDelivery: order.estimatedDelivery?.toDate(),
+        actualDelivery: order.actualDelivery?.toDate(),
         workflowProgress,
         estimatedCompletion,
         statusCategory: this.getStatusCategory(order.status),
@@ -352,26 +469,85 @@ class OrderWorkflowOrchestrator {
 
     } catch (error) {
       console.error('Error getting order with workflow:', error);
-      throw error;
+      throw new Error(`Failed to get order: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Gets orders with filters
+   */
+  async getOrders(filters?: OrderFilters): Promise<Order[]> {
+    try {
+      if (!db) {
+        throw new Error('Firebase not initialized');
+      }
+
+      let q = query(collection(db, this.collectionName));
+
+      if (filters?.status?.length) {
+        q = query(q, where('status', 'in', filters.status));
+      }
+
+      if (filters?.type?.length) {
+        q = query(q, where('type', 'in', filters.type));
+      }
+
+      if (filters?.patientId) {
+        q = query(q, where('patientId', '==', filters.patientId));
+      }
+
+      if (filters?.providerId) {
+        q = query(q, where('providerId', '==', filters.providerId));
+      }
+
+      q = query(q, orderBy('createdAt', 'desc'));
+
+      const querySnapshot = await getDocs(q);
+      
+      return querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate() || new Date(),
+        updatedAt: doc.data().updatedAt?.toDate() || new Date(),
+        estimatedDelivery: doc.data().estimatedDelivery?.toDate(),
+        actualDelivery: doc.data().actualDelivery?.toDate()
+      })) as Order[];
+    } catch (error) {
+      console.error('Error getting orders:', error);
+      throw new Error(`Failed to get orders: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 
   /**
    * Calculates workflow progress percentage
    */
-  calculateWorkflowProgress(order) {
-    if (!order.workflowPath || !order.currentStepIndex) {
-      return 0;
+  private calculateWorkflowProgress(order: any): WorkflowProgress {
+    if (!order.workflowPath || order.currentStepIndex === undefined) {
+      return {
+        currentStep: 0,
+        totalSteps: 0,
+        percentage: 0,
+        estimatedCompletion: new Date()
+      };
     }
     
-    const progress = ((order.currentStepIndex + 1) / order.workflowPath.length) * 100;
-    return Math.round(progress);
+    const currentStep = order.currentStepIndex + 1;
+    const totalSteps = order.workflowPath.length;
+    const percentage = Math.round((currentStep / totalSteps) * 100);
+    const estimatedCompletion = this.calculateEstimatedCompletion(order.workflowPath, order.currentStepIndex);
+    
+    return {
+      currentStep,
+      totalSteps,
+      percentage,
+      estimatedCompletion
+    };
   }
 
   /**
    * Gets status category for UI styling
    */
-  getStatusCategory(status) {
+  private getStatusCategory(status: string): string {
     const pendingStates = [
       'consultation_pending', 
       'intake_completed', 
@@ -410,8 +586,8 @@ class OrderWorkflowOrchestrator {
   /**
    * Gets possible next actions for current status
    */
-  getNextPossibleActions(order) {
-    const actions = [];
+  private getNextPossibleActions(order: any): string[] {
+    const actions: string[] = [];
     
     switch (order.status) {
       case 'provider_review':
@@ -438,7 +614,7 @@ class OrderWorkflowOrchestrator {
   /**
    * Calculates time spent in current status
    */
-  getTimeInCurrentStatus(order) {
+  private getTimeInCurrentStatus(order: any): number {
     if (!order.statusHistory || order.statusHistory.length === 0) {
       return 0;
     }
@@ -453,9 +629,9 @@ class OrderWorkflowOrchestrator {
   /**
    * Calculates estimated completion date
    */
-  calculateEstimatedCompletion(workflowPath, currentIndex = 0) {
+  private calculateEstimatedCompletion(workflowPath: string[], currentIndex: number = 0): Date {
     // Average time estimates per step (in hours)
-    const stepDurations = {
+    const stepDurations: Record<string, number> = {
       'consultation_pending': 24,
       'intake_completed': 2,
       'provider_review': 4,
@@ -473,7 +649,10 @@ class OrderWorkflowOrchestrator {
 
     let totalHours = 0;
     for (let i = currentIndex; i < workflowPath.length; i++) {
-      totalHours += stepDurations[workflowPath[i]] || 1;
+      const step = workflowPath[i];
+      if (step) {
+        totalHours += stepDurations[step] || 1;
+      }
     }
 
     const estimatedDate = new Date();
@@ -485,7 +664,7 @@ class OrderWorkflowOrchestrator {
   /**
    * Triggers notifications for status changes
    */
-  async triggerStatusNotifications(orderId, newStatus, orderData) {
+  private async triggerStatusNotifications(orderId: string, newStatus: string, orderData: any): Promise<{ success: boolean }> {
     try {
       // This would integrate with the notification service
       const notificationData = {
@@ -503,14 +682,19 @@ class OrderWorkflowOrchestrator {
       return { success: true };
     } catch (error) {
       console.error('Error triggering notifications:', error);
+      return { success: false };
     }
   }
 
   /**
    * Sets up real-time order status listening
    */
-  subscribeToOrderUpdates(orderId, callback) {
-    const orderRef = doc(db, "orders", orderId);
+  subscribeToOrderUpdates(orderId: string, callback: (order: OrderWithWorkflow) => void): Unsubscribe {
+    if (!db) {
+      throw new Error('Firebase not initialized');
+    }
+
+    const orderRef = doc(db, this.collectionName, orderId);
     
     return onSnapshot(orderRef, (doc) => {
       if (doc.exists()) {
@@ -518,9 +702,15 @@ class OrderWorkflowOrchestrator {
         callback({
           id: doc.id,
           ...orderData,
+          createdAt: orderData.createdAt?.toDate() || new Date(),
+          updatedAt: orderData.updatedAt?.toDate() || new Date(),
+          estimatedDelivery: orderData.estimatedDelivery?.toDate(),
+          actualDelivery: orderData.actualDelivery?.toDate(),
           workflowProgress: this.calculateWorkflowProgress(orderData),
-          statusCategory: this.getStatusCategory(orderData.status)
-        });
+          statusCategory: this.getStatusCategory(orderData.status),
+          nextPossibleActions: this.getNextPossibleActions(orderData),
+          timeInCurrentStatus: this.getTimeInCurrentStatus(orderData)
+        } as OrderWithWorkflow);
       }
     });
   }
@@ -528,7 +718,7 @@ class OrderWorkflowOrchestrator {
   /**
    * Triggers specific workflow step
    */
-  async triggerWorkflowStep(orderId, status, metadata = {}) {
+  private async triggerWorkflowStep(orderId: string, status: string, metadata: WorkflowTriggerData = {}): Promise<{ success: boolean }> {
     try {
       // Perform any step-specific logic
       console.log(`Triggering workflow step: ${status} for order: ${orderId}`);
@@ -539,9 +729,10 @@ class OrderWorkflowOrchestrator {
       return { success: true };
     } catch (error) {
       console.error('Error triggering workflow step:', error);
-      throw error;
+      throw new Error(`Failed to trigger workflow step: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 }
 
 export const orderWorkflowOrchestrator = new OrderWorkflowOrchestrator();
+export type { OrderWithWorkflow, WorkflowProgress, WorkflowTriggerData };

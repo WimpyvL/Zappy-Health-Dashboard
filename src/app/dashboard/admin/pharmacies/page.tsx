@@ -57,7 +57,7 @@ import { useToast } from "@/hooks/use-toast";
 import { collection, getDocs, addDoc, updateDoc, doc, query, orderBy, deleteDoc } from "firebase/firestore";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { db } from "@/lib/firebase/client";
+import { db } from "@/lib/firebase";
 
 type Pharmacy = {
   id: string;
@@ -77,6 +77,10 @@ export default function PharmacyPage() {
     const fetchPharmacies = React.useCallback(async () => {
         setLoading(true);
         try {
+          if (!db) {
+            throw new Error("Firebase not initialized");
+          }
+          
           const pharmaciesCollection = collection(db, "pharmacies");
           const pharmacySnapshot = await getDocs(query(pharmaciesCollection, orderBy("name", "asc")));
           const pharmacyList = pharmacySnapshot.docs.map(doc => ({
@@ -117,6 +121,10 @@ export default function PharmacyPage() {
 
     const handleFormSubmit = async (values: Omit<Pharmacy, 'id' | 'prescriptions'>) => {
         try {
+            if (!db) {
+                throw new Error("Firebase not initialized");
+            }
+            
             if (editingPharmacy) {
                 const pharmacyDoc = doc(db, "pharmacies", editingPharmacy.id);
                 await updateDoc(pharmacyDoc, values);
@@ -148,6 +156,10 @@ export default function PharmacyPage() {
 
     const handleDeletePharmacy = async (pharmacyId: string) => {
         try {
+            if (!db) {
+                throw new Error("Firebase not initialized");
+            }
+            
             await deleteDoc(doc(db, "pharmacies", pharmacyId));
             toast({
                 title: "Pharmacy Deleted",
