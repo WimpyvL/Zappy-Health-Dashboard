@@ -1,0 +1,452 @@
+erDiagram
+    %% Core User Management
+    users {
+        uuid id PK
+        varchar email UK
+        varchar password_hash
+        user_role_enum role
+        user_status_enum status
+        boolean email_verified
+        varchar phone
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    patients {
+        uuid id PK,FK
+        varchar first_name
+        varchar last_name
+        date date_of_birth
+        uuid subscription_plan_id FK
+        uuid primary_pharmacy_id FK
+        uuid primary_provider_id FK
+        timestamptz last_active_at
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    providers {
+        uuid id PK,FK
+        varchar first_name
+        varchar last_name
+        varchar npi_number UK
+        varchar license_number
+        varchar license_state
+        date license_expiry_date
+        text specialties
+        decimal consultation_fee
+        boolean is_accepting_patients
+        decimal average_rating
+        integer total_consultations
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    administrators {
+        uuid id PK,FK
+        varchar first_name
+        varchar last_name
+        text permissions
+        varchar department
+        uuid manager_id FK
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    %% Healthcare Services
+    consultations {
+        uuid id PK
+        uuid patient_id FK
+        uuid provider_id FK
+        consultation_type_enum consultation_type
+        consultation_status_enum status
+        timestamptz scheduled_at
+        timestamptz started_at
+        timestamptz ended_at
+        integer duration_minutes
+        text chief_complaint
+        text assessment
+        text plan
+        decimal fee
+        uuid prescription_ids
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    prescriptions {
+        uuid id PK
+        uuid patient_id FK
+        uuid provider_id FK
+        uuid consultation_id FK
+        uuid order_id FK
+        varchar medication_name
+        varchar strength
+        integer quantity
+        integer days_supply
+        text instructions
+        prescription_status_enum status
+        timestamptz prescribed_at
+        timestamptz expires_at
+        uuid pharmacy_id FK
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    sessions {
+        uuid id PK
+        uuid patient_id FK
+        uuid provider_id FK
+        uuid consultation_id FK
+        uuid telehealth_flow_id FK
+        session_type_enum session_type
+        session_status_enum status
+        date scheduled_date
+        text progress_notes
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    %% Commerce & Products
+    categories {
+        uuid id PK
+        varchar name UK
+        text description
+        varchar slug UK
+        uuid parent_category_id FK
+        boolean is_active
+        integer sort_order
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    products {
+        uuid id PK
+        varchar name
+        varchar sku UK
+        uuid category_id FK
+        product_type_enum product_type
+        decimal price
+        integer inventory_quantity
+        boolean requires_prescription
+        boolean is_active
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    subscription_plans {
+        uuid id PK
+        varchar name UK
+        decimal price
+        billing_cycle_enum billing_cycle
+        integer duration_months
+        decimal discount_percentage
+        text features
+        boolean is_popular
+        boolean is_active
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    orders {
+        uuid id PK
+        varchar order_number UK
+        uuid patient_id FK
+        uuid provider_id FK
+        uuid telehealth_flow_id FK
+        order_type_enum order_type
+        order_status_enum status
+        decimal subtotal
+        decimal tax_amount
+        decimal discount_amount
+        decimal total_amount
+        payment_status_enum payment_status
+        varchar payment_method
+        jsonb shipping_address
+        varchar tracking_number
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    order_items {
+        uuid id PK
+        uuid order_id FK
+        uuid product_id FK
+        uuid prescription_id FK
+        varchar name
+        integer quantity
+        decimal unit_price
+        decimal total_price
+        timestamptz created_at
+    }
+
+    invoices {
+        uuid id PK
+        varchar invoice_number UK
+        uuid patient_id FK
+        uuid order_id FK
+        uuid subscription_plan_id FK
+        invoice_status_enum status
+        date issue_date
+        date due_date
+        date paid_date
+        decimal subtotal
+        decimal total_amount
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    %% Communication & Messaging
+    conversations {
+        uuid id PK
+        varchar subject
+        uuid participant_ids
+        conversation_type_enum conversation_type
+        boolean is_group
+        uuid created_by FK
+        uuid last_message_id FK
+        timestamptz last_message_at
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    messages {
+        uuid id PK
+        uuid conversation_id FK
+        uuid sender_id FK
+        message_type_enum message_type
+        text content
+        jsonb attachments
+        uuid reply_to_message_id FK
+        boolean is_edited
+        jsonb read_by
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    notifications {
+        uuid id PK
+        uuid user_id FK
+        notification_type_enum notification_type
+        varchar title
+        text message
+        jsonb data
+        notification_status_enum status
+        timestamptz scheduled_at
+        timestamptz sent_at
+        timestamptz read_at
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    %% Workflow Management
+    telehealth_flows {
+        uuid id PK
+        uuid patient_id FK
+        uuid category_id FK
+        uuid product_id FK
+        uuid subscription_duration_id FK
+        flow_status_enum current_status
+        jsonb status_history
+        jsonb intake_form_data
+        jsonb consultation_data
+        uuid order_id FK
+        timestamptz completed_at
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    tasks {
+        uuid id PK
+        varchar title
+        text description
+        uuid assignee_id FK
+        uuid assigner_id FK
+        task_type_enum task_type
+        priority_enum priority
+        task_status_enum status
+        date due_date
+        timestamptz completed_at
+        varchar related_entity_type
+        uuid related_entity_id
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    audit_logs {
+        uuid id PK
+        uuid user_id FK
+        varchar action
+        varchar entity_type
+        uuid entity_id
+        jsonb old_values
+        jsonb new_values
+        inet ip_address
+        log_severity_enum severity
+        timestamptz created_at
+    }
+
+    %% Dynamic Forms System
+    form_schemas {
+        uuid id PK
+        varchar title
+        varchar version
+        jsonb schema_definition
+        medical_form_type_enum medical_form_type
+        varchar clinical_workflow
+        boolean is_template
+        boolean is_published
+        uuid created_by FK
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    form_submissions {
+        uuid id PK
+        uuid form_schema_id FK
+        varchar form_version
+        uuid submitted_by FK
+        uuid patient_id FK
+        uuid provider_id FK
+        uuid consultation_id FK
+        uuid telehealth_flow_id FK
+        jsonb submission_data
+        form_submission_status_enum status
+        clinical_priority_enum clinical_priority
+        integer completion_time_seconds
+        device_type_enum device_type
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    %% Insurance & Pharmacy
+    insurance_providers {
+        uuid id PK
+        varchar name UK
+        varchar payer_id UK
+        varchar phone
+        text website_url
+        boolean is_active
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    patient_insurance {
+        uuid id PK
+        uuid patient_id FK
+        uuid insurance_provider_id FK
+        varchar policy_number
+        varchar subscriber_name
+        relationship_enum subscriber_relationship
+        date effective_date
+        date expiration_date
+        boolean is_primary
+        boolean is_active
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    pharmacies {
+        uuid id PK
+        varchar name
+        varchar npi_number UK
+        text address_line_1
+        varchar city
+        varchar state
+        varchar postal_code
+        varchar phone
+        jsonb hours_of_operation
+        boolean is_24_hour
+        boolean delivery_available
+        boolean is_active
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    %% Tags & Categories
+    tags {
+        uuid id PK
+        varchar name UK
+        varchar color
+        text description
+        tag_category_enum category
+        integer usage_count
+        boolean is_system_tag
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    entity_tags {
+        uuid id PK
+        uuid tag_id FK
+        varchar entity_type
+        uuid entity_id
+        uuid tagged_by FK
+        timestamptz created_at
+    }
+
+    %% Relationships
+    users ||--o{ patients : "extends"
+    users ||--o{ providers : "extends"
+    users ||--o{ administrators : "extends"
+    
+    patients ||--o{ consultations : "has"
+    providers ||--o{ consultations : "provides"
+    consultations ||--o{ prescriptions : "generates"
+    
+    patients ||--o{ prescriptions : "receives"
+    providers ||--o{ prescriptions : "writes"
+    pharmacies ||--o{ prescriptions : "fills"
+    
+    patients ||--o{ sessions : "attends"
+    providers ||--o{ sessions : "conducts"
+    consultations ||--o{ sessions : "includes"
+    
+    categories ||--o{ products : "contains"
+    categories ||--o{ categories : "parent-child"
+    
+    patients ||--o{ orders : "places"
+    providers ||--o{ orders : "approves"
+    orders ||--o{ order_items : "contains"
+    products ||--o{ order_items : "includes"
+    prescriptions ||--o{ order_items : "fulfills"
+    
+    patients ||--o{ invoices : "billed"
+    orders ||--o{ invoices : "generates"
+    subscription_plans ||--o{ invoices : "bills"
+    
+    subscription_plans ||--o{ patients : "subscribed"
+    pharmacies ||--o{ patients : "primary"
+    providers ||--o{ patients : "primary"
+    
+    users ||--o{ conversations : "participates"
+    conversations ||--o{ messages : "contains"
+    users ||--o{ messages : "sends"
+    messages ||--o{ messages : "replies"
+    
+    users ||--o{ notifications : "receives"
+    
+    patients ||--o{ telehealth_flows : "initiates"
+    categories ||--o{ telehealth_flows : "categorizes"
+    products ||--o{ telehealth_flows : "includes"
+    orders ||--o{ telehealth_flows : "generates"
+    
+    users ||--o{ tasks : "assigned"
+    users ||--o{ tasks : "assigns"
+    
+    users ||--o{ audit_logs : "performs"
+    
+    users ||--o{ form_schemas : "creates"
+    form_schemas ||--o{ form_submissions : "submitted"
+    users ||--o{ form_submissions : "submits"
+    patients ||--o{ form_submissions : "about"
+    providers ||--o{ form_submissions : "reviews"
+    consultations ||--o{ form_submissions : "related"
+    telehealth_flows ||--o{ form_submissions : "part_of"
+    
+    patients ||--o{ patient_insurance : "has"
+    insurance_providers ||--o{ patient_insurance : "provides"
+    
+    tags ||--o{ entity_tags : "applied"
+    users ||--o{ entity_tags : "applies"
+    
+    administrators ||--o{ administrators : "manages"
