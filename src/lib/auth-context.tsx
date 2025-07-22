@@ -257,7 +257,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           displayName: `Demo ${name}`,
           emailVerified: true,
           isAnonymous: false,
-          metadata: {}, // Mock metadata
+          metadata: {} as any, // Mock metadata
           providerData: [],
           providerId: 'password',
           tenantId: null,
@@ -276,7 +276,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           title: "Demo Login Successful",
           description: `Logged in as ${demoUser.role}`,
         });
-        
+        router.push('/dashboard');
         return;
       }
       
