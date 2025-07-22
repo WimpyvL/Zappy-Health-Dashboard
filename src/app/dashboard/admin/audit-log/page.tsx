@@ -30,7 +30,7 @@ import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
-import { db } from "@/lib/firebase/client";
+import { db } from "@/lib/firebase";
 
 type AuditLog = {
   id: string;
@@ -72,6 +72,10 @@ export default function AuditLogPage() {
         const fetchLogs = async () => {
             setLoading(true);
             try {
+                if (!db) {
+                    throw new Error("Firebase not initialized");
+                }
+                
                 const logsCollection = collection(db, "audit_logs");
                 const q = query(logsCollection, orderBy("timestamp", "desc"));
                 const logsSnapshot = await getDocs(q);

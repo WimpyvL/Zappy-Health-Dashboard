@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, Loader2, AlertCircle } from "lucide-react";
-import { useTelehealthFlow } from "@/hooks/useTelehealthFlow.js";
+import { useTelehealthFlow } from "@/hooks/useTelehealthFlow";
 import { useToast } from "@/hooks/use-toast";
 import { DynamicFormRenderer } from "@/components/ui/dynamic-form-renderer";
 import { dynamicFormService } from "@/services/dynamicFormService";

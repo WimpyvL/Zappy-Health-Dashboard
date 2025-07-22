@@ -40,7 +40,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { format } from "date-fns";
 import { useUpdateSessionStatus, useSessions, useCreateSession, Session } from "@/services/database/hooks";
-import { useTelehealthFlow } from "@/hooks/useTelehealthFlow.js";
+import { useTelehealthFlow } from "@/hooks/useTelehealthFlow";
 import { Skeleton } from "@/components/ui/skeleton";
 import { db } from "@/lib/firebase";
 

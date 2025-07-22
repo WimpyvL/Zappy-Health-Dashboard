@@ -20,7 +20,7 @@ import { Search, Plus, Filter, FolderOpen, Loader2, FileText, Edit, Send } from 
 import { Badge } from "@/components/ui/badge";
 import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
 import { format } from 'date-fns';
-import { db } from "@/lib/firebase/client";
+import { db } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 
 const useNotes = (patientId: string) => {

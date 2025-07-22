@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
-import { useTelehealthFlow } from "@/hooks/useTelehealthFlow.js";
+import { useTelehealthFlow } from "@/hooks/useTelehealthFlow";
 import { prescriptionOrchestrator } from "@/services/prescriptionOrchestrator";
 import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";

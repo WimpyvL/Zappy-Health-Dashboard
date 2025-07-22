@@ -34,6 +34,22 @@ const nextConfig = {
       };
     }
 
+    // Handle undici private fields syntax issue
+    config.module.rules.push({
+      test: /node_modules\/undici\/.*\.js$/,
+      use: {
+        loader: 'babel-loader',
+        options: {
+          presets: [['@babel/preset-env', { targets: 'defaults' }]],
+          plugins: [
+            ['@babel/plugin-transform-private-methods', { loose: true }],
+            ['@babel/plugin-transform-class-properties', { loose: true }],
+            ['@babel/plugin-transform-private-property-in-object', { loose: true }]
+          ]
+        }
+      }
+    });
+
     return config;
   },
 };

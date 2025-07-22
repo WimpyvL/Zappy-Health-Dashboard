@@ -35,7 +35,7 @@ import { UploadInsuranceDocumentModal } from "./components/upload-insurance-docu
 import { collection, getDocs, addDoc, query, orderBy, Timestamp } from "firebase/firestore";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
-import { db } from "@/lib/firebase/client";
+import { db } from "@/lib/firebase";
 
 type Document = {
   id: string;

@@ -4,7 +4,7 @@
  */
 import { loadStripe } from '@stripe/stripe-js';
 import { collection, doc, updateDoc, addDoc, getDoc, Timestamp } from 'firebase/firestore';
-import { db } from '@/lib/firebase/client';
+import { db } from '@/lib/firebase';
 
 // Initialize Stripe
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
