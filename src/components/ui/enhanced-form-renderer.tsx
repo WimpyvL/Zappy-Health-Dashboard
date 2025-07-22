@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { RecommendationPanel } from '@/components/forms/RecommendationPanel';
+import { FormRecommendation, RecommendationConfig } from '@/services/formRecommendationService';
 
 interface FormElementOption {
   id: string;
@@ -31,32 +33,37 @@ interface FormPage {
   id: string;
   title: string;
   elements: FormElement[];
+  showRecommendations?: boolean;
+  recommendationConfig?: RecommendationConfig;
 }
 
 interface FormSchema {
   title: string;
   description?: string;
   pages: FormPage[];
+  globalRecommendationConfig?: RecommendationConfig;
 }
 
-interface DynamicFormRendererProps {
+interface EnhancedFormRendererProps {
   schema: FormSchema;
   onSubmit: (data: Record<string, any>) => Promise<void>;
   isSubmitting?: boolean;
   submitButtonText?: string;
   allowMultiPage?: boolean;
-  onFormDataChange?: (data: Record<string, any>) => void;
-  onPageChange?: (pageIndex: number) => void;
+  showRecommendations?: boolean;
+  onRecommendationSelect?: (recommendation: FormRecommendation) => void;
+  onRecommendationDismiss?: (recommendationId: string) => void;
 }
 
-export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({ 
+export const EnhancedFormRenderer: React.FC<EnhancedFormRendererProps> = ({ 
   schema, 
   onSubmit, 
   isSubmitting = false,
   submitButtonText = "Submit Form",
   allowMultiPage = true,
-  onFormDataChange,
-  onPageChange
+  showRecommendations = true,
+  onRecommendationSelect,
+  onRecommendationDismiss
 }) => {
   const [currentPageIndex, setCurrentPageIndex] = useState(0);
   const [formData, setFormData] = useState<Record<string, any>>({});
@@ -68,18 +75,19 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({
   const isLastPage = currentPageIndex === totalPages - 1;
   const progressPercentage = totalPages > 1 ? ((currentPageIndex + 1) / totalPages) * 100 : 100;
 
+  // Determine if recommendations should be shown for current page
+  const shouldShowRecommendations = showRecommendations && 
+    (currentPage?.showRecommendations !== false) &&
+    Object.keys(formData).length > 0;
+
+  // Get recommendation config for current page
+  const recommendationConfig = currentPage?.recommendationConfig || schema.globalRecommendationConfig;
+
   const handleInputChange = useCallback((elementId: string, value: any) => {
-    const newFormData = {
-      ...formData,
+    setFormData(prev => ({
+      ...prev,
       [elementId]: value
-    };
-    
-    setFormData(newFormData);
-    
-    // Call the callback with updated form data
-    if (onFormDataChange) {
-      onFormDataChange(newFormData);
-    }
+    }));
     
     // Clear error for this field if it exists
     if (currentPage) {
@@ -88,7 +96,7 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({
         [currentPage.id]: (prev[currentPage.id] || []).filter(error => !error.includes(elementId))
       }));
     }
-  }, [currentPage, formData, onFormDataChange]);
+  }, [currentPage]);
 
   const validateCurrentPage = useCallback(() => {
     if (!currentPage) return false;
@@ -113,30 +121,15 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({
 
   const handleNextPage = useCallback(() => {
     if (validateCurrentPage() && currentPageIndex < totalPages - 1) {
-      const newPageIndex = currentPageIndex + 1;
-      setCurrentPageIndex(newPageIndex);
-      if (onPageChange) {
-        onPageChange(newPageIndex);
-      }
+      setCurrentPageIndex(prev => prev + 1);
     }
-  }, [validateCurrentPage, currentPageIndex, totalPages, onPageChange]);
+  }, [validateCurrentPage, currentPageIndex, totalPages]);
 
   const handlePrevPage = useCallback(() => {
     if (currentPageIndex > 0) {
-      const newPageIndex = currentPageIndex - 1;
-      setCurrentPageIndex(newPageIndex);
-      if (onPageChange) {
-        onPageChange(newPageIndex);
-      }
+      setCurrentPageIndex(prev => prev - 1);
     }
-  }, [currentPageIndex, onPageChange]);
-
-  // Call onPageChange when component mounts
-  useEffect(() => {
-    if (onPageChange) {
-      onPageChange(currentPageIndex);
-    }
-  }, [onPageChange, currentPageIndex]);
+  }, [currentPageIndex]);
 
   const handleSubmit = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -179,6 +172,19 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({
 
     await onSubmit(formData);
   }, [validateCurrentPage, allowMultiPage, isLastPage, handleNextPage, schema.pages, formData, onSubmit]);
+
+  const handleRecommendationSelect = useCallback((recommendation: FormRecommendation) => {
+    // Auto-fill form fields based on recommendation if applicable
+    if (recommendation.category === 'subscription' && recommendation.title.includes('Plan')) {
+      setFormData(prev => ({
+        ...prev,
+        selectedPlan: recommendation.title,
+        planPrice: recommendation.price,
+      }));
+    }
+    
+    onRecommendationSelect?.(recommendation);
+  }, [onRecommendationSelect]);
 
   const renderElement = useCallback((element: FormElement) => {
     const { id, type, label, required, placeholder, options } = element;
@@ -310,89 +316,113 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({
   }
 
   return (
-    <Card className="w-full max-w-3xl mx-auto">
-      <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="text-xl">{schema.title}</CardTitle>
-            {schema.description && <CardDescription className="mt-1">{schema.description}</CardDescription>}
-          </div>
-          {totalPages > 1 && allowMultiPage && (
-            <div className="text-sm text-muted-foreground">
-              Page {currentPageIndex + 1} of {totalPages}
-            </div>
-          )}
+    <div className="w-full max-w-6xl mx-auto">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Main Form */}
+        <div className="lg:col-span-2">
+          <Card className="w-full">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-xl">{schema.title}</CardTitle>
+                  {schema.description && <CardDescription className="mt-1">{schema.description}</CardDescription>}
+                </div>
+                {totalPages > 1 && allowMultiPage && (
+                  <div className="text-sm text-muted-foreground">
+                    Page {currentPageIndex + 1} of {totalPages}
+                  </div>
+                )}
+              </div>
+              {totalPages > 1 && allowMultiPage && (
+                <div className="mt-4">
+                  <Progress value={progressPercentage} className="h-2" />
+                </div>
+              )}
+            </CardHeader>
+            <CardContent>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div>
+                  {allowMultiPage && totalPages > 1 && (
+                    <h3 className="text-lg font-semibold border-b pb-2 mb-6">{currentPage.title}</h3>
+                  )}
+                  
+                  {/* Show errors for current page */}
+                  {currentPageErrors.length > 0 && (
+                    <div className="bg-destructive/15 border border-destructive/20 rounded-lg p-4 mb-6">
+                      <h4 className="font-semibold text-destructive mb-2">Please correct the following errors:</h4>
+                      <ul className="text-sm text-destructive list-disc list-inside space-y-1">
+                        {currentPageErrors.map((error, index) => (
+                          <li key={index}>{error}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {/* Render current page elements */}
+                  {(allowMultiPage ? [currentPage] : schema.pages).filter(page => page != null).map(page => (
+                    <div key={page.id}>
+                      {!allowMultiPage && totalPages > 1 && (
+                        <h3 className="text-lg font-semibold border-b pb-2 mb-6">{page.title}</h3>
+                      )}
+                      {page.elements.map(renderElement)}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Form navigation/submit buttons */}
+                <div className="flex justify-between items-center pt-4 border-t">
+                  <div>
+                    {allowMultiPage && !isFirstPage && (
+                      <Button 
+                        type="button" 
+                        variant="outline" 
+                        onClick={handlePrevPage}
+                        disabled={isSubmitting}
+                      >
+                        <ChevronLeft className="w-4 h-4 mr-2" />
+                        Previous
+                      </Button>
+                    )}
+                  </div>
+                  <div>
+                    <Button 
+                      type="submit" 
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      {isSubmitting ? 'Submitting...' : (
+                        allowMultiPage && !isLastPage ? (
+                          <>
+                            Next
+                            <ChevronRight className="w-4 h-4 ml-2" />
+                          </>
+                        ) : submitButtonText
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
         </div>
-        {totalPages > 1 && allowMultiPage && (
-          <div className="mt-4">
-            <Progress value={progressPercentage} className="h-2" />
+
+        {/* Recommendations Panel */}
+        {shouldShowRecommendations && (
+          <div className="lg:col-span-1">
+            <div className="sticky top-6">
+              <RecommendationPanel
+                formData={formData}
+                {...(recommendationConfig && { config: recommendationConfig })}
+                onRecommendationSelect={handleRecommendationSelect}
+                {...(onRecommendationDismiss && { onRecommendationDismiss })}
+                maxRecommendations={3}
+              />
+            </div>
           </div>
         )}
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div>
-            {allowMultiPage && totalPages > 1 && (
-              <h3 className="text-lg font-semibold border-b pb-2 mb-6">{currentPage.title}</h3>
-            )}
-            
-            {/* Show errors for current page */}
-            {currentPageErrors.length > 0 && (
-              <div className="bg-destructive/15 border border-destructive/20 rounded-lg p-4 mb-6">
-                <h4 className="font-semibold text-destructive mb-2">Please correct the following errors:</h4>
-                <ul className="text-sm text-destructive list-disc list-inside space-y-1">
-                  {currentPageErrors.map((error, index) => (
-                    <li key={index}>{error}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Render current page elements */}
-            {(allowMultiPage ? [currentPage] : schema.pages).filter(page => page != null).map(page => (
-              <div key={page.id}>
-                {!allowMultiPage && totalPages > 1 && (
-                  <h3 className="text-lg font-semibold border-b pb-2 mb-6">{page.title}</h3>
-                )}
-                {page.elements.map(renderElement)}
-              </div>
-            ))}
-          </div>
-
-          {/* Form navigation/submit buttons */}
-          <div className="flex justify-between items-center pt-4 border-t">
-            <div>
-              {allowMultiPage && !isFirstPage && (
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={handlePrevPage}
-                  disabled={isSubmitting}
-                >
-                  <ChevronLeft className="w-4 h-4 mr-2" />
-                  Previous
-                </Button>
-              )}
-            </div>
-            <div>
-              <Button 
-                type="submit" 
-                disabled={isSubmitting}
-              >
-                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {isSubmitting ? 'Submitting...' : (
-                  allowMultiPage && !isLastPage ? (
-                    <>
-                      Next
-                      <ChevronRight className="w-4 h-4 ml-2" />
-                    </>
-                  ) : submitButtonText
-                )}
-              </Button>
-            </div>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };
+
+export default EnhancedFormRenderer;

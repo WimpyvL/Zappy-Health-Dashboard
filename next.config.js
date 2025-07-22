@@ -23,10 +23,6 @@ const nextConfig = {
       },
     ],
   },
-  experimental: {
-    // This allows requests from the Firebase Studio development environment.
-    allowedDevOrigins: ["*.cloudworkstations.dev"],
-  },
   webpack: (config, { isServer }) => {
     // Handle undici package compatibility issues
     if (!isServer) {
@@ -37,12 +33,6 @@ const nextConfig = {
         tls: false,
       };
     }
-    
-    // Ignore problematic packages in client-side builds
-    config.externals = config.externals || [];
-    config.externals.push({
-      undici: 'undici',
-    });
 
     return config;
   },

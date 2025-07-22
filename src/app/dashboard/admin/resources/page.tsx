@@ -48,7 +48,7 @@ import { useToast } from "@/hooks/use-toast";
 import { collection, getDocs, addDoc, query, orderBy, Timestamp } from "firebase/firestore";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
-import { db } from "@/lib/firebase/client";
+import { db } from "@/lib/firebase";
 import { DefaultFormSetup } from "@/components/admin/DefaultFormSetup";
 import { JsonBFormDemo } from "@/components/admin/JsonBFormDemo";
 

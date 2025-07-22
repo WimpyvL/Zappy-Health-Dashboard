@@ -2,7 +2,7 @@
  * @fileoverview React hook for order workflow management and real-time updates
  */
 import { useState, useEffect, useCallback } from 'react';
-import { db } from '@/lib/firebase';
+import { getFirebaseFirestore } from '@/lib/firebase';
 import { 
   doc, 
   onSnapshot, 
@@ -12,19 +12,105 @@ import {
   query,
   where,
   orderBy,
-  limit
+  limit,
+  Timestamp,
+  Unsubscribe,
+  Query,
+  DocumentData
 } from 'firebase/firestore';
 import { orderWorkflowOrchestrator } from '@/services/orderWorkflowOrchestrator';
 import { notificationService } from '@/services/notificationService';
 
+// Types
+export interface Order {
+  id: string;
+  patientId: string;
+  providerId?: string;
+  pharmacyId?: string;
+  status: string;
+  medication?: string;
+  isPrescriptionRequired?: boolean;
+  createdAt: Timestamp;
+  updatedAt?: Timestamp;
+  completedAt?: Timestamp;
+  orderDate?: Timestamp;
+  flow_id?: string;
+  consultation_id?: string;
+  [key: string]: any;
+}
+
+export interface OrderFilters {
+  patientId?: string;
+  providerId?: string;
+  pharmacyId?: string;
+  status?: string;
+  isPrescriptionRequired?: boolean;
+  limit?: number;
+  startDate?: Timestamp;
+  endDate?: Timestamp;
+}
+
+export interface Notification {
+  id: string;
+  userId: string;
+  userType: string;
+  title: string;
+  message: string;
+  read: boolean;
+  createdAt: Timestamp;
+  type?: string;
+  [key: string]: any;
+}
+
+export interface OrderAnalytics {
+  totalOrders: number;
+  prescriptionOrders: number;
+  otcOrders: number;
+  completedOrders: number;
+  pendingOrders: number;
+  canceledOrders: number;
+  averageCompletionTime: number;
+  recentActivity: Order[];
+}
+
+export interface UseOrderWorkflowReturn {
+  order: Order | null;
+  loading: boolean;
+  error: string | null;
+  updating: boolean;
+  updateOrderStatus: (newStatus: string, details?: any) => Promise<void>;
+  progressOrder: (details?: any) => Promise<void>;
+  completeOrder: (completionDetails?: any) => Promise<void>;
+  cancelOrder: (reason?: string) => Promise<void>;
+}
+
+export interface UseOrderListReturn {
+  orders: Order[];
+  loading: boolean;
+  error: string | null;
+}
+
+export interface UseOrderNotificationsReturn {
+  notifications: Notification[];
+  unreadCount: number;
+  loading: boolean;
+  markAsRead: (notificationId: string) => Promise<void>;
+  markAllAsRead: () => Promise<void>;
+}
+
+export interface UseOrderAnalyticsReturn {
+  analytics: OrderAnalytics;
+  loading: boolean;
+}
+
 /**
  * Custom hook for managing order workflows with real-time updates
  */
-export const useOrderWorkflow = (orderId) => {
-  const [order, setOrder] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [updating, setUpdating] = useState(false);
+export const useOrderWorkflow = (orderId: string | null): UseOrderWorkflowReturn => {
+  const [order, setOrder] = useState<Order | null>(null);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+  const [updating, setUpdating] = useState<boolean>(false);
 
   // Real-time order subscription
   useEffect(() => {
@@ -33,13 +119,20 @@ export const useOrderWorkflow = (orderId) => {
       return;
     }
 
+    const db = getFirebaseFirestore();
+    if (!db) {
+      setError('Firebase not initialized');
+      setLoading(false);
+      return;
+    }
+
     const orderRef = doc(db, 'orders', orderId);
     
-    const unsubscribe = onSnapshot(
+    const unsubscribe: Unsubscribe = onSnapshot(
       orderRef, 
       (doc) => {
         if (doc.exists()) {
-          const orderData = { id: doc.id, ...doc.data() };
+          const orderData: Order = { id: doc.id, ...doc.data() } as Order;
           setOrder(orderData);
         } else {
           setError('Order not found');
@@ -57,7 +150,7 @@ export const useOrderWorkflow = (orderId) => {
   }, [orderId]);
 
   // Update order status
-  const updateOrderStatus = useCallback(async (newStatus, details = null) => {
+  const updateOrderStatus = useCallback(async (newStatus: string, details: any = null): Promise<void> => {
     if (!orderId || updating) return;
 
     setUpdating(true);
@@ -65,14 +158,14 @@ export const useOrderWorkflow = (orderId) => {
       await orderWorkflowOrchestrator.updateOrderStatus(orderId, newStatus, details);
     } catch (error) {
       console.error('Error updating order status:', error);
-      setError(error.message);
+      setError(error instanceof Error ? error.message : String(error));
     } finally {
       setUpdating(false);
     }
   }, [orderId, updating]);
 
   // Progress order to next status
-  const progressOrder = useCallback(async (details = null) => {
+  const progressOrder = useCallback(async (details: any = null): Promise<void> => {
     if (!orderId || !order || updating) return;
 
     setUpdating(true);
@@ -80,14 +173,14 @@ export const useOrderWorkflow = (orderId) => {
       await orderWorkflowOrchestrator.progressOrder(orderId, details);
     } catch (error) {
       console.error('Error progressing order:', error);
-      setError(error.message);
+      setError(error instanceof Error ? error.message : String(error));
     } finally {
       setUpdating(false);
     }
   }, [orderId, order, updating]);
 
   // Handle order completion
-  const completeOrder = useCallback(async (completionDetails = null) => {
+  const completeOrder = useCallback(async (completionDetails: any = null): Promise<void> => {
     if (!orderId || updating) return;
 
     setUpdating(true);
@@ -95,14 +188,14 @@ export const useOrderWorkflow = (orderId) => {
       await orderWorkflowOrchestrator.completeOrder(orderId, completionDetails);
     } catch (error) {
       console.error('Error completing order:', error);
-      setError(error.message);
+      setError(error instanceof Error ? error.message : String(error));
     } finally {
       setUpdating(false);
     }
   }, [orderId, updating]);
 
   // Cancel order
-  const cancelOrder = useCallback(async (reason = null) => {
+  const cancelOrder = useCallback(async (reason: string | null = null): Promise<void> => {
     if (!orderId || updating) return;
 
     setUpdating(true);
@@ -110,7 +203,7 @@ export const useOrderWorkflow = (orderId) => {
       await orderWorkflowOrchestrator.cancelOrder(orderId, reason);
     } catch (error) {
       console.error('Error canceling order:', error);
-      setError(error.message);
+      setError(error instanceof Error ? error.message : String(error));
     } finally {
       setUpdating(false);
     }
@@ -131,13 +224,20 @@ export const useOrderWorkflow = (orderId) => {
 /**
  * Custom hook for managing multiple orders with real-time updates
  */
-export const useOrderList = (filters = {}) => {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+export const useOrderList = (filters: OrderFilters = {}): UseOrderListReturn => {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    let q = collection(db, 'orders');
+    const db = getFirebaseFirestore();
+    if (!db) {
+      setError('Firebase not initialized');
+      setLoading(false);
+      return;
+    }
+
+    let q: Query<DocumentData> = collection(db, 'orders');
 
     // Apply filters
     if (filters.patientId) {
@@ -164,13 +264,13 @@ export const useOrderList = (filters = {}) => {
       q = query(q, limit(filters.limit));
     }
 
-    const unsubscribe = onSnapshot(
+    const unsubscribe: Unsubscribe = onSnapshot(
       q,
       (querySnapshot) => {
-        const ordersData = querySnapshot.docs.map(doc => ({
+        const ordersData: Order[] = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
-        }));
+        } as Order));
         setOrders(ordersData);
         setLoading(false);
       },
@@ -194,13 +294,22 @@ export const useOrderList = (filters = {}) => {
 /**
  * Custom hook for order notifications
  */
-export const useOrderNotifications = (userId, userType = 'patient') => {
-  const [notifications, setNotifications] = useState([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [loading, setLoading] = useState(true);
+export const useOrderNotifications = (
+  userId: string | null, 
+  userType: string = 'patient'
+): UseOrderNotificationsReturn => {
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState<number>(0);
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     if (!userId) {
+      setLoading(false);
+      return;
+    }
+
+    const db = getFirebaseFirestore();
+    if (!db) {
       setLoading(false);
       return;
     }
@@ -228,11 +337,11 @@ export const useOrderNotifications = (userId, userType = 'patient') => {
       limit(50)
     );
 
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const notificationsData = querySnapshot.docs.map(doc => ({
+    const unsubscribe: Unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const notificationsData: Notification[] = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
-      }));
+      } as Notification));
       setNotifications(notificationsData);
       setUnreadCount(notificationsData.filter(n => !n.read).length);
     });
@@ -241,7 +350,7 @@ export const useOrderNotifications = (userId, userType = 'patient') => {
   }, [userId, userType]);
 
   // Mark notification as read
-  const markAsRead = useCallback(async (notificationId) => {
+  const markAsRead = useCallback(async (notificationId: string): Promise<void> => {
     try {
       await notificationService.markNotificationAsRead(notificationId);
       setNotifications(prev => 
@@ -256,7 +365,7 @@ export const useOrderNotifications = (userId, userType = 'patient') => {
   }, []);
 
   // Mark all notifications as read
-  const markAllAsRead = useCallback(async () => {
+  const markAllAsRead = useCallback(async (): Promise<void> => {
     try {
       const unreadNotifications = notifications.filter(n => !n.read);
       await Promise.all(
@@ -285,8 +394,8 @@ export const useOrderNotifications = (userId, userType = 'patient') => {
 /**
  * Custom hook for order analytics
  */
-export const useOrderAnalytics = (filters = {}) => {
-  const [analytics, setAnalytics] = useState({
+export const useOrderAnalytics = (filters: OrderFilters = {}): UseOrderAnalyticsReturn => {
+  const [analytics, setAnalytics] = useState<OrderAnalytics>({
     totalOrders: 0,
     prescriptionOrders: 0,
     otcOrders: 0,
@@ -296,12 +405,18 @@ export const useOrderAnalytics = (filters = {}) => {
     averageCompletionTime: 0,
     recentActivity: []
   });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const loadAnalytics = async () => {
       try {
-        let q = collection(db, 'orders');
+        const db = getFirebaseFirestore();
+        if (!db) {
+          setLoading(false);
+          return;
+        }
+
+        let q: Query<DocumentData> = collection(db, 'orders');
 
         // Apply date filters if provided
         if (filters.startDate) {
@@ -319,10 +434,10 @@ export const useOrderAnalytics = (filters = {}) => {
           q = query(q, where('pharmacyId', '==', filters.pharmacyId));
         }
 
-        const unsubscribe = onSnapshot(q, (querySnapshot) => {
-          const orders = querySnapshot.docs.map(doc => doc.data());
+        const unsubscribe: Unsubscribe = onSnapshot(q, (querySnapshot) => {
+          const orders: Order[] = querySnapshot.docs.map(doc => doc.data() as Order);
           
-          const analyticsData = {
+          const analyticsData: OrderAnalytics = {
             totalOrders: orders.length,
             prescriptionOrders: orders.filter(o => o.isPrescriptionRequired).length,
             otcOrders: orders.filter(o => !o.isPrescriptionRequired).length,
@@ -336,7 +451,7 @@ export const useOrderAnalytics = (filters = {}) => {
             averageCompletionTime: calculateAverageCompletionTime(orders),
             recentActivity: orders
               .filter(o => o.updatedAt)
-              .sort((a, b) => b.updatedAt.seconds - a.updatedAt.seconds)
+              .sort((a, b) => (b.updatedAt?.seconds || 0) - (a.updatedAt?.seconds || 0))
               .slice(0, 10)
           };
 
@@ -361,7 +476,7 @@ export const useOrderAnalytics = (filters = {}) => {
 };
 
 // Helper function to calculate average completion time
-const calculateAverageCompletionTime = (orders) => {
+const calculateAverageCompletionTime = (orders: Order[]): number => {
   const completedOrders = orders.filter(o => 
     ['order_delivered', 'pharmacy_dispensed'].includes(o.status) &&
     o.createdAt && o.completedAt
@@ -370,7 +485,7 @@ const calculateAverageCompletionTime = (orders) => {
   if (completedOrders.length === 0) return 0;
 
   const totalTime = completedOrders.reduce((sum, order) => {
-    const completionTime = order.completedAt.seconds - order.createdAt.seconds;
+    const completionTime = (order.completedAt?.seconds || 0) - (order.createdAt?.seconds || 0);
     return sum + completionTime;
   }, 0);
 
