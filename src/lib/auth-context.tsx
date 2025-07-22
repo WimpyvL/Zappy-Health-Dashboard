@@ -174,6 +174,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Auth state listener - TEMPORARILY DISABLED
   useEffect(() => {
+    // This effect runs only on the client-side after hydration
+    
     // Initialize Data Connect
     const dc = getDataConnect(connectorConfig);
     if (process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true') {
@@ -251,14 +253,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       theme
     }));
     // Apply theme to document
-    if (theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else if (theme === 'light') {
-      document.documentElement.classList.remove('dark');
-    } else {
-      // System preference
-      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      document.documentElement.classList.toggle('dark', isDark);
+    if (typeof window !== "undefined") {
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else if (theme === 'light') {
+        document.documentElement.classList.remove('dark');
+      } else {
+        // System preference
+        const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        document.documentElement.classList.toggle('dark', isDark);
+      }
     }
   }, []);
 
