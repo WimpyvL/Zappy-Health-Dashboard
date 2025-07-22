@@ -5,7 +5,7 @@
  * @fileoverview Orchestrator for the entire telehealth flow, from initiation to completion.
  */
 
-import { dbService } from './database/hooks';
+import { dbService } from '@/services/database/index';
 import { notificationService } from './notificationService';
 import { orderWorkflowOrchestrator } from './orderWorkflowOrchestrator';
 import { intakeIntegrationService } from './intakeIntegrationService';

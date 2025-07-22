@@ -1,4 +1,8 @@
 {
+  "dataconnect": {
+    "serviceId": "zappy-health-api",
+    "source": "dataconnect"
+  },
   "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"

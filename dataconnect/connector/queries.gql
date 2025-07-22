@@ -1,0 +1,16 @@
+query listUsers {
+  users {
+    authId
+    role
+    firstName
+    lastName
+    email
+    createdAt
+    phoneNumber
+    address
+    dateOfBirth
+    profilePictureUrl
+    licenseNumber
+    specialties
+  }
+}

@@ -14,7 +14,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { format } from "date-fns";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { dbService } from '@/services/database/hooks';
+import { dbService } from '@/services/database/index';
 import { telehealthFlowOrchestrator } from '@/services/telehealthFlowOrchestrator';
 import { Skeleton } from "@/components/ui/skeleton";
 

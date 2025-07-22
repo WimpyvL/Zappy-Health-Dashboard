@@ -46,9 +46,11 @@ import { PatientFormModal } from "./components/patient-form-modal";
 import { ViewMessageModal } from "../messages/components/view-message-modal";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
+import { User } from '@/dataconnect-generated/js/default-connector'
 
 // Import the new centralized service hooks
-import { usePatients, useCreatePatient, useUpdatePatient, Patient } from "@/services/database/hooks";
+import { useCreatePatient, useUpdatePatient, Patient } from "@/services/database/hooks";
+import { useListUsers } from "@firebasegen/default-connector/react";
 
 
 // This type is used by ViewMessageModal, which expects a message object.
@@ -92,8 +94,8 @@ export default function PatientsPage() {
   const { toast } = useToast();
 
   // Use the new centralized hooks
-  const { data: patientsResponse, isLoading: loading } = usePatients();
-  const patients = patientsResponse?.data || [];
+  const { data: queryData, isLoading: loading, error } = useListUsers();
+  const patients = queryData?.users;
   const createPatientMutation = useCreatePatient();
   const updatePatientMutation = useUpdatePatient();
 
@@ -172,6 +174,14 @@ export default function PatientsPage() {
   }
 
   const isSubmitting = createPatientMutation.isPending || updatePatientMutation.isPending;
+  
+  if (error) {
+    toast({
+        variant: "destructive",
+        title: "Error loading patients",
+        description: error.message
+    });
+  }
 
   return (
     <>
@@ -180,9 +190,9 @@ export default function PatientsPage() {
           <h1 className="text-3xl font-bold">Patients</h1>
           <div className="flex items-center gap-4">
             <div className="text-sm text-muted-foreground">
-              Total: <span className="font-semibold">{patients.length}</span>{" "}
+              Total: <span className="font-semibold">{patients?.length || 0}</span>{" "}
               Showing:{" "}
-              <span className="font-semibold">{patients.length}</span>
+              <span className="font-semibold">{patients?.length || 0}</span>
             </div>
             <Button onClick={handleOpenAddModal}>
               <PlusCircle className="h-4 w-4 mr-2" />
@@ -212,7 +222,7 @@ export default function PatientsPage() {
         </div>
 
         <Card>
-          <CardContent>
+          <CardContent className="p-0">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -243,37 +253,33 @@ export default function PatientsPage() {
                     </TableRow>
                   ))
                 ) : (
-                  patients.map((patient: Patient) => (
-                  <TableRow key={patient.id}>
+                  patients?.map((patient: User) => (
+                  <TableRow key={patient.authId}>
                     <TableCell>
                       <Checkbox />
                     </TableCell>
                     <TableCell>
-                      <Link href={`/dashboard/patients/${patient.id}`} className="font-medium text-primary hover:underline">{`${patient.firstName} ${patient.lastName}`}</Link>
+                      <Link href={`/dashboard/patients/${patient.authId}`} className="font-medium text-primary hover:underline">{`${patient.firstName} ${patient.lastName}`}</Link>
                       <div className="text-sm text-muted-foreground">
                         {patient.email}
                       </div>
                     </TableCell>
                     <TableCell>
                       <Badge
-                        variant={
-                          patient.status === "Active" ? "default" : "secondary"
-                        }
-                        className={patient.status === "Active" ? "bg-green-100 text-green-800 hover:bg-green-200" : "bg-gray-100 text-gray-800"}
+                        variant={"default"}
+                        className={"bg-green-100 text-green-800 hover:bg-green-200"}
                       >
                         <Check className="h-3 w-3 mr-1" />
-                        {patient.status}
+                        {"Active"}
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {patient.tags?.length > 0
-                        ? patient.tags.join(", ")
-                        : "N/A"}
+                      N/A
                     </TableCell>
-                    <TableCell>{patient.plan || 'None'}</TableCell>
-                    <TableCell>{patient.lastActive || 'N/A'}</TableCell>
+                    <TableCell>N/A</TableCell>
+                    <TableCell>N/A</TableCell>
                     <TableCell>
-                      <div>{patient.orders || 0}</div>
+                      <div>{0}</div>
                       <div className="text-xs text-muted-foreground">N/A</div>
                       <div className="text-xs text-muted-foreground">N/A</div>
                     </TableCell>
@@ -283,7 +289,7 @@ export default function PatientsPage() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
-                          onClick={() => handleOpenEditModal(patient)}
+                          onClick={() => handleOpenEditModal(patient as any)}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -291,7 +297,7 @@ export default function PatientsPage() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
-                          onClick={() => handleOpenMessageModal(patient)}
+                          onClick={() => handleOpenMessageModal(patient as any)}
                         >
                           <MessageSquare className="h-4 w-4" />
                         </Button>
@@ -306,7 +312,7 @@ export default function PatientsPage() {
 
         <div className="flex items-center justify-between text-sm text-muted-foreground">
           <div>
-            Showing 1 to {patients.length} of {patients.length} results
+            Showing 1 to {patients?.length || 0} of {patients?.length || 0} results
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
@@ -349,3 +355,4 @@ export default function PatientsPage() {
     </>
   );
 }
+

@@ -11,12 +11,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { format } from 'date-fns';
 import { Skeleton } from "@/components/ui/skeleton";
-<<<<<<< HEAD
 import { useQuery } from '@tanstack/react-query';
-import { dbService } from '@/services/database';
-=======
-import { db } from "@/lib/firebase";
->>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
+import { dbService } from '@/services/database/index';
 
 type TagItem = {
   id: string;

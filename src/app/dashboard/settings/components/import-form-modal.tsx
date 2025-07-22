@@ -11,7 +11,7 @@ import { validateFormSchema, ValidationResult } from "@/lib/form-validator";
 import { exampleFormJson } from './form-example';
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { dbService } from '@/services/database';
+import { dbService } from '@/services/database/index';
 
 interface ImportFormModalProps {
   isOpen: boolean;

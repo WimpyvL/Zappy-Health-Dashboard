@@ -1,4 +1,5 @@
 connectorId: default
+queries: "queries.gql"
 generate:
   javascriptSdk:
     outputDir: ../../dataconnect-generated/js/default-connector
