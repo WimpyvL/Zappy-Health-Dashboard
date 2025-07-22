@@ -1,4 +1,5 @@
 
+
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   generateIntakeSummary,
@@ -7,10 +8,7 @@ import {
   saveSummary,
   getSummary,
 } from './summaryService';
-import { toast } from 'react-toastify';
-import { ErrorHandler } from '../../utils/errorHandling';
-
-const errorHandler = new ErrorHandler('AI Summary');
+import { toast } from "@/hooks/use-toast";
 
 // Query keys for AI summaries
 export const summaryQueryKeys = {
@@ -57,6 +55,7 @@ export const useAISummary = (consultationId) => {
  */
 export const useGenerateAndSaveAISummary = () => {
   const queryClient = useQueryClient();
+  const { toast } = useToast();
 
   return useMutation({
     mutationFn: async ({
@@ -119,7 +118,9 @@ export const useGenerateAndSaveAISummary = () => {
       }
     },
     onSuccess: (data, variables) => {
-      toast.success('✅ AI summary generated and saved successfully');
+      toast({
+          title: "✅ AI summary generated and saved successfully",
+      });
 
       // Log successful generation and save for analytics
       console.log('AI summary generated and saved:', {
@@ -139,8 +140,10 @@ export const useGenerateAndSaveAISummary = () => {
       });
     },
     onError: (error, variables) => {
-      errorHandler.handleError(error, 'Generate and Save AI Summary', {
-        toastId: 'ai-generate-save-error',
+      toast({
+          title: "Generate and Save AI Summary",
+          description: error.message,
+          variant: "destructive"
       });
 
       // Provide actionable feedback to user

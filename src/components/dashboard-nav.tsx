@@ -86,7 +86,6 @@ const adminNavGroups = [
         items: [
             { href: "/dashboard/settings", label: "Settings", icon: Settings },
             { href: "/dashboard/admin/audit-log", label: "Audit Log", icon: History },
-            { href: "/dashboard/admin/ui-components", label: "UI Components", icon: Palette },
         ]
     }
 ];

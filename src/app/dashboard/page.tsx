@@ -23,7 +23,7 @@ import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { dbService } from '@/services/database'
+import { databaseService } from '@/services/database/index.js'
 import { TaskFormModal } from "./tasks/components/task-form-modal"
 import { CreateOrderModal } from "./orders/components/create-order-modal"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -72,10 +72,10 @@ const fetchDashboardStats = async () => {
     pendingOrdersRes,
     newConsultationsRes,
   ] = await Promise.all([
-    dbService.patients.getAll(),
-    dbService.sessions.getAll({ filters: [{ field: 'date', op: '>=', value: Timestamp.now() }] }),
-    dbService.orders.getAll({ filters: [{ field: 'status', op: 'in', value: ['Processing', 'Pending'] }] }),
-    dbService.sessions.getAll({ filters: [{ field: 'status', op: 'in', value: ['Scheduled', 'Pending'] }] }),
+    databaseService.patients.getAll(),
+    databaseService.sessions.getAll({ filters: [{ field: 'date', op: '>=', value: Timestamp.now() }] }),
+    databaseService.orders.getAll({ filters: [{ field: 'status', op: 'in', value: ['Processing', 'Pending'] }] }),
+    databaseService.sessions.getAll({ filters: [{ field: 'status', op: 'in', value: ['Scheduled', 'Pending'] }] }),
   ]);
 
   // Check for errors in responses
@@ -101,10 +101,11 @@ const fetchDashboardStats = async () => {
 export default function DashboardPage() {
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const router = useRouter();
   const { toast } = useToast()
 
-  const { data: stats, isLoading: loadingStats, error } = useQuery({
+  const { data: stats, isLoading: loadingStats, error, refetch } = useQuery({
     queryKey: ['dashboardStats'],
     queryFn: fetchDashboardStats,
     staleTime: 5 * 60 * 1000, // 5 minutes
@@ -120,10 +121,16 @@ export default function DashboardPage() {
     }
   }, [error, toast]);
 
-  const handleRefreshSessions = () => {
+  useEffect(() => {
+    setLastUpdated(new Date().toLocaleTimeString());
+  }, [stats]);
+
+
+  const handleRefreshSessions = async () => {
+    await refetch();
     toast({
-      title: "Sessions Refreshed",
-      description: "The list of today's sessions has been updated.",
+      title: "Dashboard Refreshed",
+      description: "The dashboard statistics have been updated.",
     });
   };
   
@@ -215,7 +222,7 @@ export default function DashboardPage() {
             </p>
           </CardContent>
           <p className="px-6 pb-4 text-xs text-cyan-600">
-            Last updated: 
+            Last updated: {lastUpdated}
           </p>
         </Card>
 
