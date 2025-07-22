@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
@@ -169,9 +170,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const firestore = getFirebaseFirestore();
       if (!firestore) {
         console.warn('Firestore not initialized, skipping user document fetch');
-        setUser(null);
-        setLoading(false);
-        return;
+        return firebaseUser as AuthUser;
       }
       const userDocRef = doc(firestore, 'users', firebaseUser.uid);
       const userDoc = await getDoc(userDocRef);
@@ -247,15 +246,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         console.log('🔓 Demo authentication mode');
         
         // Create mock user for demo purposes
-        const demoUser = {
+        const demoUser: AuthUser = {
           uid: `demo-${email.split('@')[0]}`,
           email,
           displayName: email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1),
-          role: email.includes('admin') ? 'admin' as UserRole :
-                email.includes('provider') ? 'provider' as UserRole :
-                'patient' as UserRole,
-          createdAt: new Date(),
-          updatedAt: new Date(),
+          role: email.includes('admin') ? 'admin' :
+                email.includes('provider') ? 'provider' :
+                'patient',
+          emailVerified: true,
+          isAnonymous: false,
+          metadata: {},
+          providerData: [],
+          providerId: 'password',
+          tenantId: null,
+          delete: async () => {},
+          getIdToken: async () => 'demo-token',
+          getIdTokenResult: async () => ({ token: 'demo-token', claims: {}, authTime: '', expirationTime: '', issuedAtTime: '', signInProvider: null, signInSecondFactor: null }),
+          reload: async () => {},
+          toJSON: () => ({}),
         };
         
         setUser(demoUser);
@@ -276,7 +284,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           default:
             router.push('/dashboard');
         }
-        return { user: demoUser };
+        return;
       }
       
       // Real Firebase authentication for production
@@ -424,7 +432,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         description: "You have been successfully signed out.",
       });
       
-      router.push('/login');
+      router.push('/');
     } catch (error: any) {
       toast({
         title: "Sign Out Failed",
@@ -710,16 +718,12 @@ export const withAuth = (WrappedComponent: React.ComponentType, allowedRoles?: U
 
     useEffect(() => {
       if (!loading && !user) {
-        router.push('/login');
-        setUser(null);
-        setLoading(false);
+        router.push('/');
         return;
       }
 
       if (!loading && user && allowedRoles && !allowedRoles.includes(user.role!)) {
         router.push('/unauthorized');
-        setUser(null);
-        setLoading(false);
         return;
       }
     }, [user, loading, router]);
@@ -747,17 +751,13 @@ export const useRequireAuth = (allowedRoles?: UserRole[]) => {
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/login');
-      setUser(null);
-        setLoading(false);
-        return;
+      router.push('/');
+      return;
     }
 
     if (!loading && user && allowedRoles && !allowedRoles.includes(user.role!)) {
       router.push('/unauthorized');
-      setUser(null);
-        setLoading(false);
-        return;
+      return;
     }
   }, [user, loading, router, allowedRoles]);
 
