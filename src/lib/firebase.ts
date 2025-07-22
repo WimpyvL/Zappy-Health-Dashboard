@@ -4,11 +4,6 @@ import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
 import { getFirestore, Firestore, connectFirestoreEmulator } from "firebase/firestore";
 import { getAuth, Auth, connectAuthEmulator } from "firebase/auth";
 
-// A robust singleton pattern for Firebase initialization
-let app: FirebaseApp | null = null;
-let db: Firestore | null = null;
-let auth: Auth | null = null;
-
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -19,72 +14,60 @@ const firebaseConfig = {
 };
 
 const isDevelopmentMode = process.env.NODE_ENV === 'development';
+const useEmulator = process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true';
 
-const initializeFirebase = () => {
-  if (app) return; // Already initialized
-
+function getFirebaseApp(): FirebaseApp {
   if (getApps().length === 0) {
     try {
-      app = initializeApp(firebaseConfig);
+      const newApp = initializeApp(firebaseConfig);
       console.log('🔥 Firebase app initialized.');
+      return newApp;
     } catch (error) {
       console.error('❌ Firebase initialization failed:', error);
-      return;
+      throw error;
     }
-  } else {
-    app = getApp();
   }
+  return getApp();
+}
 
-  // Initialize Firestore
-  try {
-    db = getFirestore(app);
-    if (isDevelopmentMode && process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true') {
+let authInstance: Auth | null = null;
+function getFirebaseAuth(): Auth {
+  if (!authInstance) {
+    authInstance = getAuth(getFirebaseApp());
+    if (isDevelopmentMode && useEmulator) {
       try {
-        connectFirestoreEmulator(db, 'localhost', 8080);
+        connectAuthEmulator(authInstance, 'http://localhost:9099');
+        console.log('🔐 Connected to Auth emulator');
+      } catch (e) {
+        console.warn('🔐 Auth emulator already connected or connection failed.');
+      }
+    }
+  }
+  return authInstance;
+}
+
+let dbInstance: Firestore | null = null;
+function getFirebaseFirestore(): Firestore {
+  if (!dbInstance) {
+    dbInstance = getFirestore(getFirebaseApp());
+    if (isDevelopmentMode && useEmulator) {
+      try {
+        connectFirestoreEmulator(dbInstance, 'localhost', 8080);
         console.log('📡 Connected to Firestore emulator');
       } catch (e) {
-        // This can happen with hot reloads, it's usually safe to ignore.
         console.warn('📡 Firestore emulator already connected or connection failed.');
       }
     }
-  } catch (error) {
-    console.error('❌ Firestore initialization failed:', error);
   }
+  return dbInstance;
+}
 
-  // Initialize Auth
-  try {
-    auth = getAuth(app);
-    if (isDevelopmentMode && process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true') {
-       try {
-        connectAuthEmulator(auth, 'http://localhost:9099');
-        console.log('🔐 Connected to Auth emulator');
-       } catch(e) {
-         console.warn('🔐 Auth emulator already connected or connection failed.');
-       }
-    }
-  } catch (error) {
-    console.error('❌ Auth initialization failed:', error);
-  }
-};
+// Export the getter functions as the main interface
+export { getFirebaseApp, getFirebaseFirestore, getFirebaseAuth, isDevelopmentMode };
 
-// Ensure Firebase is initialized on first import
-initializeFirebase();
+// For backward compatibility with files expecting direct exports (less safe)
+const app = getFirebaseApp();
+const auth = getFirebaseAuth();
+const db = getFirebaseFirestore();
 
-// Export safe getter functions to ensure initialization before use
-export const getFirebaseApp = () => {
-  if (!app) initializeFirebase();
-  return app;
-};
-
-export const getFirebaseFirestore = () => {
-  if (!db) initializeFirebase();
-  return db;
-};
-
-export const getFirebaseAuth = () => {
-  if (!auth) initializeFirebase();
-  return auth;
-};
-
-// Export the initialized instances directly for convenience
-export { app, db, auth, isDevelopmentMode };
+export { app, auth, db };
