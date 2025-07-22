@@ -14,13 +14,8 @@ import { FormRenderer } from "@/components/ui/form-renderer";
 import { templateBlocks, templateSections } from "./form-template-blocks";
 import type { FormSchema, FormPage, FormElement } from "@/lib/form-validator";
 import { useToast } from "@/hooks/use-toast";
-<<<<<<< HEAD
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { dbService } from '@/services/database';
-=======
-import { collection, addDoc, Timestamp } from "firebase/firestore";
-import { getFirebaseFirestore } from "@/lib/firebase";
->>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
 
 interface FormBuilderSheetProps {
   isOpen: boolean;
@@ -38,7 +33,7 @@ const createForm = async (formSchema: FormSchema) => {
         status: "Draft",
         author: "admin",
     };
-    const response = await dbService.create("resources", newForm);
+    const response = await dbService.resources.create(newForm);
     if (response.error) throw new Error(response.error);
     return response.data;
 };
@@ -73,47 +68,24 @@ export function FormBuilderSheet({ isOpen, onClose, initialData }: FormBuilderSh
         toast({ variant: "destructive", title: "Cannot Create Form", description: "Please provide a title and add at least one field." });
         return;
     }
-<<<<<<< HEAD
     createMutation.mutate(formSchema);
-=======
-
-    setIsCreating(true);
-    try {
-        const db = getFirebaseFirestore();
-        if (!db) {
-            throw new Error('Firebase not initialized');
-        }
-        
-        await addDoc(collection(db, "resources"), {
-            title: formSchema.title,
-            description: formSchema.description,
-            contentType: "form_template",
-            category: "custom",
-            contentBody: formSchema, // Saving the schema object
-            status: "Draft",
-            author: "admin",
-            createdAt: Timestamp.now(),
-            updatedAt: Timestamp.now(),
-        });
-        toast({
-            title: "Form Created Successfully",
-            description: `The form "${formSchema.title}" has been saved.`,
-        });
-        onClose();
-    } catch(e) {
-        console.error("Error creating form: ", e);
-        toast({
-            variant: "destructive",
-            title: "Error",
-            description: "There was a problem creating the form.",
-        });
-    } finally {
-        setIsCreating(false);
-    }
->>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
   };
 
-  // Other component logic (addBlockToForm, handleDragStart, etc.) remains the same
+  const addPage = () => {
+    setFormSchema(prev => ({
+      ...prev,
+      pages: [...prev.pages, { id: `page${prev.pages.length + 1}`, title: `Page ${prev.pages.length + 1}`, elements: [] }]
+    }));
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+  
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    // Logic to add dropped element to form schema
+  };
 
   return (
     <>
@@ -126,12 +98,6 @@ export function FormBuilderSheet({ isOpen, onClose, initialData }: FormBuilderSh
             <aside className="w-80 border-r">
               {/* Sidebar content */}
             </aside>
-<<<<<<< HEAD
-            <main className="flex-1 p-4">
-              {/* Main form builder content */}
-=======
-
-            {/* Main Content */}
             <main 
               className="flex-1 bg-slate-100 flex flex-col overflow-hidden"
               onDragOver={handleDragOver}
@@ -167,7 +133,6 @@ export function FormBuilderSheet({ isOpen, onClose, initialData }: FormBuilderSh
                     )
                 )}
               </ScrollArea>
->>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
             </main>
           </div>
           <div className="p-4 border-t">

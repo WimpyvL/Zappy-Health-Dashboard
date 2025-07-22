@@ -13,12 +13,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ProviderFormModal } from "./components/provider-form-modal";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-<<<<<<< HEAD
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dbService } from '@/services/database';
-=======
-import { db } from "@/lib/firebase";
->>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
 
 type Provider = {
   id: string;
@@ -32,27 +28,27 @@ type Provider = {
 };
 
 const fetchProviders = async () => {
-    const response = await dbService.getAll<Provider>('providers', { sortBy: 'name' });
-    if (response.error || !response.data) throw new Error(response.error || 'Failed to fetch providers');
-    return response.data;
+    const response = await dbService.providers.getAll({ sortBy: 'name' });
+    if (response.error || !response.data) throw new Error(response.error as string || 'Failed to fetch providers');
+    return response.data as Provider[];
 };
 
 const saveProvider = async (provider: Partial<Provider>) => {
     if (provider.id) {
         const { id, ...data } = provider;
-        const response = await dbService.update('providers', id, data);
-        if (response.error) throw new Error(response.error);
+        const response = await dbService.providers.update(id, data);
+        if (response.error) throw new Error(response.error as string);
         return response.data;
     } else {
-        const response = await dbService.create('providers', { ...provider, uuid: crypto.randomUUID() });
-        if (response.error) throw new Error(response.error);
+        const response = await dbService.providers.create({ ...provider, uuid: crypto.randomUUID() });
+        if (response.error) throw new Error(response.error as string);
         return response.data;
     }
 };
 
 const deleteProvider = async (providerId: string) => {
-    const response = await dbService.delete('providers', providerId);
-    if (response.error) throw new Error(response.error);
+    const response = await dbService.providers.delete(providerId);
+    if (response.error) throw new Error(response.error as string);
 };
 
 export default function ProvidersPage() {

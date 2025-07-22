@@ -5,14 +5,10 @@ import * as React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { X, Import, Eye, Code, CheckCircle, XCircle } from "lucide-react";
+import { X, Import } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent } from "@/components/ui/card";
 import { validateFormSchema, ValidationResult } from "@/lib/form-validator";
 import { exampleFormJson } from './form-example';
-import { FormRenderer } from "@/components/ui/form-renderer";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { dbService } from '@/services/database';
@@ -33,7 +29,7 @@ const importForm = async (formSchema: any) => {
         status: "Draft",
         author: "admin",
     };
-    const response = await dbService.create("resources", newForm);
+    const response = await dbService.resources.create(newForm);
     if (response.error) throw new Error(response.error);
     return response.data;
 };
@@ -47,7 +43,7 @@ export function ImportFormModal({ isOpen, onClose, onFormImported }: ImportFormM
   const importMutation = useMutation({
     mutationFn: importForm,
     onSuccess: (data) => {
-        queryClient.invalidateQueries({ queryKey: ['resources'] }); // Or a more specific key
+        queryClient.invalidateQueries({ queryKey: ['resources'] });
         toast({ title: "Form Imported Successfully", description: `The form "${data?.title}" has been added.` });
         onFormImported();
         onClose();

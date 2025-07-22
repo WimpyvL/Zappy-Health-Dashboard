@@ -16,10 +16,10 @@ import { dbService } from '@/services/database';
 
 type Product = { id: string; name: string; sku: string; category: string; price: number; status: string; isActive: boolean; };
 
-const fetchData = async () => {
-    const productsRes = await dbService.products.getAll({ sortBy: 'name' });
-    if (productsRes.error || !productsRes.data) throw new Error(productsRes.error as string || 'Failed to fetch products');
-    return { products: productsRes.data as Product[] };
+const fetchProducts = async () => {
+    const response = await dbService.products.getAll({ sortBy: 'name' });
+    if (response.error || !response.data) throw new Error(response.error as string || 'Failed to fetch products');
+    return response.data as Product[];
 };
 
 const saveProduct = async (product: Partial<Product>) => {
@@ -41,17 +41,16 @@ export default function ProductsPage() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data, isLoading: loading } = useQuery({
-    queryKey: ['productsPageData'],
-    queryFn: fetchData,
+  const { data: products = [], isLoading: loading } = useQuery<Product[], Error>({
+    queryKey: ['products'],
+    queryFn: fetchProducts,
     onError: (error: Error) => toast({ variant: "destructive", title: "Error", description: error.message }),
   });
-  const { products = [] } = data || {};
 
   const saveMutation = useMutation({
     mutationFn: saveProduct,
     onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['productsPageData'] });
+        queryClient.invalidateQueries({ queryKey: ['products'] });
         toast({ title: `Product ${editingProduct ? 'Updated' : 'Added'}` });
         setIsModalOpen(false);
         setEditingProduct(null);
@@ -67,7 +66,7 @@ export default function ProductsPage() {
         <Button onClick={() => { setEditingProduct(null); setIsModalOpen(true); }}><Plus className="mr-2 h-4 w-4" /> Add New</Button>
       </div>
       <Tabs defaultValue="products">
-        <TabsList><TabsTrigger value="products"><Package className="mr-2 h-4 w-4" /> Products</TabsTrigger></TabsList>
+        <TabsList><TabsTrigger value="products"><Box className="mr-2 h-4 w-4" /> Products</TabsTrigger></TabsList>
         <TabsContent value="products" className="mt-6">
           <Card>
             <CardContent className="p-6">

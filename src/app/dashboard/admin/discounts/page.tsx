@@ -31,7 +31,7 @@ interface Discount {
 
 const fetchDiscounts = async () => {
     const response = await dbService.discounts.getAll({ sortBy: 'name' });
-    if (response.error || !response.data) throw new Error(response.error || 'Failed to fetch discounts');
+    if (response.error || !response.data) throw new Error(response.error as string || 'Failed to fetch discounts');
     return response.data.map((d: any) => ({ ...d, validity: d.validUntil ? new Date(d.validUntil.seconds * 1000).toLocaleDateString() : "No expiration" }));
 };
 
@@ -123,7 +123,7 @@ export default function DiscountsPage() {
         </CardContent>
       </Card>
     </div>
-    <DiscountFormModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} discount={editingDiscount} onSubmit={saveMutation.mutate} />
+    <DiscountFormModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} discount={editingDiscount} onSubmit={(values) => saveMutation.mutate(values)} />
     </>
   );
 }
