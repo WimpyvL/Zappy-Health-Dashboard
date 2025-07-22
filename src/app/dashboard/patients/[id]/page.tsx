@@ -36,7 +36,7 @@ import { ViewMessageModal } from "../../messages/components/view-message-modal";
 import { doc, getDoc } from "firebase/firestore";
 import Loading from "./loading";
 import { useToast } from "@/hooks/use-toast";
-import { db } from "@/lib/firebase/client";
+import { db } from "@/lib/firebase";
 
 // Types
 type Patient = {
