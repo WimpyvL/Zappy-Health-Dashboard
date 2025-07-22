@@ -26,35 +26,82 @@ const queryClient = new QueryClient({
       staleTime: 5 * 60 * 1000, // 5 minutes
       gcTime: 10 * 60 * 1000, // 10 minutes
       retry: (failureCount, error: any) => {
-        // Log query errors to monitoring
-        monitoring.logError(new Error(`Query failed: ${error?.message}`), {
-          type: 'query_error',
-          failureCount,
-          status: error?.status,
-        });
+        // Prevent infinite retry loops and monitoring spam
+        if (failureCount >= 3) {
+          return false;
+        }
 
         // Don't retry on 4xx errors except 429 (rate limit)
         if (error?.status >= 400 && error?.status < 500 && error?.status !== 429) {
+          // Only log on first failure to prevent spam
+          if (failureCount === 0) {
+            try {
+              monitoring.logError(new Error(`Query failed: ${error?.message || 'Unknown query error'}`), {
+                type: 'query_error',
+                failureCount,
+                status: error?.status,
+                url: error?.config?.url || 'unknown',
+              });
+            } catch (monitoringError) {
+              console.error('Failed to log query error:', monitoringError);
+            }
+          }
           return false;
         }
-        return failureCount < 3;
+
+        // Log retry attempts (but not too frequently)
+        if (failureCount === 0) {
+          try {
+            monitoring.logWarning(`Query retry attempt ${failureCount + 1}: ${error?.message || 'Unknown error'}`, {
+              type: 'query_retry',
+              failureCount,
+              status: error?.status,
+            });
+          } catch (monitoringError) {
+            console.error('Failed to log query retry:', monitoringError);
+          }
+        }
+
+        return failureCount < 2; // Reduced retry count
       },
-      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 10000), // Reduced max delay
     },
     mutations: {
       retry: (failureCount, error: any) => {
-        // Log mutation errors to monitoring
-        monitoring.logError(new Error(`Mutation failed: ${error?.message}`), {
-          type: 'mutation_error',
-          failureCount,
-          status: error?.status,
-        });
-
+        // Don't retry mutations on client errors
         if (error?.status >= 400 && error?.status < 500) {
+          // Only log on first failure
+          if (failureCount === 0) {
+            try {
+              monitoring.logError(new Error(`Mutation failed: ${error?.message || 'Unknown mutation error'}`), {
+                type: 'mutation_error',
+                failureCount,
+                status: error?.status,
+                url: error?.config?.url || 'unknown',
+              });
+            } catch (monitoringError) {
+              console.error('Failed to log mutation error:', monitoringError);
+            }
+          }
           return false;
         }
-        return failureCount < 2;
+
+        // Log retry attempts for server errors
+        if (failureCount === 0) {
+          try {
+            monitoring.logWarning(`Mutation retry attempt ${failureCount + 1}: ${error?.message || 'Unknown error'}`, {
+              type: 'mutation_retry',
+              failureCount,
+              status: error?.status,
+            });
+          } catch (monitoringError) {
+            console.error('Failed to log mutation retry:', monitoringError);
+          }
+        }
+
+        return failureCount < 1; // Only retry once for mutations
       },
+      retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 5000),
     },
   },
 });
@@ -130,11 +177,11 @@ function DashboardContent({ children }: { children: React.ReactNode }) {
                   <Button variant="ghost" className="h-10 w-10 p-0" asChild>
                     <a href="/dashboard">
                       <Leaf className="w-6 h-6 text-primary" />
-                      <span className="sr-only">HealthFlow</span>
+                      <span className="sr-only">Zappy</span>
                     </a>
                   </Button>
                   <h2 className="text-lg font-semibold tracking-tight group-data-[collapsible=icon]:hidden">
-                    HealthFlow
+                    Zappy
                   </h2>
                 </div>
                 <div className="flex items-center gap-2">

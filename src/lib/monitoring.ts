@@ -88,7 +88,9 @@ class MonitoringService {
         const lcpObserver = new PerformanceObserver((list) => {
           const entries = list.getEntries();
           const lastEntry = entries[entries.length - 1];
-          this.recordPerformance('lcp', lastEntry.startTime, 'ms', { good: lastEntry.startTime < 2500 });
+          if (lastEntry) {
+            this.recordPerformance('lcp', lastEntry.startTime, 'ms', { good: lastEntry.startTime < 2500 });
+          }
         });
         lcpObserver.observe({ entryTypes: ['largest-contentful-paint'] });
 
@@ -123,28 +125,60 @@ class MonitoringService {
   private setupErrorListeners() {
     // Global error handler
     window.addEventListener('error', (event) => {
-      this.logError(event.error || new Error(event.message), {
-        filename: event.filename,
-        lineno: event.lineno,
-        colno: event.colno,
-        type: 'javascript_error'
-      });
+      // Prevent infinite loops by checking if error is from monitoring itself
+      if (event.filename?.includes('monitoring') || event.message?.includes('monitoring')) {
+        return;
+      }
+      
+      try {
+        this.logError(event.error || new Error(event.message), {
+          filename: event.filename,
+          lineno: event.lineno,
+          colno: event.colno,
+          type: 'javascript_error'
+        });
+      } catch (monitoringError) {
+        // Fallback to console if monitoring fails
+        console.error('Monitoring system error:', monitoringError);
+        console.error('Original error:', event.error || event.message);
+      }
     });
 
     // Unhandled promise rejection
     window.addEventListener('unhandledrejection', (event) => {
-      this.logError(new Error(event.reason), {
-        type: 'unhandled_promise_rejection'
-      });
+      // Prevent infinite loops
+      if (event.reason?.message?.includes('monitoring') || event.reason?.stack?.includes('monitoring')) {
+        return;
+      }
+      
+      try {
+        this.logError(new Error(event.reason), {
+          type: 'unhandled_promise_rejection'
+        });
+      } catch (monitoringError) {
+        console.error('Monitoring system error:', monitoringError);
+        console.error('Original promise rejection:', event.reason);
+      }
     });
 
     // Resource loading errors
     window.addEventListener('error', (event) => {
       if (event.target !== window) {
-        this.logError(new Error(`Resource loading failed: ${(event.target as any)?.src || (event.target as any)?.href}`), {
-          type: 'resource_error',
-          element: (event.target as any)?.tagName
-        });
+        const src = (event.target as any)?.src || (event.target as any)?.href;
+        // Skip monitoring resource errors to prevent loops
+        if (src?.includes('monitoring') || src?.includes('channel')) {
+          return;
+        }
+        
+        try {
+          this.logError(new Error(`Resource loading failed: ${src}`), {
+            type: 'resource_error',
+            element: (event.target as any)?.tagName
+          });
+        } catch (monitoringError) {
+          console.error('Monitoring system error:', monitoringError);
+          console.error('Original resource error:', src);
+        }
       }
     }, true);
   }
@@ -160,24 +194,36 @@ class MonitoringService {
   }
 
   public logError(error: Error, metadata?: Record<string, any>) {
-    const event: MonitoringEvent = {
-      level: 'ERROR',
-      message: error.message,
-      timestamp: new Date().toISOString(),
-      userId: this.userId,
-      sessionId: this.sessionId,
-      url: window.location.href,
-      userAgent: navigator.userAgent,
-      stack: error.stack,
-      metadata,
-    };
+    // Prevent infinite loops from monitoring errors
+    if (error.message?.includes('monitoring') || error.stack?.includes('monitoring')) {
+      console.error('Monitoring system internal error (not logged):', error);
+      return;
+    }
 
-    this.eventQueue.push(event);
-    console.error('Monitoring Error:', event);
+    try {
+      const event: MonitoringEvent = {
+        level: 'ERROR',
+        message: error.message,
+        timestamp: new Date().toISOString(),
+        ...(this.userId && { userId: this.userId }),
+        sessionId: this.sessionId,
+        url: typeof window !== 'undefined' ? window.location.href : 'unknown',
+        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : 'unknown',
+        ...(error.stack && { stack: error.stack }),
+        ...(metadata && { metadata }),
+      };
 
-    // For critical errors, flush immediately
-    if (this.isCriticalError(error)) {
-      this.flush();
+      this.eventQueue.push(event);
+      console.error('Monitoring Error:', event);
+
+      // For critical errors, flush immediately
+      if (this.isCriticalError(error)) {
+        this.flush();
+      }
+    } catch (monitoringError) {
+      // Fallback to console if monitoring fails
+      console.error('Monitoring system failed to log error:', monitoringError);
+      console.error('Original error:', error);
     }
   }
 
@@ -186,11 +232,11 @@ class MonitoringService {
       level: 'WARN',
       message,
       timestamp: new Date().toISOString(),
-      userId: this.userId,
+      ...(this.userId && { userId: this.userId }),
       sessionId: this.sessionId,
       url: window.location.href,
       userAgent: navigator.userAgent,
-      metadata,
+      ...(metadata && { metadata }),
     };
 
     this.eventQueue.push(event);
@@ -202,11 +248,11 @@ class MonitoringService {
       level: 'INFO',
       message,
       timestamp: new Date().toISOString(),
-      userId: this.userId,
+      ...(this.userId && { userId: this.userId }),
       sessionId: this.sessionId,
       url: window.location.href,
       userAgent: navigator.userAgent,
-      metadata,
+      ...(metadata && { metadata }),
     };
 
     this.eventQueue.push(event);
@@ -219,7 +265,7 @@ class MonitoringService {
       value,
       unit,
       timestamp: new Date().toISOString(),
-      tags,
+      ...(tags && { tags }),
     };
 
     this.performanceQueue.push(metric);
@@ -230,8 +276,8 @@ class MonitoringService {
       action,
       component,
       timestamp: new Date().toISOString(),
-      userId: this.userId,
-      metadata,
+      ...(this.userId && { userId: this.userId }),
+      ...(metadata && { metadata }),
     };
 
     this.actionQueue.push(userAction);
@@ -281,7 +327,7 @@ class MonitoringService {
   }
 
   private async flush() {
-    if (!this.isEnabled) return;
+    if (!this.isEnabled || typeof window === 'undefined') return;
 
     const events = [...this.eventQueue];
     const performances = [...this.performanceQueue];
@@ -306,9 +352,13 @@ class MonitoringService {
         console.groupEnd();
         
         // Store in localStorage for debugging (remove in production)
-        const storedEvents = JSON.parse(localStorage.getItem('monitoring_events') || '[]');
-        storedEvents.push(...events);
-        localStorage.setItem('monitoring_events', JSON.stringify(storedEvents.slice(-100))); // Keep last 100
+        try {
+          const storedEvents = JSON.parse(localStorage.getItem('monitoring_events') || '[]');
+          storedEvents.push(...events);
+          localStorage.setItem('monitoring_events', JSON.stringify(storedEvents.slice(-100))); // Keep last 100
+        } catch (storageError) {
+          console.warn('Failed to store monitoring events in localStorage:', storageError);
+        }
       }
 
       if (performances.length > 0) {
@@ -316,9 +366,13 @@ class MonitoringService {
         performances.forEach(metric => console.log(metric));
         console.groupEnd();
         
-        const storedMetrics = JSON.parse(localStorage.getItem('monitoring_performance') || '[]');
-        storedMetrics.push(...performances);
-        localStorage.setItem('monitoring_performance', JSON.stringify(storedMetrics.slice(-100)));
+        try {
+          const storedMetrics = JSON.parse(localStorage.getItem('monitoring_performance') || '[]');
+          storedMetrics.push(...performances);
+          localStorage.setItem('monitoring_performance', JSON.stringify(storedMetrics.slice(-100)));
+        } catch (storageError) {
+          console.warn('Failed to store performance metrics in localStorage:', storageError);
+        }
       }
 
       if (actions.length > 0) {
@@ -326,9 +380,13 @@ class MonitoringService {
         actions.forEach(action => console.log(action));
         console.groupEnd();
         
-        const storedActions = JSON.parse(localStorage.getItem('monitoring_actions') || '[]');
-        storedActions.push(...actions);
-        localStorage.setItem('monitoring_actions', JSON.stringify(storedActions.slice(-100)));
+        try {
+          const storedActions = JSON.parse(localStorage.getItem('monitoring_actions') || '[]');
+          storedActions.push(...actions);
+          localStorage.setItem('monitoring_actions', JSON.stringify(storedActions.slice(-100)));
+        } catch (storageError) {
+          console.warn('Failed to store user actions in localStorage:', storageError);
+        }
       }
 
       // Example: Send to external monitoring service
@@ -340,10 +398,16 @@ class MonitoringService {
 
     } catch (error) {
       console.error('Failed to flush monitoring data:', error);
-      // Re-add events to queue if sending failed
-      this.eventQueue.unshift(...events);
-      this.performanceQueue.unshift(...performances);
-      this.actionQueue.unshift(...actions);
+      // Re-add events to queue if sending failed (but limit to prevent memory leaks)
+      if (this.eventQueue.length < 50) {
+        this.eventQueue.unshift(...events.slice(-25));
+      }
+      if (this.performanceQueue.length < 50) {
+        this.performanceQueue.unshift(...performances.slice(-25));
+      }
+      if (this.actionQueue.length < 50) {
+        this.actionQueue.unshift(...actions.slice(-25));
+      }
     }
   }
 
