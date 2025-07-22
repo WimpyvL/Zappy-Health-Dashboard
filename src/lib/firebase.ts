@@ -1,13 +1,4 @@
 // src/lib/firebase.ts
-<<<<<<< HEAD
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
-
-// Your web app's Firebase configuration
-const firebaseConfig = {
-=======
 // This is the single source of truth for Firebase client-side initialization.
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
 import { getFirestore, Firestore, connectFirestoreEmulator } from "firebase/firestore";
@@ -41,7 +32,6 @@ const developmentConfig = {
 
 // Production Firebase configuration from environment variables
 const productionConfig = {
->>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
@@ -50,17 +40,6 @@ const productionConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 };
 
-<<<<<<< HEAD
-// Initialize Firebase
-// We add a check to see if the app is already initialized to prevent errors during hot-reloads in development.
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-
-const db = getFirestore(app);
-const auth = getAuth(app);
-const storage = getStorage(app);
-
-export { app, db, auth, storage };
-=======
 // Use production config if valid, otherwise use development config
 const firebaseConfig = hasValidFirebaseConfig() ? productionConfig : developmentConfig;
 const isDevelopmentMode = !hasValidFirebaseConfig();
@@ -173,4 +152,3 @@ export const getFirebaseAuth = () => {
   }
   return auth;
 };
->>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb

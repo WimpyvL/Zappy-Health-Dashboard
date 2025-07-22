@@ -6,19 +6,13 @@ import { MoreHorizontal, Plus, Search, ChevronDown, Edit, Trash2 } from "lucide-
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Checkbox } from "@/components/ui/checkbox";
 import { PharmacyFormModal } from "./components/pharmacy-form-modal";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-<<<<<<< HEAD
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dbService } from '@/services/database';
-=======
-import { db } from "@/lib/firebase";
->>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
 
 type Pharmacy = {
   id: string;
@@ -29,27 +23,27 @@ type Pharmacy = {
 };
 
 const fetchPharmacies = async () => {
-    const response = await dbService.getAll<Pharmacy>('pharmacies', { sortBy: 'name' });
-    if (response.error || !response.data) throw new Error(response.error || 'Failed to fetch pharmacies');
-    return response.data;
+    const response = await dbService.pharmacies.getAll({ sortBy: 'name' });
+    if (response.error || !response.data) throw new Error(response.error as string || 'Failed to fetch pharmacies');
+    return response.data as Pharmacy[];
 };
 
 const savePharmacy = async (pharmacy: Partial<Pharmacy>) => {
     if (pharmacy.id) {
         const { id, ...data } = pharmacy;
-        const response = await dbService.update('pharmacies', id, data);
-        if (response.error) throw new Error(response.error);
+        const response = await dbService.pharmacies.update(id, data);
+        if (response.error) throw new Error(response.error as string);
         return response.data;
     } else {
-        const response = await dbService.create('pharmacies', { ...pharmacy, prescriptions: 0 });
-        if (response.error) throw new Error(response.error);
+        const response = await dbService.pharmacies.create({ ...pharmacy, prescriptions: 0 });
+        if (response.error) throw new Error(response.error as string);
         return response.data;
     }
 };
 
 const deletePharmacy = async (pharmacyId: string) => {
-    const response = await dbService.delete('pharmacies', pharmacyId);
-    if (response.error) throw new Error(response.error);
+    const response = await dbService.pharmacies.delete(pharmacyId);
+    if (response.error) throw new Error(response.error as string);
 };
 
 export default function PharmacyPage() {
@@ -58,7 +52,6 @@ export default function PharmacyPage() {
     const { toast } = useToast();
     const queryClient = useQueryClient();
 
-<<<<<<< HEAD
     const { data: pharmacies = [], isLoading: loading } = useQuery<Pharmacy[], Error>({
         queryKey: ['pharmacies'],
         queryFn: fetchPharmacies,
@@ -75,109 +68,6 @@ export default function PharmacyPage() {
         },
         onError: (error: Error) => toast({ variant: "destructive", title: "Error Saving Pharmacy", description: error.message }),
     });
-=======
-    const fetchPharmacies = React.useCallback(async () => {
-        setLoading(true);
-        try {
-          if (!db) {
-            throw new Error("Firebase not initialized");
-          }
-          
-          const pharmaciesCollection = collection(db, "pharmacies");
-          const pharmacySnapshot = await getDocs(query(pharmaciesCollection, orderBy("name", "asc")));
-          const pharmacyList = pharmacySnapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data(),
-          } as Pharmacy));
-          setPharmacies(pharmacyList);
-        } catch (error) {
-          console.error("Error fetching pharmacies: ", error);
-          toast({
-            variant: "destructive",
-            title: "Error fetching pharmacies",
-            description: "Could not retrieve pharmacy data from the database.",
-          });
-        } finally {
-          setLoading(false);
-        }
-    }, [toast]);
-    
-    React.useEffect(() => {
-        fetchPharmacies();
-    }, [fetchPharmacies]);
-
-    const handleOpenAddModal = () => {
-        setEditingPharmacy(null);
-        setIsModalOpen(true);
-    };
-
-    const handleOpenEditModal = (pharmacy: Pharmacy) => {
-        setEditingPharmacy(pharmacy);
-        setIsModalOpen(true);
-    };
-
-    const handleCloseModal = () => {
-        setIsModalOpen(false);
-        setEditingPharmacy(null);
-    };
-
-    const handleFormSubmit = async (values: Omit<Pharmacy, 'id' | 'prescriptions'>) => {
-        try {
-            if (!db) {
-                throw new Error("Firebase not initialized");
-            }
-            
-            if (editingPharmacy) {
-                const pharmacyDoc = doc(db, "pharmacies", editingPharmacy.id);
-                await updateDoc(pharmacyDoc, values);
-                toast({
-                    title: "Pharmacy Updated",
-                    description: `${values.name}'s information has been saved.`,
-                });
-            } else {
-                await addDoc(collection(db, "pharmacies"), {
-                    ...values,
-                    prescriptions: 0, // Default for new pharmacies
-                });
-                toast({
-                    title: "Pharmacy Added",
-                    description: `${values.name} has been added to the system.`,
-                });
-            }
-            fetchPharmacies();
-            handleCloseModal();
-        } catch (error) {
-            console.error("Error saving pharmacy: ", error);
-            toast({
-                variant: "destructive",
-                title: "Error Saving Pharmacy",
-                description: "An error occurred while saving the pharmacy information.",
-            });
-        }
-    };
-
-    const handleDeletePharmacy = async (pharmacyId: string) => {
-        try {
-            if (!db) {
-                throw new Error("Firebase not initialized");
-            }
-            
-            await deleteDoc(doc(db, "pharmacies", pharmacyId));
-            toast({
-                title: "Pharmacy Deleted",
-                description: "The pharmacy has been successfully deleted.",
-            });
-            fetchPharmacies();
-        } catch (error) {
-            console.error("Error deleting pharmacy: ", error);
-            toast({
-                variant: "destructive",
-                title: "Error Deleting Pharmacy",
-                description: "An error occurred while deleting the pharmacy.",
-            });
-        }
-    };
->>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
 
     const deleteMutation = useMutation({
         mutationFn: deletePharmacy,
@@ -224,46 +114,8 @@ export default function PharmacyPage() {
           </Table>
         </CardContent>
       </Card>
-<<<<<<< HEAD
     </div>
     <PharmacyFormModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} pharmacy={editingPharmacy} onSubmit={saveMutation.mutate} />
-=======
-      
-      <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <div>Showing 1 to {pharmacies.length} of {pharmacies.length} results</div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <span>Show:</span>
-            <Select defaultValue="10">
-              <SelectTrigger className="w-[70px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="10">10</SelectItem>
-                <SelectItem value="25">25</SelectItem>
-                <SelectItem value="50">50</SelectItem>
-              </SelectContent>
-            </Select>
-            <span>per page</span>
-          </div>
-          <div className="flex gap-1">
-            <Button variant="outline" size="icon" className="h-8 w-8" disabled>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" size="icon" className="h-8 w-8" disabled>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
-    <PharmacyFormModal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        pharmacy={editingPharmacy}
-        onSubmit={handleFormSubmit}
-    />
->>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
     </>
   );
 }

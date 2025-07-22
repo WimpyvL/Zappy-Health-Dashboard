@@ -2,44 +2,35 @@
 "use client";
 
 import * as React from "react";
-import { Box, Calendar, Layers, Package, Plus, Search, Settings, Tags, Trash2, FilePenLine } from "lucide-react";
+import { Box, Plus, Trash2, FilePenLine } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardFooter } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProductFormModal } from "./components/product-form-modal";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-<<<<<<< HEAD
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dbService } from '@/services/database';
-=======
-import { db } from "@/lib/firebase";
->>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
 
 type Product = { id: string; name: string; sku: string; category: string; price: number; status: string; isActive: boolean; };
-type Category = { id: string; name: string; description: string; products: number; status: string; };
 
 const fetchData = async () => {
-    const productsPromise = dbService.getAll<Product>('products', { sortBy: 'name' });
-    const categoriesPromise = dbService.getAll<Category>('categories', { sortBy: 'name' });
-    const [productsRes, categoriesRes] = await Promise.all([productsPromise, categoriesPromise]);
-    if (productsRes.error || !productsRes.data) throw new Error(productsRes.error || 'Failed to fetch products');
-    if (categoriesRes.error || !categoriesRes.data) throw new Error(categoriesRes.error || 'Failed to fetch categories');
-    return { products: productsRes.data, categories: categoriesRes.data };
+    const productsRes = await dbService.products.getAll({ sortBy: 'name' });
+    if (productsRes.error || !productsRes.data) throw new Error(productsRes.error as string || 'Failed to fetch products');
+    return { products: productsRes.data as Product[] };
 };
 
 const saveProduct = async (product: Partial<Product>) => {
     if (product.id) {
         const { id, ...data } = product;
-        const response = await dbService.update('products', id, data);
-        if (response.error) throw new Error(response.error);
+        const response = await dbService.products.update(id, data);
+        if (response.error) throw new Error(response.error as string);
         return response.data;
     } else {
-        const response = await dbService.create('products', product);
-        if (response.error) throw new Error(response.error);
+        const response = await dbService.products.create(product);
+        if (response.error) throw new Error(response.error as string);
         return response.data;
     }
 };
@@ -55,7 +46,7 @@ export default function ProductsPage() {
     queryFn: fetchData,
     onError: (error: Error) => toast({ variant: "destructive", title: "Error", description: error.message }),
   });
-  const { products = [], categories = [] } = data || {};
+  const { products = [] } = data || {};
 
   const saveMutation = useMutation({
     mutationFn: saveProduct,
