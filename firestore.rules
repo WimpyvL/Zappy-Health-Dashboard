@@ -2,11 +2,198 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+<<<<<<< HEAD
     // Allow read/write access to all documents for any authenticated user.
     // This is a common rule for development environments.
     // For production, you would implement more granular rules.
     match /{document=**} {
       allow read, write: if request.auth != null;
+=======
+    
+    // Helper functions for role-based access control
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && getUserRole() == 'admin';
+    }
+    
+    function isProvider() {
+      return isAuthenticated() && getUserRole() == 'provider';
+    }
+    
+    function isPatient() {
+      return isAuthenticated() && getUserRole() == 'patient';
+    }
+    
+    function isAdminOrProvider() {
+      return isAdmin() || isProvider();
+    }
+    
+    function isValidTimestamp(field) {
+      return request.resource.data[field] is timestamp;
+    }
+    
+    function isValidString(field) {
+      return request.resource.data[field] is string && request.resource.data[field].size() > 0;
+    }
+    
+    // Users collection - for authentication profiles
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (
+        request.auth.uid == userId || isAdmin()
+      );
+      allow create: if isAuthenticated() && request.auth.uid == userId;
+      allow update: if isAuthenticated() && (
+        request.auth.uid == userId || isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+    
+    // Patients collection
+    match /patients/{patientId} {
+      allow read: if isAdminOrProvider() || (
+        isPatient() && resource.data.userId == request.auth.uid
+      );
+      
+      allow create: if isAdminOrProvider() &&
+        isValidString('firstName') &&
+        isValidString('lastName') &&
+        isValidString('email') &&
+        isValidString('phone') &&
+        isValidTimestamp('dob') &&
+        isValidString('address') &&
+        isValidTimestamp('createdAt') &&
+        isValidTimestamp('updatedAt');
+        
+      allow update: if isAdminOrProvider() &&
+        isValidString('firstName') &&
+        isValidString('lastName') &&
+        isValidString('email') &&
+        isValidString('phone') &&
+        isValidTimestamp('dob') &&
+        isValidString('address') &&
+        isValidTimestamp('updatedAt');
+        
+      allow delete: if isAdmin();
+    }
+    
+    // Sessions collection
+    match /sessions/{sessionId} {
+      allow read: if isAdminOrProvider() || (
+        isPatient() && resource.data.patientId == request.auth.uid
+      );
+      allow create: if isAdminOrProvider();
+      allow update: if isAdminOrProvider();
+      allow delete: if isAdmin();
+    }
+    
+    // Orders collection
+    match /orders/{orderId} {
+      allow read: if isAdminOrProvider() || (
+        isPatient() && resource.data.patientId == request.auth.uid
+      );
+      allow create: if isAdminOrProvider();
+      allow update: if isAdminOrProvider();
+      allow delete: if isAdmin();
+    }
+    
+    // Providers collection
+    match /providers/{providerId} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin();
+      allow update: if isAdmin() || (
+        isProvider() && resource.data.userId == request.auth.uid
+      );
+      allow delete: if isAdmin();
+    }
+    
+    // Messages collection
+    match /messages/{messageId} {
+      allow read: if isAuthenticated() && (
+        isAdmin() ||
+        resource.data.patientId == request.auth.uid ||
+        resource.data.providerId == request.auth.uid
+      );
+      allow create: if isAuthenticated();
+      allow update: if isAdmin() || (
+        resource.data.patientId == request.auth.uid ||
+        resource.data.providerId == request.auth.uid
+      );
+      allow delete: if isAdmin();
+    }
+    
+    // Notes collection
+    match /notes/{noteId} {
+      allow read: if isAdminOrProvider();
+      allow create: if isAdminOrProvider();
+      allow update: if isAdminOrProvider();
+      allow delete: if isAdmin();
+    }
+    
+    // Admin-only collections
+    match /discounts/{discountId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    match /pharmacies/{pharmacyId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    match /products/{productId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    match /resources/{resourceId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    match /tags/{tagId} {
+      allow read: if isAuthenticated();
+      allow create, update, delete: if isAdmin();
+    }
+    
+    // Audit logs - admin read only, system write
+    match /audit_logs/{logId} {
+      allow read: if isAdmin();
+      allow create: if isAuthenticated(); // Allow system to create audit logs
+      allow update, delete: if false; // Audit logs are immutable
+    }
+    
+    // Insurance documents - patient and provider access
+    match /insurance/{documentId} {
+      allow read: if isAdminOrProvider() || (
+        isPatient() && resource.data.patientId == request.auth.uid
+      );
+      allow create: if isAuthenticated();
+      allow update: if isAdminOrProvider() || (
+        isPatient() && resource.data.patientId == request.auth.uid
+      );
+      allow delete: if isAdmin();
+    }
+    
+    // Invoices - admin and patient access
+    match /invoices/{invoiceId} {
+      allow read: if isAdmin() || (
+        isPatient() && resource.data.patientId == request.auth.uid
+      );
+      allow create, update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+    
+    // Default deny rule for any unmatched paths
+    match /{document=**} {
+      allow read, write: if false;
+>>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
     }
   }
 }

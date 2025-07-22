@@ -18,7 +18,6 @@ import {
   CheckCircle2,
   Clock,
   ClipboardList,
-  ClipboardPlus,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
@@ -27,8 +26,16 @@ import { useQuery } from '@tanstack/react-query'
 import { dbService } from '@/services/database'
 import { TaskFormModal } from "./tasks/components/task-form-modal"
 import { CreateOrderModal } from "./orders/components/create-order-modal"
+<<<<<<< HEAD
 import { Skeleton } from "@/components/ui/skeleton"
 import { Timestamp } from "firebase/firestore"
+=======
+import { shouldUseDemoData, demoDataService } from "@/lib/demo-data";
+import { getFirebaseFirestore } from "@/lib/firebase";
+import { collection, getDocs, query, where, Timestamp } from "firebase/firestore";
+import { Skeleton } from "@/components/ui/skeleton"
+
+>>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
 
 const StatCard = ({
   title,
@@ -105,6 +112,7 @@ export default function DashboardPage() {
   });
 
   useEffect(() => {
+<<<<<<< HEAD
     if (error) {
       toast({
         variant: "destructive",
@@ -113,6 +121,40 @@ export default function DashboardPage() {
       });
     }
   }, [error, toast]);
+=======
+    const fetchDashboardStats = async () => {
+      setLoadingStats(true);
+      try {
+        // Use demo data in development mode
+        if (shouldUseDemoData()) {
+          console.log('📊 Using demo data for dashboard stats');
+          const demoStats = await demoDataService.getDashboardStats();
+          setStats({
+            totalPatients: demoStats.totalPatients,
+            upcomingSessions: demoStats.upcomingSessions,
+            pendingOrders: demoStats.pendingOrders,
+            newConsultations: demoStats.newConsultations,
+          });
+          return;
+        }
+
+        // Real Firebase data for production
+        const db = getFirebaseFirestore();
+        if (!db) {
+          throw new Error('Firestore not initialized');
+        }
+
+        const patientsCollection = collection(db, "patients");
+        const patientsSnapshot = await getDocs(patientsCollection);
+        
+        const sessionsCollection = collection(db, "sessions");
+        const upcomingSessionsQuery = query(sessionsCollection, where("date", ">=", Timestamp.now()));
+        const upcomingSessionsSnapshot = await getDocs(upcomingSessionsQuery);
+        
+        const ordersCollection = collection(db, "orders");
+        const pendingOrdersQuery = query(ordersCollection, where("status", "in", ["Processing", "Pending"]));
+        const pendingOrdersSnapshot = await getDocs(pendingOrdersQuery);
+>>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
 
   useEffect(() => {
     // Set time on client-side to avoid hydration mismatch
@@ -258,7 +300,7 @@ export default function DashboardPage() {
         <Card className="shadow-md border-l-4 border-purple-500">
           <CardHeader className="flex flex-row items-center justify-between">
             <div className="flex items-center gap-3">
-              <ClipboardPlus className="h-6 w-6 text-purple-700" />
+              <ClipboardList className="h-6 w-6 text-purple-700" />
               <CardTitle className="text-lg text-purple-900">
                 Pending Consultations
               </CardTitle>

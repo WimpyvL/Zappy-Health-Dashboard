@@ -8,6 +8,10 @@ import { Input } from "@/components/ui/input";
 import { Search, Plus, Filter, FolderOpen, Loader2, FileText } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { format } from 'date-fns';
+<<<<<<< HEAD
+=======
+import { db } from "@/lib/firebase";
+>>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from '@tanstack/react-query';
 import { dbService } from '@/services/database';

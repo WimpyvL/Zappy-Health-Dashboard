@@ -12,9 +12,13 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { UploadInsuranceDocumentModal } from "./components/upload-insurance-document-modal";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
+<<<<<<< HEAD
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dbService } from '@/services/database';
 import { Skeleton } from "@/components/ui/skeleton";
+=======
+import { db } from "@/lib/firebase";
+>>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
 
 type Document = {
   id: string;

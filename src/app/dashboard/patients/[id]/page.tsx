@@ -17,8 +17,12 @@ import { PatientOverviewTab } from "./components/patient-overview-tab";
 import { ViewMessageModal } from "../../messages/components/view-message-modal";
 import Loading from "./loading";
 import { useToast } from "@/hooks/use-toast";
+<<<<<<< HEAD
 import { useQuery } from '@tanstack/react-query';
 import { dbService } from '@/services/database';
+=======
+import { db } from "@/lib/firebase";
+>>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
 
 // Types
 type Patient = {

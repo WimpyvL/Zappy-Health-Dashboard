@@ -108,7 +108,11 @@ export const useUpdateSessionStatus = (options = {}) => {
         return result.data;
       },
       onSuccess: (data, variables) => {
+<<<<<<< HEAD
         toast({title: "Session status successfully changed."});
+=======
+        // toast.success - replaced with useToast hook(`Session status successfully changed.`);
+>>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
         queryClient.invalidateQueries({ queryKey: ['sessions', 'list'] });
         queryClient.invalidateQueries({ queryKey: ['sessions', 'detail', variables.sessionId] });
         if (options.onSuccess) options.onSuccess(data, variables);

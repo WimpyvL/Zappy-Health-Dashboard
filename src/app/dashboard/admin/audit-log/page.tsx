@@ -11,8 +11,12 @@ import { Search, FolderOpen, ArrowUpDown, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
+<<<<<<< HEAD
 import { useQuery } from '@tanstack/react-query';
 import { dbService } from '@/services/database';
+=======
+import { db } from "@/lib/firebase";
+>>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
 
 type AuditLog = {
   id: string;
@@ -34,11 +38,49 @@ const fetchLogs = async () => {
 
 export default function AuditLogPage() {
     const { toast } = useToast();
+<<<<<<< HEAD
     const { data: logs = [], isLoading: loading } = useQuery<AuditLog[], Error>({
         queryKey: ['auditLogs'],
         queryFn: fetchLogs,
         onError: (error) => toast({ variant: "destructive", title: "Error Fetching Logs", description: error.message }),
     });
+=======
+
+    React.useEffect(() => {
+        const fetchLogs = async () => {
+            setLoading(true);
+            try {
+                if (!db) {
+                    throw new Error("Firebase not initialized");
+                }
+                
+                const logsCollection = collection(db, "audit_logs");
+                const q = query(logsCollection, orderBy("timestamp", "desc"));
+                const logsSnapshot = await getDocs(q);
+                const logsList = logsSnapshot.docs.map(doc => {
+                    const data = doc.data();
+                    return {
+                        id: doc.id,
+                        ...data,
+                        timestamp: data.timestamp ? format(data.timestamp.toDate(), "MMM dd, yyyy, hh:mm:ss a") : "N/A",
+                    } as AuditLog;
+                });
+                setLogs(logsList);
+            } catch (error) {
+                console.error("Error fetching audit logs: ", error);
+                toast({
+                    variant: "destructive",
+                    title: "Error Fetching Logs",
+                    description: "Could not retrieve audit log data from the database.",
+                });
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchLogs();
+    }, [toast]);
+>>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
 
   return (
     <div className="flex flex-col gap-6">

@@ -8,9 +8,13 @@ import { Briefcase, Pill } from "lucide-react";
 import { Table, TableBody, TableCell, TableHeader, TableHead, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { format } from 'date-fns';
+<<<<<<< HEAD
 import { useQuery } from '@tanstack/react-query';
 import { dbService } from '@/services/database';
 import { Skeleton } from "@/components/ui/skeleton";
+=======
+import { db } from "@/lib/firebase";
+>>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
 
 interface PatientOrdersTabProps {
   patientId: string;

@@ -1,115 +1,234 @@
-
 "use client";
 
 import * as React from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { ArrowLeft, Loader2 } from "lucide-react";
-import { useTelehealthFlow } from "@/hooks/useTelehealthFlow.js";
+import { ArrowLeft, Loader2, AlertCircle } from "lucide-react";
+import { useTelehealthFlow } from "@/hooks/useTelehealthFlow";
 import { useToast } from "@/hooks/use-toast";
+import { DynamicFormRenderer } from "@/components/ui/dynamic-form-renderer";
+import { dynamicFormService } from "@/services/dynamicFormService";
 
-// This is a simplified intake form for demonstration.
-// A real application would have a multi-step, dynamic form here.
-
-export default function IntakeFormPage() {
+export default function EnhancedIntakeFormPage() {
     const params = useParams();
     const router = useRouter();
     const flowId = params.flowId as string;
     
     const { flow, loading: flowLoading, submitIntakeForm } = useTelehealthFlow(flowId);
     const { toast } = useToast();
-    const [isSubmitting, setIsSubmitting] = React.useState(false);
     
-    // Simple state for our static form
-    const [formData, setFormData] = React.useState({
-        chief_complaint: '',
-        allergies: '',
-        medications: '',
-    });
+    const [isSubmitting, setIsSubmitting] = React.useState(false);
+    const [formSchema, setFormSchema] = React.useState(null);
+    const [formLoading, setFormLoading] = React.useState(true);
+    const [formError, setFormError] = React.useState(null);
 
+    // Load appropriate form template based on flow context
     React.useEffect(() => {
-        if(flow?.product_id) {
-            // Pre-fill form based on product context if needed
-            let complaint = '';
-            if (flow.product_id.includes('prod_wm')) complaint = 'Interested in weight management options.';
-            if (flow.product_id.includes('prod_sh')) complaint = 'Interested in sexual health consultation.';
-            if (flow.product_id.includes('prod_hl')) complaint = 'Seeking treatment for hair loss.';
-            setFormData(prev => ({ ...prev, chief_complaint: complaint }));
+        const loadFormTemplate = async () => {
+            if (!flow) return;
+            
+            setFormLoading(true);
+            setFormError(null);
+
+            try {
+                const result = await dynamicFormService.getFormTemplateForProduct(
+                    flow.product_id, 
+                    flow.category_id
+                );
+
+                if (result.success && result.formSchema) {
+                    setFormSchema(result.formSchema);
+                } else {
+                    console.error('Error loading form template:', result.error);
+                    setFormError('Could not load the appropriate form template.');
+                    // Use fallback form
+                    const fallbackResult = await dynamicFormService.getFormTemplateForProduct(null, null);
+                    if (fallbackResult.success) {
+                        setFormSchema(fallbackResult.formSchema);
+                    }
+                }
+            } catch (error) {
+                console.error('Unexpected error loading form:', error);
+                setFormError('An unexpected error occurred while loading the form.');
+            } finally {
+                setFormLoading(false);
+            }
+        };
+
+        if (flow && !flowLoading) {
+            loadFormTemplate();
         }
-    }, [flow]);
+    }, [flow, flowLoading]);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-        const { id, value } = e.target;
-        setFormData(prev => ({ ...prev, [id]: value }));
-    };
-
-    const handleSubmit = async (event: React.FormEvent) => {
-        event.preventDefault();
-        if (!flowId) {
-            toast({ variant: "destructive", title: "Error", description: "Flow ID is missing." });
+    const handleFormSubmit = async (formData) => {
+        if (!flowId || !formSchema) {
+            toast({ 
+                variant: "destructive", 
+                title: "Error", 
+                description: "Form data or flow information is missing." 
+            });
             return;
         }
 
         setIsSubmitting(true);
-        const result = await submitIntakeForm(formData);
 
-        if (result.success) {
+        try {
+            // Process the form data using the dynamic form service
+            const processedData = dynamicFormService.processFormSubmission(formSchema, formData);
+            
+            // Submit to the telehealth flow orchestrator
+            const result = await submitIntakeForm(processedData);
+
+            if (result.success) {
+                toast({
+                    title: "Intake Form Submitted Successfully",
+                    description: "A healthcare provider will review your information and contact you shortly.",
+                });
+                // Navigate to a confirmation page or back to dashboard
+                router.push("/dashboard");
+            } else {
+                // The hook already shows a toast on error, but let's add more context
+                console.error("Intake submission failed:", result.error);
+                toast({
+                    variant: "destructive",
+                    title: "Submission Failed",
+                    description: result.error?.message || "There was a problem submitting your form. Please try again.",
+                });
+            }
+        } catch (error) {
+            console.error("Unexpected submission error:", error);
             toast({
-                title: "Intake Form Submitted",
-                description: "A provider will review your information shortly.",
+                variant: "destructive",
+                title: "Submission Error",
+                description: "An unexpected error occurred. Please try again.",
             });
-            // Navigate to a success page or back to the dashboard
-            router.push("/dashboard");
-        } else {
-            // The hook already shows a toast on error
-            console.error("Intake submission failed:", result.error);
+        } finally {
+            setIsSubmitting(false);
         }
-        setIsSubmitting(false);
     };
 
     if (flowLoading) {
-        return <div>Loading Flow Information...</div>
+        return (
+            <div className="flex flex-col gap-6">
+                <div className="flex items-center gap-4">
+                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => router.back()}>
+                        <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                    <div>
+                        <h1 className="text-2xl font-bold">Patient Intake Form</h1>
+                        <p className="text-muted-foreground text-sm">Loading your personalized intake form...</p>
+                    </div>
+                </div>
+                <Card className="max-w-2xl mx-auto w-full">
+                    <CardContent className="flex items-center justify-center h-32">
+                        <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                        Loading flow information...
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
+
+    if (!flow) {
+        return (
+            <div className="flex flex-col gap-6">
+                <div className="flex items-center gap-4">
+                    <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => router.back()}>
+                        <ArrowLeft className="h-4 w-4" />
+                    </Button>
+                    <div>
+                        <h1 className="text-2xl font-bold">Patient Intake Form</h1>
+                        <p className="text-muted-foreground text-sm">Form not found</p>
+                    </div>
+                </div>
+                <Card className="max-w-2xl mx-auto w-full">
+                    <CardContent className="flex items-center justify-center h-32 text-center">
+                        <div>
+                            <AlertCircle className="h-8 w-8 text-destructive mx-auto mb-2" />
+                            <p className="text-muted-foreground">The requested intake form could not be found.</p>
+                            <Button variant="outline" className="mt-4" onClick={() => router.push("/dashboard")}>
+                                Return to Dashboard
+                            </Button>
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        );
     }
 
     return (
         <div className="flex flex-col gap-6">
-             <div className="flex items-center gap-4">
+            <div className="flex items-center gap-4">
                 <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => router.back()}>
                     <ArrowLeft className="h-4 w-4" />
                 </Button>
                 <div>
                     <h1 className="text-2xl font-bold">Patient Intake Form</h1>
-                    <p className="text-muted-foreground text-sm">Please provide your medical information.</p>
+                    <p className="text-muted-foreground text-sm">
+                        {flow.product_id ? 
+                            "Complete your personalized intake form for your selected consultation." :
+                            "Please provide your medical information for consultation."
+                        }
+                    </p>
                 </div>
             </div>
 
-            <Card className="max-w-2xl mx-auto w-full">
-                <CardHeader>
-                    <CardTitle>Medical History</CardTitle>
-                    <CardDescription>This information will be reviewed by a licensed healthcare provider.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <form onSubmit={handleSubmit} className="space-y-6">
-                        <div className="space-y-2">
-                            <Label htmlFor="chief_complaint">Chief Complaint</Label>
-                            <Input id="chief_complaint" placeholder="e.g., I'm interested in weight management" required value={formData.chief_complaint} onChange={handleChange} />
+            {/* Product Context Information */}
+            {flow.product_id && (
+                <Card className="max-w-2xl mx-auto w-full bg-blue-50 border-blue-200">
+                    <CardContent className="pt-4">
+                        <div className="flex items-center gap-2 text-sm text-blue-800">
+                            <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                            <span className="font-medium">
+                                This form is customized for your {flow.product_id?.includes('weight') ? 'Weight Management' : 
+                                flow.product_id?.includes('sexual') ? 'Sexual Health' :
+                                flow.product_id?.includes('hair') ? 'Hair Loss Treatment' : 'Healthcare'} consultation
+                            </span>
                         </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="allergies">Known Allergies</Label>
-                            <Input id="allergies" placeholder="e.g., Penicillin, Peanuts" value={formData.allergies} onChange={handleChange} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="medications">Current Medications</Label>
-                            <Input id="medications" placeholder="e.g., Lisinopril 10mg" value={formData.medications} onChange={handleChange} />
-                        </div>
-                        <Button type="submit" className="w-full" disabled={isSubmitting}>
-                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            {isSubmitting ? 'Submitting...' : 'Submit Intake Form'}
-                        </Button>
-                    </form>
+                    </CardContent>
+                </Card>
+            )}
+
+            {formLoading ? (
+                <Card className="max-w-3xl mx-auto w-full">
+                    <CardContent className="flex items-center justify-center h-32">
+                        <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                        Loading personalized form...
+                    </CardContent>
+                </Card>
+            ) : formError ? (
+                <Card className="max-w-2xl mx-auto w-full border-yellow-200 bg-yellow-50">
+                    <CardHeader>
+                        <CardTitle className="text-yellow-800 flex items-center gap-2">
+                            <AlertCircle className="h-5 w-5" />
+                            Form Loading Issue
+                        </CardTitle>
+                        <CardDescription className="text-yellow-700">
+                            {formError} We've loaded a basic intake form for you to continue.
+                        </CardDescription>
+                    </CardHeader>
+                </Card>
+            ) : null}
+
+            {formSchema && (
+                <DynamicFormRenderer
+                    schema={formSchema}
+                    onSubmit={handleFormSubmit}
+                    isSubmitting={isSubmitting}
+                    submitButtonText="Submit Intake Form"
+                    allowMultiPage={true}
+                />
+            )}
+
+            {/* Privacy and Security Notice */}
+            <Card className="max-w-3xl mx-auto w-full bg-gray-50">
+                <CardContent className="pt-4">
+                    <div className="text-xs text-muted-foreground text-center space-y-1">
+                        <p>🔒 Your information is encrypted and secure</p>
+                        <p>📋 This form will be reviewed by a licensed healthcare provider</p>
+                        <p>💬 You will be contacted within 24-48 hours with next steps</p>
+                    </div>
                 </CardContent>
             </Card>
         </div>
