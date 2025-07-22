@@ -27,7 +27,11 @@ export type FieldType =
   | 'html-content'
   | 'signature'
   | 'rating'
-  | 'matrix';
+  | 'matrix'
+  | 'weight'
+  | 'progress-rating'
+  | 'progress-photo'
+  | 'lab-upload';
 
 export interface FieldOption {
   label: string;
@@ -95,7 +99,6 @@ export interface FormField {
   
   // Custom properties
   customAttributes?: Record<string, any>;
-}
 }
 
 export interface FormSection {

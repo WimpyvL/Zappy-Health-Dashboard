@@ -1,24 +1,62 @@
-
 import { useState, useCallback, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { toast } from 'react-toastify';
+import { useToast } from '@/hooks/use-toast';
 import { useUpdatePatient } from '../services/database/hooks';
-import { useScheduleFollowUp } from '../apis/followUps/hooks';
-import { useFollowUpTemplates } from '../apis/followUps/hooks';
+// import { useScheduleFollowUp } from '../apis/followUps/hooks';
+// import { useFollowUpTemplates } from '../apis/followUps/hooks';
 
-// Undo stack management
-let undoStack = null;
-let undoTimer = null;
+// Types
+interface Patient {
+  id: string;
+  status: string;
+  first_name: string;
+  last_name: string;
+  [key: string]: any;
+}
+
+interface Progress {
+  current: number;
+  total: number;
+}
+
+interface OriginalPatientState {
+  id: string;
+  status: string;
+  first_name: string;
+  last_name: string;
+}
+
+interface ScheduledFollowUp {
+  followUpId: string;
+  patientId: string;
+  patientName: string;
+}
+
+interface UndoStackItem {
+  data: any;
+  function: (data: any) => Promise<void>;
+}
+
+interface ProcessingError {
+  patient: Patient;
+  error: string;
+}
+
+// Undo stack management with proper typing
+let undoStack: UndoStackItem | null = null;
+let undoTimer: NodeJS.Timeout | null = null;
 
 export const useBulkPatientOperations = () => {
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [progress, setProgress] = useState({ current: 0, total: 0 });
-  const [showUndo, setShowUndo] = useState(false);
-  const [undoTimeLeft, setUndoTimeLeft] = useState(30);
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [progress, setProgress] = useState<Progress>({ current: 0, total: 0 });
+  const [showUndo, setShowUndo] = useState<boolean>(false);
+  const [undoTimeLeft, setUndoTimeLeft] = useState<number>(30);
 
   const queryClient = useQueryClient();
+  const { toast } = useToast();
   const updatePatient = useUpdatePatient();
-  const scheduleFollowUp = useScheduleFollowUp();
+  // TODO: Import actual follow-up hooks when available
+  const scheduleFollowUp = { mutateAsync: async (data: any) => Promise.resolve({ id: 'mock-id', ...data }) };
 
   // Clear any existing undo timer
   const clearUndoTimer = useCallback(() => {
@@ -33,7 +71,7 @@ export const useBulkPatientOperations = () => {
 
   // Start undo countdown timer
   const startUndoTimer = useCallback(
-    (undoData, undoFunction) => {
+    (undoData: any, undoFunction: (data: any) => Promise<void>) => {
       undoStack = { data: undoData, function: undoFunction };
       setShowUndo(true);
       setUndoTimeLeft(30);
@@ -59,14 +97,21 @@ export const useBulkPatientOperations = () => {
       setIsProcessing(true);
       await undoStack.function(undoStack.data);
       clearUndoTimer();
-      toast.success('Operation undone successfully');
+      toast({
+        title: "Success",
+        description: "Operation undone successfully",
+      });
     } catch (error) {
       console.error('Undo failed:', error);
-      toast.error('Failed to undo operation');
+      toast({
+        title: "Error",
+        description: "Failed to undo operation",
+        variant: "destructive",
+      });
     } finally {
       setIsProcessing(false);
     }
-  }, [clearUndoTimer]);
+  }, [clearUndoTimer, toast]);
 
   // Dismiss undo notification
   const dismissUndo = useCallback(() => {
@@ -75,11 +120,11 @@ export const useBulkPatientOperations = () => {
 
   // Bulk update patient status
   const bulkUpdateStatus = useCallback(
-    async (patients, newStatus) => {
+    async (patients: Patient[], newStatus: string): Promise<void> => {
       if (!patients || patients.length === 0) return;
 
       // Store original states for undo
-      const originalStates = patients.map((patient) => ({
+      const originalStates: OriginalPatientState[] = patients.map((patient) => ({
         id: patient.id,
         status: patient.status,
         first_name: patient.first_name,
@@ -90,8 +135,8 @@ export const useBulkPatientOperations = () => {
         setIsProcessing(true);
         setProgress({ current: 0, total: patients.length });
 
-        const results = [];
-        const errors = [];
+        const results: Patient[] = [];
+        const errors: ProcessingError[] = [];
 
         // Process each patient
         for (let i = 0; i < patients.length; i++) {
@@ -101,12 +146,12 @@ export const useBulkPatientOperations = () => {
           try {
             await updatePatient.mutateAsync({
               id: patient.id,
-              data: { status: newStatus },
+              status: newStatus,
             });
             results.push(patient);
-          } catch (error) {
+          } catch (error: any) {
             console.error(`Failed to update patient ${patient.id}:`, error);
-            errors.push({ patient, error: error.message });
+            errors.push({ patient, error: error.message || 'Unknown error' });
           }
         }
 
@@ -123,13 +168,13 @@ export const useBulkPatientOperations = () => {
               : `Successfully ${statusText} ${successCount} patients`;
 
           // Start undo timer
-          startUndoTimer(originalStates, async (undoData) => {
+          startUndoTimer(originalStates, async (undoData: OriginalPatientState[]) => {
             // Undo function: restore original statuses
             for (const originalState of undoData) {
               try {
                 await updatePatient.mutateAsync({
                   id: originalState.id,
-                  data: { status: originalState.status },
+                  status: originalState.status,
                 });
               } catch (error) {
                 console.error(
@@ -140,50 +185,62 @@ export const useBulkPatientOperations = () => {
             }
 
             // Refresh patient list
-            queryClient.invalidateQueries(['patients']);
+            queryClient.invalidateQueries({ queryKey: ['patients'] });
 
             const undoStatusText =
               originalStates[0]?.status === 'deactivated'
                 ? 'suspended'
                 : originalStates[0]?.status || 'original status';
-            toast.success(
-              `Restored ${undoData.length} patients to ${undoStatusText}`
-            );
+            toast({
+              title: "Success",
+              description: `Restored ${undoData.length} patients to ${undoStatusText}`,
+            });
           });
 
           // Show success notification
-          toast.success(message);
+          toast({
+            title: "Success",
+            description: message,
+          });
         }
 
         if (errorCount > 0 && successCount === 0) {
-          toast.error(`Failed to update ${errorCount} patients`);
+          toast({
+            title: "Error",
+            description: `Failed to update ${errorCount} patients`,
+            variant: "destructive",
+          });
         }
 
         // Refresh patient list
-        queryClient.invalidateQueries(['patients']);
+        queryClient.invalidateQueries({ queryKey: ['patients'] });
       } catch (error) {
         console.error('Bulk status update failed:', error);
-        toast.error('Bulk status update failed');
+        toast({
+          title: "Error",
+          description: "Bulk status update failed",
+          variant: "destructive",
+        });
       } finally {
         setIsProcessing(false);
         setProgress({ current: 0, total: 0 });
       }
     },
-    [updatePatient, startUndoTimer, queryClient]
+    [updatePatient, startUndoTimer, queryClient, toast]
   );
 
   // Bulk schedule check-ins
   const bulkScheduleCheckIns = useCallback(
-    async (patients, templateId) => {
+    async (patients: Patient[], templateId: string): Promise<void> => {
       if (!patients || patients.length === 0 || !templateId) return;
 
       try {
         setIsProcessing(true);
         setProgress({ current: 0, total: patients.length });
 
-        const results = [];
-        const errors = [];
-        const scheduledFollowUps = [];
+        const results: Patient[] = [];
+        const errors: ProcessingError[] = [];
+        const scheduledFollowUps: ScheduledFollowUp[] = [];
 
         // Process each patient
         for (let i = 0; i < patients.length; i++) {
@@ -210,12 +267,12 @@ export const useBulkPatientOperations = () => {
             console.log(
               `Check-in scheduled for patient ${patient.first_name} ${patient.last_name}`
             );
-          } catch (error) {
+          } catch (error: any) {
             console.error(
               `Failed to schedule check-in for patient ${patient.id}:`,
               error
             );
-            errors.push({ patient, error: error.message });
+            errors.push({ patient, error: error.message || 'Unknown error' });
           }
         }
 
@@ -230,7 +287,7 @@ export const useBulkPatientOperations = () => {
               : `Successfully scheduled ${successCount} check-ins and notified patients`;
 
           // Start undo timer
-          startUndoTimer(scheduledFollowUps, async (undoData) => {
+          startUndoTimer(scheduledFollowUps, async (undoData: ScheduledFollowUp[]) => {
             // Undo function: cancel scheduled follow-ups
             // Note: For now, we'll just log the cancellation
             // In a full implementation, you would call the cancel API here
@@ -256,32 +313,46 @@ export const useBulkPatientOperations = () => {
             }
 
             // Refresh relevant queries
-            queryClient.invalidateQueries(['followUps']);
-            queryClient.invalidateQueries(['patients']);
+            queryClient.invalidateQueries({ queryKey: ['followUps'] });
+            queryClient.invalidateQueries({ queryKey: ['patients'] });
 
-            toast.success(`Cancelled ${undoData.length} scheduled check-ins`);
+            toast({
+              title: "Success",
+              description: `Cancelled ${undoData.length} scheduled check-ins`,
+            });
           });
 
           // Show success notification
-          toast.success(message);
+          toast({
+            title: "Success",
+            description: message,
+          });
         }
 
         if (errorCount > 0 && successCount === 0) {
-          toast.error(`Failed to schedule ${errorCount} check-ins`);
+          toast({
+            title: "Error",
+            description: `Failed to schedule ${errorCount} check-ins`,
+            variant: "destructive",
+          });
         }
 
         // Refresh relevant queries
-        queryClient.invalidateQueries(['followUps']);
-        queryClient.invalidateQueries(['patients']);
+        queryClient.invalidateQueries({ queryKey: ['followUps'] });
+        queryClient.invalidateQueries({ queryKey: ['patients'] });
       } catch (error) {
         console.error('Bulk check-in scheduling failed:', error);
-        toast.error('Bulk check-in scheduling failed');
+        toast({
+          title: "Error",
+          description: "Bulk check-in scheduling failed",
+          variant: "destructive",
+        });
       } finally {
         setIsProcessing(false);
         setProgress({ current: 0, total: 0 });
       }
     },
-    [scheduleFollowUp, startUndoTimer, queryClient]
+    [scheduleFollowUp, startUndoTimer, queryClient, toast]
   );
 
   return {

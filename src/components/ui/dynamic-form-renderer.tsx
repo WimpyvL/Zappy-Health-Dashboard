@@ -10,7 +10,9 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { Slider } from "@/components/ui/slider";
+import { Badge } from "@/components/ui/badge";
+import { ChevronLeft, ChevronRight, Loader2, Upload, Scale, Camera, Activity } from "lucide-react";
 
 interface FormElementOption {
   id: string;
@@ -291,6 +293,126 @@ export const DynamicFormRenderer: React.FC<DynamicFormRendererProps> = ({
                 ))}
               </SelectContent>
             </Select>
+          )}
+          {type === 'weight' && (
+            <div className="space-y-3">
+              <div className="flex items-center space-x-3 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <Scale className="w-5 h-5 text-blue-600" />
+                <div className="flex-1">
+                  <div className="flex items-center space-x-2">
+                    <Input 
+                      type="number" 
+                      id={id} 
+                      value={value}
+                      placeholder="Enter weight" 
+                      className="w-24"
+                      step="0.1"
+                      min="0"
+                      max="1000"
+                      onChange={(e) => handleInputChange(id, e.target.value)}
+                    />
+                    <span className="text-sm text-gray-600">lbs</span>
+                  </div>
+                  <p className="text-xs text-blue-600 mt-1">Track your weight progress</p>
+                </div>
+              </div>
+            </div>
+          )}
+          {type === 'progress-rating' && (
+            <div className="space-y-4">
+              <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                <div className="flex items-center space-x-3 mb-3">
+                  <Activity className="w-5 h-5 text-green-600" />
+                  <span className="font-medium text-green-800">Rate your progress (1-10)</span>
+                </div>
+                <div className="space-y-3">
+                  <Slider
+                    value={[parseInt(value) || 5]}
+                    onValueChange={(newValue) => handleInputChange(id, newValue[0].toString())}
+                    max={10}
+                    min={1}
+                    step={1}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>1 - Poor</span>
+                    <span className="font-medium text-green-600">
+                      {value || '5'}/10
+                    </span>
+                    <span>10 - Excellent</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          {type === 'progress-photo' && (
+            <div className="space-y-3">
+              <div className="p-4 bg-purple-50 rounded-lg border border-purple-200">
+                <div className="flex items-center space-x-3 mb-3">
+                  <Camera className="w-5 h-5 text-purple-600" />
+                  <span className="font-medium text-purple-800">Upload Progress Photo</span>
+                </div>
+                <div className="space-y-3">
+                  <Input 
+                    type="file" 
+                    id={id}
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        handleInputChange(id, file);
+                      }
+                    }}
+                    className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-purple-50 file:text-purple-700 hover:file:bg-purple-100"
+                  />
+                  <p className="text-xs text-purple-600">
+                    Upload a photo to track your visual progress
+                  </p>
+                  {value && (
+                    <Badge variant="secondary" className="bg-purple-100 text-purple-800">
+                      Photo uploaded: {(value as File)?.name || 'progress-photo.jpg'}
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+          {type === 'lab-upload' && (
+            <div className="space-y-3">
+              <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
+                <div className="flex items-center space-x-3 mb-3">
+                  <Upload className="w-5 h-5 text-orange-600" />
+                  <span className="font-medium text-orange-800">Upload Lab Results</span>
+                </div>
+                <div className="space-y-3">
+                  <Input 
+                    type="file" 
+                    id={id}
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        handleInputChange(id, file);
+                      }
+                    }}
+                    className="file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-orange-50 file:text-orange-700 hover:file:bg-orange-100"
+                  />
+                  <p className="text-xs text-orange-600">
+                    Upload PDF or image files. Text will be automatically extracted.
+                  </p>
+                  {value && (
+                    <div className="space-y-2">
+                      <Badge variant="secondary" className="bg-orange-100 text-orange-800">
+                        File uploaded: {(value as File)?.name || 'lab-results.pdf'}
+                      </Badge>
+                      <div className="text-xs text-orange-600 bg-orange-100 p-2 rounded">
+                        <strong>OCR Processing:</strong> Text extraction will begin after form submission
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           )}
         </div>
       </div>
