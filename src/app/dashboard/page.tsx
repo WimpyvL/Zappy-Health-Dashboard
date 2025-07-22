@@ -26,16 +26,8 @@ import { useQuery } from '@tanstack/react-query'
 import { dbService } from '@/services/database'
 import { TaskFormModal } from "./tasks/components/task-form-modal"
 import { CreateOrderModal } from "./orders/components/create-order-modal"
-<<<<<<< HEAD
 import { Skeleton } from "@/components/ui/skeleton"
 import { Timestamp } from "firebase/firestore"
-=======
-import { shouldUseDemoData, demoDataService } from "@/lib/demo-data";
-import { getFirebaseFirestore } from "@/lib/firebase";
-import { collection, getDocs, query, where, Timestamp } from "firebase/firestore";
-import { Skeleton } from "@/components/ui/skeleton"
-
->>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
 
 const StatCard = ({
   title,
@@ -80,16 +72,24 @@ const fetchDashboardStats = async () => {
     pendingOrdersRes,
     newConsultationsRes,
   ] = await Promise.all([
-    dbService.getAll('patients'),
-    dbService.getAll('sessions', { filters: [{ field: 'date', op: '>=', value: Timestamp.now() }] }),
-    dbService.getAll('orders', { filters: [{ field: 'status', op: 'in', value: ['Processing', 'Pending'] }] }),
-    dbService.getAll('sessions', { filters: [{ field: 'status', op: 'in', value: ['Scheduled', 'Pending'] }] }),
+    dbService.patients.getAll(),
+    dbService.sessions.getAll({ filters: [{ field: 'date', op: '>=', value: Timestamp.now() }] }),
+    dbService.orders.getAll({ filters: [{ field: 'status', op: 'in', value: ['Processing', 'Pending'] }] }),
+    dbService.sessions.getAll({ filters: [{ field: 'status', op: 'in', value: ['Scheduled', 'Pending'] }] }),
   ]);
 
+  // Check for errors in responses
   if (patientsRes.error || upcomingSessionsRes.error || pendingOrdersRes.error || newConsultationsRes.error) {
-    throw new Error('Failed to fetch dashboard stats');
+    console.error("Error fetching dashboard stats:", {
+        patientsError: patientsRes.error,
+        sessionsError: upcomingSessionsRes.error,
+        ordersError: pendingOrdersRes.error,
+        consultationsError: newConsultationsRes.error,
+    });
+    throw new Error('Failed to fetch some dashboard statistics.');
   }
 
+  // Safely access data length
   return {
     totalPatients: patientsRes.data?.length || 0,
     upcomingSessions: upcomingSessionsRes.data?.length || 0,
@@ -101,7 +101,6 @@ const fetchDashboardStats = async () => {
 export default function DashboardPage() {
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
-  const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const router = useRouter();
   const { toast } = useToast()
 
@@ -112,57 +111,16 @@ export default function DashboardPage() {
   });
 
   useEffect(() => {
-<<<<<<< HEAD
     if (error) {
       toast({
         variant: "destructive",
         title: "Error loading dashboard data",
-        description: "Could not retrieve summary data from the database.",
+        description: error.message || "Could not retrieve summary data from the database.",
       });
     }
   }, [error, toast]);
-=======
-    const fetchDashboardStats = async () => {
-      setLoadingStats(true);
-      try {
-        // Use demo data in development mode
-        if (shouldUseDemoData()) {
-          console.log('📊 Using demo data for dashboard stats');
-          const demoStats = await demoDataService.getDashboardStats();
-          setStats({
-            totalPatients: demoStats.totalPatients,
-            upcomingSessions: demoStats.upcomingSessions,
-            pendingOrders: demoStats.pendingOrders,
-            newConsultations: demoStats.newConsultations,
-          });
-          return;
-        }
-
-        // Real Firebase data for production
-        const db = getFirebaseFirestore();
-        if (!db) {
-          throw new Error('Firestore not initialized');
-        }
-
-        const patientsCollection = collection(db, "patients");
-        const patientsSnapshot = await getDocs(patientsCollection);
-        
-        const sessionsCollection = collection(db, "sessions");
-        const upcomingSessionsQuery = query(sessionsCollection, where("date", ">=", Timestamp.now()));
-        const upcomingSessionsSnapshot = await getDocs(upcomingSessionsQuery);
-        
-        const ordersCollection = collection(db, "orders");
-        const pendingOrdersQuery = query(ordersCollection, where("status", "in", ["Processing", "Pending"]));
-        const pendingOrdersSnapshot = await getDocs(pendingOrdersQuery);
->>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
-
-  useEffect(() => {
-    // Set time on client-side to avoid hydration mismatch
-    setLastUpdated(new Date().toLocaleTimeString());
-  }, []);
 
   const handleRefreshSessions = () => {
-    setLastUpdated(new Date().toLocaleTimeString());
     toast({
       title: "Sessions Refreshed",
       description: "The list of today's sessions has been updated.",
@@ -257,7 +215,7 @@ export default function DashboardPage() {
             </p>
           </CardContent>
           <p className="px-6 pb-4 text-xs text-cyan-600">
-            Last updated: {lastUpdated || <Skeleton className="h-4 w-20 inline-block" />}
+            Last updated: 
           </p>
         </Card>
 
