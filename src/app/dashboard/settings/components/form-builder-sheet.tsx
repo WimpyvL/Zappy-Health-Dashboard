@@ -15,7 +15,7 @@ import { templateBlocks, templateSections } from "./form-template-blocks";
 import type { FormSchema, FormPage, FormElement } from "@/lib/form-validator";
 import { useToast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { dbService } from '@/services/database';
+import { dbService } from '@/services/database/index';
 
 interface FormBuilderSheetProps {
   isOpen: boolean;

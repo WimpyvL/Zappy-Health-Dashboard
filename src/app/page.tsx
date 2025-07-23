@@ -2,50 +2,104 @@
 "use client"
 
 import * as React from "react";
-import { useAuth } from "@/lib/auth-context";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Leaf, User, ShieldCheck, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Leaf, Eye, EyeOff, Loader2 } from "lucide-react";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import { AdminSelector } from "@/components/admin-selector";
 
-export default function LoginPage() {
-  const { signIn, user, loading } = useAuth();
+const loginSchema = z.object({
+  email: z.string().email({ message: "Invalid email address." }),
+  password: z.string().min(1, { message: "Password is required." }),
+});
+
+const signupSchema = z.object({
+  firstName: z.string().min(1, { message: "First name is required." }),
+  lastName: z.string().min(1, { message: "Last name is required." }),
+  email: z.string().email({ message: "Invalid email address." }),
+  password: z.string().min(8, { message: "Password must be at least 8 characters." }),
+});
+
+export default function AuthPage() {
+  const { user, signIn, signUp } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const [email, setEmail] = React.useState("");
-  const [password, setPassword] = React.useState("");
-  const [showPassword, setShowPassword] = React.useState(false);
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [loading, setLoading] = React.useState(false);
+  const [activeTab, setActiveTab] = React.useState("login");
 
-  // Redirect if already logged in and not loading
+  const loginForm = useForm<z.infer<typeof loginSchema>>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { email: "", password: "" },
+  });
+
+  const signupForm = useForm<z.infer<typeof signupSchema>>({
+    resolver: zodResolver(signupSchema),
+    defaultValues: { firstName: "", lastName: "", email: "", password: "" },
+  });
+
   React.useEffect(() => {
-    if (!loading && user) {
+    if (user) {
       router.push("/dashboard");
     }
-  }, [user, loading, router]);
+  }, [user, router]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !password) return;
-
-    setIsSubmitting(true);
+  const handleLogin = async (values: z.infer<typeof loginSchema>) => {
+    setLoading(true);
     try {
-      await signIn(email, password);
-      // The redirect will be handled by the useEffect hook
+      await signIn(values.email, values.password);
+      router.push("/dashboard");
     } catch (error: any) {
-      // The useAuth hook handles the toast notification for errors
-      console.error("Login page caught an error:", error.message);
+      toast({
+        variant: "destructive",
+        title: "Login Failed",
+        description: error.message,
+      });
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
-  const handleDemoLogin = async (role: 'admin' | 'provider' | 'patient') => {
-    setIsSubmitting(true);
+  const handleSignup = async (values: z.infer<typeof signupSchema>) => {
+    setLoading(true);
     try {
+<<<<<<< HEAD
+      await signUp(values.email, values.password, { 
+        firstName: values.firstName, 
+        lastName: values.lastName,
+        displayName: `${values.firstName} ${values.lastName}`
+      });
+      toast({
+        title: "Account Created",
+        description: "Your account has been successfully created. Please log in.",
+      });
+      setActiveTab("login"); // Switch to login tab after signup
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Sign Up Failed",
+        description: error.message,
+      });
+=======
       const demoAccounts = {
         admin: { email: "admin@zappy.com", password: "adminPassword123!" },
         provider: { email: "provider@zappy.com", password: "providerPassword123!" },
@@ -57,22 +111,17 @@ export default function LoginPage() {
     } catch (error) {
       // Error is handled in auth context
       console.error("Demo login error:", error);
+>>>>>>> 082014b070ec071384e295ef193136d2365d50a8
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
-  // Render nothing or a loading spinner while checking auth state
-  if (loading || user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="animate-spin rounded-full h-8 w-8 text-primary" />
-      </div>
-    );
-  }
-
   return (
     <main className="flex min-h-screen w-full flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+<<<<<<< HEAD
+      <AdminSelector />
+=======
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
@@ -180,6 +229,7 @@ export default function LoginPage() {
           </p>
         </CardContent>
       </Card>
+>>>>>>> 082014b070ec071384e295ef193136d2365d50a8
     </main>
   );
 }

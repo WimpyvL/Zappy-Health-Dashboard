@@ -25,6 +25,7 @@ import {
   Query,
   WhereFilterOp,
   OrderByDirection,
+  onSnapshot
 } from 'firebase/firestore';
 
 // Type definitions
@@ -257,6 +258,7 @@ interface Message extends BaseDocument {
 class DatabaseService {
   private db: Firestore | null;
 
+<<<<<<< HEAD
   constructor() {
     this.db = getFirebaseFirestore();
     if (!this.db) {
@@ -267,6 +269,12 @@ class DatabaseService {
   // Generic method to get a collection reference
   private _getCollection(collectionName: string): CollectionReference<DocumentData> | null {
     if (!this.db) return null;
+=======
+  private _getCollection(collectionName: string) {
+    if (!this.db) {
+        throw new Error("Firestore is not initialized.");
+    }
+>>>>>>> origin/master
     return collection(this.db, collectionName);
   }
 
@@ -603,6 +611,7 @@ class DatabaseService {
   };
 }
 
+<<<<<<< HEAD
 export const databaseService = new DatabaseService();
 
 // Export types for use in other parts of the application
@@ -629,3 +638,31 @@ export type {
   Task,
   Message,
 };
+=======
+export const dbService = new DatabaseService();
+
+const createServiceMethods = (collectionName: string) => ({
+    getAll: (options: QueryOptions = {}) => dbService.getAll(collectionName, options),
+    getById: (id: string) => dbService.getById(collectionName, id),
+    create: (data: any) => dbService.create(collectionName, data),
+    update: (id: string, data: any) => dbService.update(collectionName, id, data),
+    delete: (id: string) => dbService.delete(collectionName, id),
+    listen: (id: string, onUpdate: (data: any | null) => void) => dbService.listen(collectionName, id, onUpdate)
+});
+
+// Create specific service namespaces
+dbService.patients = createServiceMethods('patients');
+dbService.providers = createServiceMethods('providers');
+dbService.orders = createServiceMethods('orders');
+dbService.sessions = createServiceMethods('sessions');
+dbService.discounts = createServiceMethods('discounts');
+dbService.pharmacies = createServiceMethods('pharmacies');
+dbService.products = createServiceMethods('products');
+dbService.resources = createServiceMethods('resources');
+dbService.tags = createServiceMethods('tags');
+dbService.invoices = createServiceMethods('invoices');
+dbService.auditLogs = createServiceMethods('audit_logs');
+dbService.tasks = createServiceMethods('tasks');
+dbService.messages = createServiceMethods('conversations');
+dbService.insurance_documents = createServiceMethods('insurance_documents');
+>>>>>>> origin/master

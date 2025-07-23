@@ -6,7 +6,7 @@
 
 import { dynamicFormService } from './dynamicFormService';
 import { aiRecommendationService } from './aiRecommendationService';
-import { dbService } from './database/hooks';
+import { dbService } from '@/services/database/index';
 
 // --- Type Definitions ---
 interface IntakeProcessingResult {

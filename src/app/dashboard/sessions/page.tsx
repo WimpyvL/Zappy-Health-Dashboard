@@ -15,8 +15,14 @@ import { ScheduleSessionModal } from "./components/schedule-session-modal";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { useRouter, useSearchParams } from 'next/navigation';
+<<<<<<< HEAD
+import { format } from "date-fns";
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { dbService } from '@/services/database/index';
+=======
 import { format, startOfDay, endOfDay, subDays, subWeeks, subMonths } from "date-fns";
 import { useSessions, useCreateSession, useUpdateSessionStatus, useProviders } from '@/services/database/hooks';
+>>>>>>> 082014b070ec071384e295ef193136d2365d50a8
 import { telehealthFlowOrchestrator } from '@/services/telehealthFlowOrchestrator';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Timestamp } from 'firebase/firestore';

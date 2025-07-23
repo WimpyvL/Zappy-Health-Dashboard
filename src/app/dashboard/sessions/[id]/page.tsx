@@ -13,7 +13,7 @@ import { useRouter } from 'next/navigation';
 import Loading from "./loading";
 import Error from "../error";
 import { useQuery } from '@tanstack/react-query';
-import { dbService } from '@/services/database';
+import { dbService } from '@/services/database/index';
 
 const fetchSessionData = async (sessionId: string) => {
     if (!sessionId) return null;

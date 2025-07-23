@@ -11,7 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from 'date-fns';
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery } from '@tanstack/react-query';
-import { dbService } from '@/services/database';
+import { dbService } from '@/services/database/index';
 
 type TagItem = {
   id: string;

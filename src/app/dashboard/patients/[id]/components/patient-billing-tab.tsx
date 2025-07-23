@@ -1,24 +1,18 @@
 
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { CreditCard, FileStack, History, Plus } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from 'date-fns';
-<<<<<<< HEAD
-import { useToast } from "@/hooks/use-toast";
-import { Badge } from "@/components/ui/badge";
-import { useQuery } from '@tanstack/react-query';
-import { dbService } from '@/services/database';
-=======
 import { getFirebaseFirestore } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { PaymentModal } from "@/components/billing/PaymentModal";
->>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
+import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
 
 interface PatientBillingTabProps {
   patientId: string;
@@ -31,30 +25,7 @@ type Invoice = {
   status: 'Paid' | 'Pending' | 'Overdue';
 }
 
-const fetchBillingData = async (patientId: string) => {
-    if (!patientId) return [];
-    const response = await dbService.getAll<Invoice>('invoices', {
-        filters: [{ field: 'patientId', op: '==', value: patientId }],
-        sortBy: 'dueDate',
-        sortDirection: 'desc'
-    });
-    if (response.error || !response.data) throw new Error(response.error || 'Failed to fetch billing data');
-    return response.data;
-};
-
 export function PatientBillingTab({ patientId }: PatientBillingTabProps) {
-<<<<<<< HEAD
-  const { toast } = useToast();
-  const { data: invoices = [], isLoading: loading } = useQuery<Invoice[], Error>({
-    queryKey: ['patientBilling', patientId],
-    queryFn: () => fetchBillingData(patientId),
-    enabled: !!patientId,
-    onError: (error) => toast({ variant: "destructive", title: "Error", description: error.message }),
-  });
-  
-  return (
-    <div className="space-y-6">
-=======
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
@@ -194,7 +165,6 @@ export function PatientBillingTab({ patientId }: PatientBillingTabProps) {
       </Card>
 
       {/* Invoices Card */}
->>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
       <Card>
         <CardHeader><CardTitle>Invoices</CardTitle></CardHeader>
         <CardContent>
@@ -207,9 +177,6 @@ export function PatientBillingTab({ patientId }: PatientBillingTabProps) {
                         <TableCell>{invoice.id.substring(0,8)}</TableCell>
                         <TableCell>{format(invoice.dueDate.toDate(), 'MMM dd, yyyy')}</TableCell>
                         <TableCell>${invoice.amount.toFixed(2)}</TableCell>
-<<<<<<< HEAD
-                        <TableCell><Badge>{invoice.status}</Badge></TableCell>
-=======
                         <TableCell><Badge variant={invoice.status === 'Paid' ? 'default' : 'secondary'} className={invoice.status === 'Paid' ? 'bg-green-100 text-green-800' : ''}>{invoice.status}</Badge></TableCell>
                         <TableCell>
                           <div className="flex gap-2">
@@ -225,7 +192,6 @@ export function PatientBillingTab({ patientId }: PatientBillingTabProps) {
                             )}
                           </div>
                         </TableCell>
->>>>>>> c86808d0b17111ddc9466985cfb4fdb8d15a6bfb
                     </TableRow>
                 ))
               }

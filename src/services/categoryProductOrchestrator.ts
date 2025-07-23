@@ -1,7 +1,7 @@
 /**
  * @fileoverview Service for orchestrating logic between categories, products, and subscriptions.
  */
-import { dbService } from './database/hooks';
+import { dbService } from '@/services/database/index';
 
 export interface Product {
   id: string;
