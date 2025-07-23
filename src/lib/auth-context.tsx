@@ -1,3 +1,4 @@
+
 // src/lib/auth-context.tsx
 "use client";
 
@@ -14,7 +15,7 @@ import {
 import { getDoc, setDoc, doc, Timestamp, connectFirestoreEmulator } from 'firebase/firestore';
 import { db, auth, isDevelopment } from './firebase';
 import { useRouter } from 'next/navigation';
-import { User as AppUser, UserRole } from '@/types/user';
+import { AppUser, UserRole } from '@/types/user';
 import { connectDataConnectEmulator, getDataConnect, DataConnect } from 'firebase/data-connect';
 import { connectorConfig } from '@firebasegen/default-connector';
 
@@ -83,8 +84,6 @@ const signUp = async (email: string, password: string, userData: { firstName: st
       errorMessage = "The password is too weak. Please choose a stronger password.";
     } else if (error.code === 'auth/invalid-email') {
       errorMessage = "The email address is not valid.";
-    } else if (error.code === 'auth/invalid-credential') {
-      errorMessage = "There was an issue creating your account. Please check your details and try again.";
     }
     throw new Error(errorMessage);
   }
@@ -112,10 +111,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const userDocRef = doc(db, 'users', firebaseUser.uid);
         const userDoc = await getDoc(userDocRef);
         if (userDoc.exists()) {
-          const userData = userDoc.data();
+          const userData = userDoc.data() as AppUser;
           setUser({ ...firebaseUser, ...userData } as AuthUser);
         } else {
-          setUser(firebaseUser as AuthUser);
+          // This is a new user who just signed up, create their doc if it doesn't exist
+          // This case might happen if signup page and auth context are out of sync.
+          // Fallback to creating a basic patient profile.
+          const basicUserData = {
+            authId: firebaseUser.uid,
+            email: firebaseUser.email || '',
+            role: 'patient' as UserRole,
+            firstName: firebaseUser.displayName?.split(' ')[0] || '',
+            lastName: firebaseUser.displayName?.split(' ').slice(1).join(' ') || '',
+            createdAt: Timestamp.now(),
+            updatedAt: Timestamp.now()
+          };
+          await setDoc(userDocRef, basicUserData);
+          setUser({ ...firebaseUser, ...basicUserData } as AuthUser);
         }
       } else {
         setUser(null);
@@ -128,6 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     await signOut(auth);
+    setUser(null);
     router.push('/');
   };
 

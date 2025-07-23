@@ -65,7 +65,11 @@ export default function AuthPage() {
 
   React.useEffect(() => {
     if (!authLoading && user) {
-      router.push("/dashboard");
+      if (user.role === 'admin' || user.role === 'provider') {
+        router.push("/dashboard");
+      } else {
+        router.push("/my-services");
+      }
     }
   }, [user, authLoading, router]);
 
@@ -73,7 +77,7 @@ export default function AuthPage() {
     setIsSubmitting(true);
     try {
       await signIn(values.email, values.password);
-      router.push("/dashboard");
+      // The useEffect will handle redirection
     } catch (error: any) {
       toast({
         variant: "destructive",
@@ -109,7 +113,7 @@ export default function AuthPage() {
     }
   };
 
-  if (authLoading) {
+  if (authLoading || (!authLoading && user)) {
     return (
       <main className="flex min-h-screen w-full flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

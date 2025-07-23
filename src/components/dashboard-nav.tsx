@@ -35,6 +35,7 @@ import {
   SidebarGroupLabel,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
+import { useAuth } from "@/lib/auth-context";
 
 const adminNavGroups = [
     {
@@ -95,9 +96,8 @@ const patientNavGroups = [
         label: "My Health",
         items: [
             { href: "/my-services", label: "My Services", icon: Heart },
-            { href: "/shop", label: "Explore Services", icon: ShoppingBag },
+            { href: "/dashboard/shop", label: "Explore Services", icon: ShoppingBag },
             { href: "/dashboard/orders", label: "My Orders", icon: Package },
-
         ]
     },
     {
@@ -112,9 +112,7 @@ const patientNavGroups = [
             { href: "/dashboard/settings", label: "Settings", icon: Settings },
         ]
     }
-]
-
-import { useAuth } from "@/lib/auth-context";
+];
 
 export function DashboardNav() {
   const pathname = usePathname();
@@ -127,11 +125,8 @@ export function DashboardNav() {
     if (!pathname) return false;
     
     // Exact match for the dashboard, otherwise startsWith for nested routes
-    if (href === "/dashboard") {
+    if (href === "/dashboard" || href === "/my-services") {
       return pathname === href;
-    }
-    if (href === "/my-services") {
-      return pathname === href || pathname === "/";
     }
     return pathname.startsWith(href);
   };
