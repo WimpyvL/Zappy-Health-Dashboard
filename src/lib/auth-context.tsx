@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
@@ -15,9 +14,6 @@ import { getFirebaseAuth, getFirebaseFirestore } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { getDataConnect, connectDataConnectEmulator, DataConnect } from 'firebase/data-connect';
-import { connectorConfig } from '@firebasegen/default-connector';
-
 
 // User roles
 export type UserRole = 'admin' | 'provider' | 'patient';
@@ -68,7 +64,6 @@ export interface AuthUser extends Partial<User> {
 interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
-  dataConnect: DataConnect | null;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, userData: Partial<AuthUser>) => Promise<void>;
   logout: () => Promise<void>;
@@ -157,7 +152,6 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [dataConnect, setDataConnect] = useState<DataConnect | null>(null);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -174,20 +168,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Auth state listener - TEMPORARILY DISABLED
   useEffect(() => {
-    // This effect runs only on the client-side after hydration
-    
-    // Initialize Data Connect
-    const dc = getDataConnect(connectorConfig);
-    if (process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true') {
-        console.log("Connecting to Data Connect emulator");
-        try {
-          connectDataConnectEmulator(dc, '127.0.0.1', 9399);
-        } catch (e) {
-          console.error("Failed to connect to Data Connect emulator", e);
-        }
-    }
-    setDataConnect(dc);
-
     // Immediately set a mock admin user to bypass login
     console.warn("Authentication is temporarily disabled. A mock admin user is being used.");
     const mockAdminUser: AuthUser = {
@@ -202,9 +182,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(false);
   }, []);
 
-
   // Sign in function - will not be used while auth is disabled
   const signIn = async (email: string, password: string) => {
+<<<<<<< HEAD
     try {
       setLoading(true);
       
@@ -293,6 +273,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setLoading(false);
     }
   };
+=======
+    toast({ title: "Auth Disabled", description: "Login is temporarily disabled." });
+>>>>>>> dd48230f1490504a7bf658f14b4c77975720fb3c
   };
 
   // Sign up function
@@ -461,7 +444,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const value = {
     user,
     loading,
-    dataConnect,
     signIn,
     signUp,
     logout,

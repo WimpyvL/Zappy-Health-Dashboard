@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react";
@@ -98,6 +97,7 @@ export default function AuthPage() {
         title: "Sign Up Failed",
         description: error.message,
       });
+<<<<<<< HEAD
     } finally {
       setLoading(false);
     }
@@ -118,6 +118,8 @@ export default function AuthPage() {
       // Error is handled in auth context
       console.error("Demo login error:", error);
     
+=======
+>>>>>>> dd48230f1490504a7bf658f14b4c77975720fb3c
     } finally {
       setLoading(false);
     }
@@ -125,6 +127,7 @@ export default function AuthPage() {
 
   return (
     <main className="flex min-h-screen w-full flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
+<<<<<<< HEAD
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
@@ -235,6 +238,9 @@ export default function AuthPage() {
     </main>
   );
 }
+=======
+      <AdminSelector />
+>>>>>>> dd48230f1490504a7bf658f14b4c77975720fb3c
     </main>
   );
 }
