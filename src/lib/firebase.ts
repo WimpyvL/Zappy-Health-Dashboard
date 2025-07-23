@@ -1,73 +1,61 @@
 // src/lib/firebase.ts
-// This is the single source of truth for Firebase client-side initialization.
-import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
-import { getFirestore, Firestore, connectFirestoreEmulator } from "firebase/firestore";
-import { getAuth, Auth, connectAuthEmulator } from "firebase/auth";
+import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
+import { getFirestore, Firestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { getAuth, Auth, connectAuthEmulator } from 'firebase/auth';
 
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  apiKey: "AIzaSyBVV_vq5fjNSASYQndmbRbEtlfyOieFVTs",
+  authDomain: "zappy-health-c1kob.firebaseapp.com",
+  databaseURL: "https://zappy-health-c1kob-default-rtdb.firebaseio.com",
+  projectId: "zappy-health-c1kob",
+  storageBucket: "zappy-health-c1kob.appspot.com",
+  messagingSenderId: "833435237612",
+  appId: "1:833435237612:web:53731373b2ad7568f279c9"
 };
 
-const isDevelopmentMode = process.env.NODE_ENV === 'development';
+let app: FirebaseApp;
+let auth: Auth;
+let db: Firestore;
+
+const isDevelopment = process.env.NODE_ENV === 'development';
 const useEmulator = process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true';
 
-function getFirebaseApp(): FirebaseApp {
+try {
   if (getApps().length === 0) {
-    try {
-      const newApp = initializeApp(firebaseConfig);
-      console.log('🔥 Firebase app initialized.');
-      return newApp;
-    } catch (error) {
-      console.error('❌ Firebase initialization failed:', error);
-      throw error;
-    }
+    app = initializeApp(firebaseConfig);
+    console.log('🔥 Firebase app initialized.');
+  } else {
+    app = getApp();
   }
-  return getApp();
-}
 
-let authInstance: Auth | null = null;
-function getFirebaseAuth(): Auth {
-  if (!authInstance) {
-    authInstance = getAuth(getFirebaseApp());
-    if (isDevelopmentMode && useEmulator) {
-      try {
-        connectAuthEmulator(authInstance, 'http://localhost:9099');
-        console.log('🔐 Connected to Auth emulator');
-      } catch (e) {
-        console.warn('🔐 Auth emulator already connected or connection failed.');
-      }
+  auth = getAuth(app);
+  db = getFirestore(app);
+
+  if (isDevelopment && useEmulator) {
+    // Check if emulators are already connected to prevent re-connection errors
+    if (!(auth as any)._emulatorUrl) {
+      connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
+      console.log('🔐 Connected to Auth emulator');
     }
-  }
-  return authInstance;
-}
-
-let dbInstance: Firestore | null = null;
-function getFirebaseFirestore(): Firestore {
-  if (!dbInstance) {
-    dbInstance = getFirestore(getFirebaseApp());
-    if (isDevelopmentMode && useEmulator) {
-      try {
-        connectFirestoreEmulator(dbInstance, 'localhost', 8080);
+    
+    // Firestore emulator connection check is more complex, relying on settings.
+    // A simple check might involve checking the host. This is a basic approach.
+    const dbSettings = (db as any)._settings;
+    if (dbSettings && !dbSettings.host.includes('localhost')) {
+        connectFirestoreEmulator(db, 'localhost', 8080);
         console.log('📡 Connected to Firestore emulator');
-      } catch (e) {
-        console.warn('📡 Firestore emulator already connected or connection failed.');
-      }
     }
   }
-  return dbInstance;
+} catch (error) {
+    console.error("Firebase initialization error:", error);
 }
 
-// Export the getter functions as the main interface
-export { getFirebaseApp, getFirebaseFirestore, getFirebaseAuth, isDevelopmentMode };
 
-// For backward compatibility with files expecting direct exports (less safe)
-const app = getFirebaseApp();
-const auth = getFirebaseAuth();
-const db = getFirebaseFirestore();
+export { app, auth, db, isDevelopment };
 
-export { app, auth, db };
+export const getFirebaseFirestore = () => {
+    if (!db) {
+      console.error("Firestore is not initialized.");
+    }
+    return db;
+};
