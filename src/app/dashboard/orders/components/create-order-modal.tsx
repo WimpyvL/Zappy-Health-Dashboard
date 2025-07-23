@@ -1,18 +1,18 @@
-
 "use client";
 
-import * as React from "react";
-import { z } from "zod";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useForm } from "react-hook-form";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -20,9 +20,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Textarea } from "@/components/ui/textarea";
-import { X } from "lucide-react";
 
 interface CreateOrderModalProps {
   isOpen: boolean;
@@ -30,159 +27,133 @@ interface CreateOrderModalProps {
   onSubmit: (values: any) => void;
 }
 
-const formSchema = z.object({
-  patientId: z.string().min(1, "Patient is required"),
-  medication: z.string().min(1, "Medication/Product is required"),
-  pharmacy: z.string().min(1, "Pharmacy is required"),
-  linkedSession: z.string().optional(),
-  notes: z.string().optional(),
-});
-
 export function CreateOrderModal({ isOpen, onClose, onSubmit }: CreateOrderModalProps) {
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-        patientId: "",
-        medication: "",
-        pharmacy: "",
-        linkedSession: "",
-        notes: "",
-    }
+  const [formData, setFormData] = useState({
+    patientId: "",
+    providerId: "",
+    items: "",
+    totalAmount: "",
+    shippingAddress: "",
+    notes: "",
   });
 
-  const handleSubmit = (values: z.infer<typeof formSchema>) => {
-    onSubmit(values);
-    form.reset();
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSubmit(formData);
+    setFormData({
+      patientId: "",
+      providerId: "",
+      items: "",
+      totalAmount: "",
+      shippingAddress: "",
+      notes: "",
+    });
+  };
+
+  const handleChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[480px] p-0" hideCloseButton>
-        <DialogHeader className="p-6 pb-4 flex flex-row items-center justify-between">
-          <DialogTitle className="text-lg font-semibold">Create New Order</DialogTitle>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onClose}>
-              <X className="h-4 w-4" />
-          </Button>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Create New Order</DialogTitle>
+          <DialogDescription>
+            Create a new order for a patient.
+          </DialogDescription>
         </DialogHeader>
-        <div className="px-6 pb-6">
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="patientId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Patient <span className="text-destructive">*</span></FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a patient" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {/* This should be populated with real patient data */}
-                        <SelectItem value="patient1_id">John Doe</SelectItem>
-                        <SelectItem value="patient2_id">Jane Smith</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
+        <form onSubmit={handleSubmit}>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="patientId" className="text-right">
+                Patient ID
+              </Label>
+              <Input
+                id="patientId"
+                value={formData.patientId}
+                onChange={(e) => handleChange("patientId", e.target.value)}
+                className="col-span-3"
+                placeholder="Enter patient ID"
+                required
               />
-
-              <FormField
-                control={form.control}
-                name="medication"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Medication/Product <span className="text-destructive">*</span></FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a medication or product" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                         {/* This should be populated with real product data */}
-                        <SelectItem value="Semaglutide">Semaglutide</SelectItem>
-                        <SelectItem value="Metformin">Metformin</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="providerId" className="text-right">
+                Provider ID
+              </Label>
+              <Input
+                id="providerId"
+                value={formData.providerId}
+                onChange={(e) => handleChange("providerId", e.target.value)}
+                className="col-span-3"
+                placeholder="Enter provider ID"
+                required
               />
-
-              <FormField
-                control={form.control}
-                name="pharmacy"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Pharmacy <span className="text-destructive">*</span></FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a pharmacy" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {/* This should be populated with real pharmacy data */}
-                        <SelectItem value="CVS Main Street">CVS Main Street</SelectItem>
-                        <SelectItem value="Walgreens Downtown">Walgreens Downtown</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="items" className="text-right">
+                Items
+              </Label>
+              <Textarea
+                id="items"
+                value={formData.items}
+                onChange={(e) => handleChange("items", e.target.value)}
+                className="col-span-3"
+                placeholder="List items for this order"
+                rows={3}
+                required
               />
-
-              <FormField
-                control={form.control}
-                name="linkedSession"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Linked Session (Optional)</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a session (optional)" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {/* This should be populated with real session data */}
-                        <SelectItem value="session1">Session on Jul 14, 2025</SelectItem>
-                        <SelectItem value="session2">Session on Jul 10, 2025</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="totalAmount" className="text-right">
+                Total Amount
+              </Label>
+              <Input
+                id="totalAmount"
+                type="number"
+                step="0.01"
+                value={formData.totalAmount}
+                onChange={(e) => handleChange("totalAmount", e.target.value)}
+                className="col-span-3"
+                placeholder="0.00"
+                required
               />
-
-              <FormField
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Notes</FormLabel>
-                    <FormControl>
-                      <Textarea placeholder="Add any notes about this order..." {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="shippingAddress" className="text-right">
+                Shipping Address
+              </Label>
+              <Textarea
+                id="shippingAddress"
+                value={formData.shippingAddress}
+                onChange={(e) => handleChange("shippingAddress", e.target.value)}
+                className="col-span-3"
+                placeholder="Enter shipping address"
+                rows={2}
               />
-            </form>
-          </Form>
-        </div>
-        <DialogFooter className="p-6 pt-4 border-t">
-          <Button type="button" variant="outline" onClick={onClose}>
-            Cancel
-          </Button>
-          <Button type="submit" onClick={form.handleSubmit(handleSubmit)}>
-            Create Order
-          </Button>
-        </DialogFooter>
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="notes" className="text-right">
+                Notes
+              </Label>
+              <Textarea
+                id="notes"
+                value={formData.notes}
+                onChange={(e) => handleChange("notes", e.target.value)}
+                className="col-span-3"
+                placeholder="Additional notes"
+                rows={2}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button type="submit">Create Order</Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

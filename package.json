@@ -18,8 +18,8 @@
     "dev:db": "firebase emulators:start --only firestore,auth",
     "db:backup": "firebase firestore:export ./backups/$(date +%Y%m%d_%H%M%S)",
     "db:restore": "firebase firestore:import",
-    "deploy:staging": "vercel --target staging",
-    "deploy:prod": "vercel --prod",
+    "deploy:staging": "npm run build && firebase deploy --only hosting",
+    "deploy:prod": "npm run build && firebase deploy --only hosting",
     "postbuild": "next-sitemap",
     "prepare": "husky install",
     "postinstall": "patch-package"
@@ -77,6 +77,7 @@
     "genkit": "^1.15.2",
     "lodash": "^4.17.21",
     "lucide-react": "^0.475.0",
+    "nanoid": "^5.1.5",
     "next": "15.3.3",
     "patch-package": "^8.0.0",
     "react": "^18.3.1",
@@ -88,7 +89,8 @@
     "tailwind-merge": "^3.0.1",
     "tailwindcss-animate": "^1.0.7",
     "twilio": "^5.7.3",
-    "zod": "^3.25.76"
+    "zod": "^3.25.76",
+    "zustand": "^5.0.6"
   },
   "devDependencies": {
     "@babel/core": "^7.28.0",
@@ -116,6 +118,7 @@
     "eslint-config-next": "14.0.0",
     "eslint-config-prettier": "^9.0.0",
     "eslint-plugin-prettier": "^5.0.0",
+    "firebase-tools": "^14.11.1",
     "genkit-cli": "^1.14.1",
     "husky": "^8.0.0",
     "jest": "^29.0.0",

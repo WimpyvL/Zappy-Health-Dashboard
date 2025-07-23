@@ -18,7 +18,7 @@ import { ViewMessageModal } from "../../messages/components/view-message-modal";
 import Loading from "./loading";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from '@tanstack/react-query';
-import { dbService } from '@/services/database/index';
+import { databaseService } from '@/services/database/index';
 
 // Types
 type Patient = {
@@ -37,24 +37,24 @@ type Patient = {
 
 const fetchPatientData = async (patientId: string) => {
     if (!patientId) return null;
-    const response = await dbService.getById<any>('patients', patientId);
-    if (response.error || !response.data) throw new Error(response.error || 'Patient not found');
+    const response = await databaseService.patients.getById(patientId);
+    if (response.error || !response.data) throw new Error(response.error?.message || 'Patient not found');
     
     const data = response.data;
-    const dob = data.dob?.toDate ? data.dob.toDate() : new Date();
+    const dob = data.dateOfBirth ? new Date(data.dateOfBirth) : new Date();
     const age = new Date().getFullYear() - dob.getFullYear();
 
     return {
+        ...data,
         id: data.id,
-        name: `${data.firstName || ''} ${data.lastName || ''}`.trim(),
-        initials: `${data.firstName?.[0] || ''}${data.lastName?.[0] || ''}`,
+        name: data.name || 'N/A',
+        initials: data.name ? data.name.split(' ').map(n => n[0]).join('').toUpperCase() : 'NA',
         age: `${age} years`,
         email: data.email || 'N/A',
         phone: data.phone || 'N/A',
-        status: data.status || 'Active',
-        registrationDate: data.createdAt?.toDate ? data.createdAt.toDate().toLocaleDateString() : 'N/A',
+        status: 'Active' as const,
+        registrationDate: data.createdAt ? new Date(data.createdAt).toLocaleDateString() : 'N/A',
         lastLogin: 'Today', // This would come from auth or a separate field
-        ...data
     } as Patient;
 };
 
@@ -65,16 +65,22 @@ const tabs = [
     { name: "Billing", icon: CreditCard },
 ];
 
-export default function PatientDetailPage({ params }: { params: { id: string } }) {
+export default function PatientDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const [activeTab, setActiveTab] = React.useState("Patient Info");
   const { toast } = useToast();
+  const resolvedParams = React.use(params);
 
   const { data: patient, isLoading: loading, error } = useQuery<Patient | null, Error>({
-    queryKey: ['patient', params.id],
-    queryFn: () => fetchPatientData(params.id),
-    enabled: !!params.id,
-    onError: (err) => toast({ variant: 'destructive', title: 'Error fetching patient data', description: err.message }),
+    queryKey: ['patient', resolvedParams.id],
+    queryFn: () => fetchPatientData(resolvedParams.id),
+    enabled: !!resolvedParams.id,
   });
+
+  React.useEffect(() => {
+    if (error) {
+      toast({ variant: 'destructive', title: 'Error fetching patient data', description: error.message });
+    }
+  }, [error, toast]);
 
   if (loading) return <Loading />;
   if (error || !patient) return <div className="text-center p-8">Patient not found.</div>;
@@ -82,9 +88,9 @@ export default function PatientDetailPage({ params }: { params: { id: string } }
   const renderTabContent = () => {
     switch(activeTab) {
         case 'Patient Info': return <PatientInfoTab patient={patient} isLoading={loading} />;
-        case 'Orders': return <PatientOrdersTab patientId={params.id} />;
-        case 'Billing': return <PatientBillingTab patientId={params.id} />;
-        case 'Notes': return <PatientNotesTab patientId={params.id} />;
+        case 'Orders': return <PatientOrdersTab patientId={resolvedParams.id} />;
+        case 'Billing': return <PatientBillingTab patientId={resolvedParams.id} />;
+        case 'Notes': return <PatientNotesTab patientId={resolvedParams.id} />;
         default: return <Card><CardContent className="h-96 flex items-center justify-center"><p>{activeTab} content goes here.</p></CardContent></Card>;
     }
   }

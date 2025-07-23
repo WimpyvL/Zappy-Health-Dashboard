@@ -42,12 +42,10 @@ import { PatientFormModal } from "./components/patient-form-modal";
 import { ViewMessageModal } from "../messages/components/view-message-modal";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import { User } from '@/dataconnect-generated/js/default-connector'
 import { useAuth } from "@/lib/auth-context";
 
 // Import the new centralized service hooks
-import { useCreatePatient, useUpdatePatient, Patient } from "@/services/database/hooks";
-import { useListUsers } from "@firebasegen/default-connector/react";
+import { usePatients, useCreatePatient, useUpdatePatient, type Patient } from "@/services/database/hooks";
 
 // This type is used by ViewMessageModal, which expects a message object.
 // We'll adapt the patient object to fit this structure for now.
@@ -88,11 +86,10 @@ export default function PatientsPage() {
   const [isMessageModalOpen, setIsMessageModalOpen] = React.useState(false);
   const [selectedMessage, setSelectedMessage] = React.useState<Message | null>(null);
   const { toast } = useToast();
-  const { dataConnect } = useAuth(); // Use the configured DataConnect instance from auth context
 
   // Use the new centralized hooks
-  const { data: queryData, isLoading: loading, error } = useListUsers(dataConnect); // Pass the instance here
-  const patients = queryData?.users;
+  const { data: patientsData, isLoading: loading, error } = usePatients();
+  const patients = patientsData?.data || [];
   const createPatientMutation = useCreatePatient();
   const updatePatientMutation = useUpdatePatient();
 
@@ -252,13 +249,13 @@ export default function PatientsPage() {
                     </TableRow>
                   ))
                 ) : (
-                  patients?.map((patient: User) => (
-                  <TableRow key={patient.authId}>
+                  patients?.map((patient: Patient) => (
+                  <TableRow key={patient.id}>
                     <TableCell>
                       <Checkbox />
                     </TableCell>
                     <TableCell>
-                      <Link href={`/dashboard/patients/${patient.authId}`} className="font-medium text-primary hover:underline">{`${patient.firstName} ${patient.lastName}`}</Link>
+                      <Link href={`/dashboard/patients/${patient.id}`} className="font-medium text-primary hover:underline">{`${patient.firstName || ''} ${patient.lastName || ''}`.trim() || 'N/A'}</Link>
                       <div className="text-sm text-muted-foreground">
                         {patient.email}
                       </div>

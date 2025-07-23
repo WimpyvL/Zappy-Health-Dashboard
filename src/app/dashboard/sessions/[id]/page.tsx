@@ -13,19 +13,22 @@ import { useRouter } from 'next/navigation';
 import Loading from "./loading";
 import Error from "../error";
 import { useQuery } from '@tanstack/react-query';
-import { dbService } from '@/services/database/index';
+import { databaseService, type Session, type Patient } from '@/services/database/index';
 
-const fetchSessionData = async (sessionId: string) => {
+const fetchSessionData = async (sessionId: string): Promise<{ session: Session; patient: Patient | null } | null> => {
     if (!sessionId) return null;
     
-    const sessionRes = await dbService.getById<any>('sessions', sessionId);
-    if (sessionRes.error || !sessionRes.data) throw new Error(sessionRes.error || 'Session not found.');
+    const sessionRes = await databaseService.sessions.getById(sessionId);
+    if (sessionRes.error || !sessionRes.data) {
+        const errorMessage = sessionRes.error?.message || 'Session not found.';
+        throw new Error(errorMessage);
+    }
     
     const sessionData = sessionRes.data;
     let patientData = null;
 
     if (sessionData.patientId) {
-        const patientRes = await dbService.getById<any>('patients', sessionData.patientId);
+        const patientRes = await databaseService.patients.getById(sessionData.patientId);
         if (patientRes.data) {
             patientData = patientRes.data;
         }
@@ -33,20 +36,24 @@ const fetchSessionData = async (sessionId: string) => {
     return { session: sessionData, patient: patientData };
 };
 
-export default function EditSessionPage({ params }: { params: { id: string } }) {
+export default function EditSessionPage({ params }: { params: Promise<{ id: string }> }) {
   const { toast } = useToast();
   const router = useRouter();
+  const resolvedParams = React.use(params);
 
   const { data, isLoading: loading, error } = useQuery({
-    queryKey: ['session', params.id],
-    queryFn: () => fetchSessionData(params.id),
-    enabled: !!params.id,
-    onError: (err: Error) => {
-        toast({ variant: "destructive", title: "Error loading session", description: err.message });
-    }
+    queryKey: ['session', resolvedParams.id],
+    queryFn: () => fetchSessionData(resolvedParams.id),
+    enabled: !!resolvedParams.id,
   });
 
-  const { session, patient } = data || {};
+  React.useEffect(() => {
+    if (error) {
+      toast({ variant: "destructive", title: "Error loading session", description: (error as Error).message });
+    }
+  }, [error, toast]);
+
+  const { session, patient } = data || { session: null, patient: null };
 
   if (loading) return <Loading />;
   if (error) return <Error error={error as Error} reset={() => window.location.reload()} />;
@@ -60,7 +67,7 @@ export default function EditSessionPage({ params }: { params: { id: string } }) 
           <h1 className="text-2xl font-bold">{session.type?.replace(/_/g, ' ')} Review</h1>
            {patient && (
             <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                <span className="flex items-center gap-1.5"><User className="h-3 w-3" /> {patient.firstName} {patient.lastName}</span>
+                <span className="flex items-center gap-1.5"><User className="h-3 w-3" /> {patient.name}</span>
                 <span className="flex items-center gap-1.5"><Mail className="h-3 w-3" /> {patient.email}</span>
                 <span className="flex items-center gap-1.5"><Phone className="h-3 w-3" /> {patient.phone || 'N/A'}</span>
             </div>

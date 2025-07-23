@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
@@ -15,9 +14,6 @@ import { getFirebaseAuth, getFirebaseFirestore } from '@/lib/firebase';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { getDataConnect, connectDataConnectEmulator, DataConnect } from 'firebase/data-connect';
-import { connectorConfig } from '@firebasegen/default-connector';
-
 
 // User roles
 export type UserRole = 'admin' | 'provider' | 'patient';
@@ -68,7 +64,6 @@ export interface AuthUser extends Partial<User> {
 interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
-  dataConnect: DataConnect | null;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string, userData: Partial<AuthUser>) => Promise<void>;
   logout: () => Promise<void>;
@@ -157,7 +152,6 @@ export const useAuth = () => {
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
-  const [dataConnect, setDataConnect] = useState<DataConnect | null>(null);
   const router = useRouter();
   const { toast } = useToast();
 
@@ -174,20 +168,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Auth state listener - TEMPORARILY DISABLED
   useEffect(() => {
-    // This effect runs only on the client-side after hydration
-    
-    // Initialize Data Connect
-    const dc = getDataConnect(connectorConfig);
-    if (process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true') {
-        console.log("Connecting to Data Connect emulator");
-        try {
-          connectDataConnectEmulator(dc, '127.0.0.1', 9399);
-        } catch (e) {
-          console.error("Failed to connect to Data Connect emulator", e);
-        }
-    }
-    setDataConnect(dc);
-
     // Immediately set a mock admin user to bypass login
     console.warn("Authentication is temporarily disabled. A mock admin user is being used.");
     const mockAdminUser: AuthUser = {
@@ -202,100 +182,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setLoading(false);
   }, []);
 
-
   // Sign in function - will not be used while auth is disabled
   const signIn = async (email: string, password: string) => {
-<<<<<<< HEAD
     toast({ title: "Auth Disabled", description: "Login is temporarily disabled." });
-=======
-    try {
-      setLoading(true);
-      
-      // Demo mode authentication bypass for development
-      if (email.includes('@zappy.com')) {
-        console.log('🔓 Demo authentication mode');
-        
-        const role = email.includes('admin') ? 'admin' :
-                     email.includes('provider') ? 'provider' :
-                     'patient';
-        const name = role.charAt(0).toUpperCase() + role.slice(1);
-
-        // This object needs to match the structure of a real Firebase User object
-        const demoUser: AuthUser = {
-          uid: `demo-${role}`,
-          email,
-          displayName: `Demo ${name}`,
-          emailVerified: true,
-          isAnonymous: false,
-          metadata: {}, // Mock metadata
-          providerData: [],
-          providerId: 'password',
-          tenantId: null,
-          delete: async () => {},
-          getIdToken: async () => `demo-token-for-${role}`,
-          getIdTokenResult: async () => ({} as any),
-          reload: async () => {},
-          toJSON: () => ({}),
-          role: role as UserRole,
-          firstName: 'Demo',
-          lastName: name,
-        };
-        
-        setUser(demoUser);
-        toast({
-          title: "Demo Login Successful",
-          description: `Logged in as ${demoUser.role}`,
-        });
-        
-        return;
-      }
-      
-      // Real Firebase authentication for production
-      const auth = getFirebaseAuth();
-      if (!auth) {
-        throw new Error('Firebase Auth not initialized');
-      }
-      const result = await signInWithEmailAndPassword(auth, email, password);
-      const userData = await loadUserData(result.user);
-      setUser(userData);
-      
-      toast({
-        title: "Welcome back!",
-        description: "You have successfully signed in.",
-      });
-
-    } catch (error: any) {
-      let errorMessage = 'Failed to sign in';
-      
-      switch (error.code) {
-        case 'auth/user-not-found':
-          errorMessage = 'No account found with this email address';
-          break;
-        case 'auth/wrong-password':
-          errorMessage = 'Incorrect password';
-          break;
-        case 'auth/invalid-email':
-          errorMessage = 'Invalid email address';
-          break;
-        case 'auth/user-disabled':
-          errorMessage = 'This account has been disabled';
-          break;
-        case 'auth/too-many-requests':
-          errorMessage = 'Too many failed attempts. Please try again later';
-          break;
-      }
-
-      toast({
-        title: "Sign In Failed",
-        description: errorMessage,
-        variant: "destructive",
-      });
-      
-      throw new Error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
->>>>>>> 082014b070ec071384e295ef193136d2365d50a8
   };
 
   // Sign up function
@@ -464,7 +353,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const value = {
     user,
     loading,
-    dataConnect,
     signIn,
     signUp,
     logout,

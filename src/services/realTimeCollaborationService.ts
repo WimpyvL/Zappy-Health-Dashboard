@@ -61,7 +61,7 @@ export interface CollaborativeEdit {
   operation: 'insert' | 'delete' | 'replace' | 'format';
   position: CursorPosition;
   content: string;
-  previousContent?: string;
+  previousContent?: string | undefined;
   timestamp: number;
   applied: boolean;
   conflicted?: boolean;
@@ -73,7 +73,7 @@ export interface Comment {
   userId: string;
   userName: string;
   content: string;
-  position?: CursorPosition;
+  position?: CursorPosition | undefined;
   thread?: Comment[];
   status: 'active' | 'resolved' | 'deleted';
   createdAt: number;
@@ -83,7 +83,7 @@ export interface Comment {
 
 export interface DocumentLock {
   documentId: string;
-  fieldId?: string;
+  fieldId?: string | undefined;
   lockedBy: string;
   lockedAt: number;
   expiresAt: number;

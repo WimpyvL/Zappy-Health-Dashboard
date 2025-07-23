@@ -13,15 +13,16 @@ import { dynamicFormService } from "@/services/dynamicFormService";
 export default function EnhancedIntakeFormPage() {
     const params = useParams();
     const router = useRouter();
-    const flowId = params.flowId as string;
+    const resolvedParams = React.use(Promise.resolve(params));
+    const flowId = resolvedParams.flowId as string;
     
     const { flow, loading: flowLoading, submitIntakeForm } = useTelehealthFlow(flowId);
     const { toast } = useToast();
     
     const [isSubmitting, setIsSubmitting] = React.useState(false);
-    const [formSchema, setFormSchema] = React.useState(null);
+    const [formSchema, setFormSchema] = React.useState<any>(null);
     const [formLoading, setFormLoading] = React.useState(true);
-    const [formError, setFormError] = React.useState(null);
+    const [formError, setFormError] = React.useState<string | null>(null);
 
     // Load appropriate form template based on flow context
     React.useEffect(() => {
@@ -33,8 +34,8 @@ export default function EnhancedIntakeFormPage() {
 
             try {
                 const result = await dynamicFormService.getFormTemplateForProduct(
-                    flow.product_id, 
-                    flow.category_id
+                    flow.productId || null, 
+                    flow.categoryId || null
                 );
 
                 if (result.success && result.formSchema) {
@@ -61,7 +62,7 @@ export default function EnhancedIntakeFormPage() {
         }
     }, [flow, flowLoading]);
 
-    const handleFormSubmit = async (formData) => {
+    const handleFormSubmit = async (formData: any) => {
         if (!flowId || !formSchema) {
             toast({ 
                 variant: "destructive", 
@@ -93,7 +94,7 @@ export default function EnhancedIntakeFormPage() {
                 toast({
                     variant: "destructive",
                     title: "Submission Failed",
-                    description: result.error?.message || "There was a problem submitting your form. Please try again.",
+                    description: typeof result.error === 'string' ? result.error : result.error?.message || "There was a problem submitting your form. Please try again.",
                 });
             }
         } catch (error) {
@@ -166,7 +167,7 @@ export default function EnhancedIntakeFormPage() {
                 <div>
                     <h1 className="text-2xl font-bold">Patient Intake Form</h1>
                     <p className="text-muted-foreground text-sm">
-                        {flow.product_id ? 
+                        {flow.productId ? 
                             "Complete your personalized intake form for your selected consultation." :
                             "Please provide your medical information for consultation."
                         }
@@ -175,15 +176,15 @@ export default function EnhancedIntakeFormPage() {
             </div>
 
             {/* Product Context Information */}
-            {flow.product_id && (
+            {flow.productId && (
                 <Card className="max-w-2xl mx-auto w-full bg-blue-50 border-blue-200">
                     <CardContent className="pt-4">
                         <div className="flex items-center gap-2 text-sm text-blue-800">
                             <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                             <span className="font-medium">
-                                This form is customized for your {flow.product_id?.includes('weight') ? 'Weight Management' : 
-                                flow.product_id?.includes('sexual') ? 'Sexual Health' :
-                                flow.product_id?.includes('hair') ? 'Hair Loss Treatment' : 'Healthcare'} consultation
+                                This form is customized for your {flow.productId?.includes('weight') ? 'Weight Management' : 
+                                flow.productId?.includes('sexual') ? 'Sexual Health' :
+                                flow.productId?.includes('hair') ? 'Hair Loss Treatment' : 'Healthcare'} consultation
                             </span>
                         </div>
                     </CardContent>
