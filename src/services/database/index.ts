@@ -267,13 +267,9 @@ class DatabaseService {
 
   // Generic method to get a collection reference
   private _getCollection(collectionName: string): CollectionReference<DocumentData> | null {
-<<<<<<< HEAD
     if (!this.db) {
         throw new Error("Firestore is not initialized.");
     }
-=======
-    if (!this.db) return null;
->>>>>>> dd48230f1490504a7bf658f14b4c77975720fb3c
     return collection(this.db, collectionName);
   }
 
@@ -610,7 +606,6 @@ class DatabaseService {
   };
 }
 
-<<<<<<< HEAD
 export const dbService = new DatabaseService();
 export const databaseService = dbService; // For backward compatibility
 
@@ -638,10 +633,6 @@ dbService.auditLogs = createServiceMethods('audit_logs');
 dbService.tasks = createServiceMethods('tasks');
 dbService.messages = createServiceMethods('conversations');
 dbService.insurance_documents = createServiceMethods('insurance_documents');
-=======
-export const databaseService = new DatabaseService();
-export const dbService = databaseService; // Alias for backward compatibility
->>>>>>> dd48230f1490504a7bf658f14b4c77975720fb3c
 
 // Export types for use in other parts of the application
 export type {
