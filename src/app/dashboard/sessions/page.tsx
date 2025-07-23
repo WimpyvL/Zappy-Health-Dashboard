@@ -16,11 +16,8 @@ import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { format, startOfDay, endOfDay, subDays, subWeeks, subMonths } from "date-fns";
-<<<<<<< HEAD
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dbService } from '@/services/database/index';
-=======
->>>>>>> dd48230f1490504a7bf658f14b4c77975720fb3c
 import { useSessions, useCreateSession, useUpdateSessionStatus, useProviders } from '@/services/database/hooks';
 import { telehealthFlowOrchestrator } from '@/services/telehealthFlowOrchestrator';
 import { Skeleton } from "@/components/ui/skeleton";
