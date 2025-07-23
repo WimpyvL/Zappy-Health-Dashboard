@@ -23,7 +23,7 @@ import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { databaseService } from '@/services/database/index.js'
+import { databaseService } from '@/lib/database'
 import { TaskFormModal } from "./tasks/components/task-form-modal"
 import { CreateOrderModal } from "./orders/components/create-order-modal"
 import { Skeleton } from "@/components/ui/skeleton"
