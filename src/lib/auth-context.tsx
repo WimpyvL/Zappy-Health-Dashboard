@@ -91,23 +91,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signUp = async (email: string, password: string, userData: { firstName: string; lastName: string }) => {
-    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-    
-    await updateProfile(user, {
-      displayName: `${userData.firstName} ${userData.lastName}`
-    });
-    
-    const userDocRef = doc(db, 'users', user.uid);
-    await setDoc(userDocRef, {
-      authId: user.uid,
-      firstName: userData.firstName,
-      lastName: userData.lastName,
-      email: user.email,
-      role: 'patient', // Default role
-      createdAt: Timestamp.now(),
-      updatedAt: Timestamp.now()
-    });
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+      
+      // Update profile display name in Firebase Auth
+      await updateProfile(user, {
+        displayName: `${userData.firstName} ${userData.lastName}`
+      });
+      
+      // Create user document in Firestore
+      const userDocRef = doc(db, 'users', user.uid);
+      await setDoc(userDocRef, {
+        authId: user.uid,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        email: user.email,
+        role: 'patient', // Default role for new sign-ups
+        createdAt: Timestamp.now(),
+        updatedAt: Timestamp.now()
+      });
+    } catch (error: any) {
+      console.error("Sign up error:", error);
+
+      // Provide a more user-friendly error message
+      let errorMessage = "An unknown error occurred during sign-up.";
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = "This email is already in use. Please log in or use a different email.";
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = "The password is too weak. Please choose a stronger password.";
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = "The email address is not valid.";
+      } else if (error.code === 'auth/invalid-credential') {
+         errorMessage = "There was an issue creating your account. Please check your details and try again.";
+      }
+
+      // Throw the refined error to be caught by the form handler
+      throw new Error(errorMessage);
+    }
   };
 
   const logout = async () => {

@@ -2,8 +2,77 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // Helper functions
+    function isUserAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isUserRole(role) {
+      return isUserAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    }
+
+    function isOwner(userId) {
+      return isUserAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Default deny all reads/writes
     match /{document=**} {
-      allow read, write: if true;
+      allow read, write: if false;
+    }
+
+    // Users collection rules
+    match /users/{userId} {
+      // Allow user creation for anyone (sign-up)
+      allow create: if true;
+      
+      // Allow users to read/update their own profile
+      allow read, update: if isOwner(userId);
+      
+      // Admins can read/write any user profile
+      allow read, write: if isUserRole('admin');
+    }
+    
+    // Patients collection rules
+    match /patients/{patientId} {
+        // Admins and providers can do anything
+        allow read, write: if isUserRole('admin') || isUserRole('provider');
+        // Patients can only read their own record
+        allow read: if isOwner(patientId);
+    }
+
+    // Providers collection rules (Admin only)
+    match /providers/{providerId} {
+        allow read, write: if isUserRole('admin');
+    }
+    
+    // Sessions collection rules
+    match /sessions/{sessionId} {
+        allow read, write: if isUserRole('admin') || isUserRole('provider');
+        allow read: if isOwner(get(/databases/$(database)/documents/sessions/$(sessionId)).data.patientId);
+    }
+    
+    // Orders collection rules
+    match /orders/{orderId} {
+        allow read, write: if isUserRole('admin') || isUserRole('provider');
+        allow read: if isOwner(get(/databases/$(database)/documents/orders/$(orderId)).data.patientId);
+    }
+    
+    // Products collection rules
+    match /products/{productId} {
+        allow read: if isUserAuthenticated();
+        allow write: if isUserRole('admin');
+    }
+
+    // Resources collection rules
+    match /resources/{resourceId} {
+        allow read: if isUserAuthenticated();
+        allow write: if isUserRole('admin');
+    }
+    
+    // All other collections can only be accessed by admins for now
+    match /{collection}/{docId} {
+      allow read, write: if isUserRole('admin');
     }
   }
 }
