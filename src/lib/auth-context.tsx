@@ -132,40 +132,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setDataConnect(dc);
     // END: MOCK AUTHENTICATION
-
-    /*
-    // START: REAL AUTHENTICATION (Commented out)
-    const dc = getDataConnect(connectorConfig);
-    if (isDevelopment()) {
-        connectDataConnectEmulator(dc, 'localhost', 9399);
-    }
-    setDataConnect(dc);
-
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        const userDocRef = doc(db, 'users', firebaseUser.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) {
-          const userData = userDoc.data() as AppUser;
-          setUser({ ...firebaseUser, ...userData } as AuthUser);
-          if (userData.role === 'admin' || userData.role === 'provider') {
-            router.push('/dashboard');
-          } else {
-            router.push('/my-services');
-          }
-        } else {
-          // This might be a new user, handle appropriately or log out
-          setUser(null);
-        }
-      } else {
-        setUser(null);
-      }
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-    // END: REAL AUTHENTICATION
-    */
   }, []);
 
   const logout = async () => {

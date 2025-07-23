@@ -30,7 +30,7 @@ app = initializeFirebaseApp();
 auth = getAuth(app);
 db = getFirestore(app);
 
-if (typeof window !== 'undefined' && isDevelopment) {
+if (typeof window !== 'undefined' && isDevelopment()) {
   console.log('Running in development mode, connecting to emulators.');
   // Set a flag on the window object to ensure emulators are only connected once.
   if (!(window as any)._firebaseEmulatorsConnected) {
