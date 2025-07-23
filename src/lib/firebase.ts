@@ -2,7 +2,6 @@
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getFirestore, Firestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getAuth, Auth, connectAuthEmulator } from 'firebase/auth';
-import { getAppCheck, connectAppCheckEmulator } from 'firebase/app-check';
 import { isDevelopment } from './utils';
 
 const firebaseConfig = {
@@ -14,6 +13,7 @@ const firebaseConfig = {
   messagingSenderId: "833435237612",
   appId: "1:833435237612:web:53731373b2ad7568f279c9"
 };
+
 
 let app: FirebaseApp;
 let auth: Auth;
@@ -37,12 +37,15 @@ if (typeof window !== 'undefined' && isDevelopment()) {
     connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
     connectFirestoreEmulator(db, 'localhost', 8080);
     
-    // Connect to App Check emulator
-    const appCheck = getAppCheck(app);
-    connectAppCheckEmulator(appCheck, 'localhost', 9090);
+    // Dynamically import and connect to App Check emulator
+    import('firebase/app-check').then(({ getAppCheck, connectAppCheckEmulator }) => {
+      const appCheck = getAppCheck(app);
+      connectAppCheckEmulator(appCheck, 'localhost:9090', { isTokenAutoRefreshEnabled: true });
+      console.log('🔐 Connected to App Check Emulator.');
+    }).catch(e => console.error("Error connecting to App Check emulator", e));
 
     (window as any)._firebaseEmulatorsConnected = true;
-    console.log('🔐 Connected to Firebase Emulators (Auth, Firestore, App Check).');
+    console.log('🔥 Connected to Firebase Emulators (Auth, Firestore).');
   }
 }
 
