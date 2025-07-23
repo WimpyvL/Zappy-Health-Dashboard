@@ -2,14 +2,31 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Deny all reads and writes by default for Cloud Storage.
-    // You must explicitly grant access based on your app's needs.
-    // For example, to allow authenticated users to write to a 'user-uploads' folder:
-    // match /user-uploads/{userId}/{fileName} {
-    //   allow write: if request.auth != null && request.auth.uid == userId;
-    // }
-    match /{allPaths=**} {
-      allow read, write: if false;
+
+    // Rule 1: User-specific private files (e.g., profile pictures, uploaded documents)
+    // Users can only read and write to their own folder.
+    // Example path: /users/USER_ID/profile_picture.png
+    match /users/{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
+
+    // To allow a provider to read a patient's files, you would typically use
+    // Firebase Auth custom claims. After setting a custom claim like {provider: true},
+    // you could add this rule inside the match block:
+    //
+    // allow read: if request.auth.token.provider == true;
+    //
+    // This is more secure than trying to read from Firestore within Storage rules.
+
+    // Rule 2: Publicly readable assets (e.g., general product images, public guides)
+    // Anyone, including unauthenticated users, can read files from here.
+    // Writes should be restricted from the client-side. Use Admin SDKs for uploads.
+    match /public/{allPaths=**} {
+      allow read;
+      allow write: if false; // Disallow client-side writes to public assets
+    }
+
+    // Default Deny: By default, no other paths are readable or writable.
+    // This ensures that if you create a new folder, it is secure by default.
   }
 }

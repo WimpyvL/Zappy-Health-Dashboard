@@ -3,31 +3,66 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function to check if a user is authenticated
+    // --- Helper Functions ---
     function isAuthenticated() {
       return request.auth != null;
     }
 
-    // Helper function to check if the user is an admin
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function getUserData(userId) {
+      return get(/databases/$(database)/documents/users/$(userId)).data;
+    }
+
     function isAdmin() {
-      return isAuthenticated() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      return isAuthenticated() && getUserData(request.auth.uid).role == 'admin';
     }
 
-    // Rules for the 'users' collection
+    function isProvider() {
+      // Assumes a 'provider' role exists in your user documents
+      return isAuthenticated() && getUserData(request.auth.uid).role == 'provider';
+    }
+
+    // --- Collection Rules ---
+
+    // Users can manage their own profile. Admins/Providers can view profiles.
     match /users/{userId} {
-      // Any authenticated user can create their own user document during sign-up
       allow create: if isAuthenticated();
-
-      // Users can read and update their own document
-      allow read, update: if isAuthenticated() && request.auth.uid == userId;
-
-      // Admins can perform any action on any user document
-      allow read, write: if isAdmin();
+      allow read: if isOwner(userId) || isProvider() || isAdmin();
+      // Users can update their own data, but cannot change their role.
+      allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role) || isAdmin();
+      allow delete: if isAdmin(); // Only admins can delete user records
     }
 
-    // Default deny for all other collections unless explicitly allowed
-    match /{document=**} {
-      allow read, write: if isAdmin();
+    // Patients can read their own data. Providers and Admins can manage it.
+    // This assumes the patient document ID is the same as the user ID.
+    match /patients/{patientId} {
+      allow read: if isOwner(patientId) || isProvider() || isAdmin();
+      allow create, update: if isProvider() || isAdmin();
+      // It's often better to soft-delete (e.g., set an 'archived' flag)
+      // rather than allowing destructive deletes.
+      allow delete: if isAdmin();
+    }
+
+    // Users can read their own orders. Providers and Admins can manage them.
+    match /orders/{orderId} {
+      // The user who owns the order (based on patientId) can read it.
+      // Providers and Admins can also read it.
+      allow read: if (isOwner(resource.data.patientId) || isProvider() || isAdmin());
+      // A user can only create an order for themselves.
+      allow create: if isOwner(request.resource.data.patientId);
+      // Only Providers and Admins can update an order's status.
+      allow update: if isProvider() || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // Form templates and other app resources can be read by any authenticated user,
+    // but only managed by Admins to prevent tampering.
+    match /resources/{resourceId} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
     }
   }
 }

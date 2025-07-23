@@ -1,5 +1,5 @@
 import { dbService } from '@/services/database';
-import { Patient } from './types'; // Assuming a types.ts file exists for the Patient interface
+import { Patient } from '@/types/patient'; // Assuming a types.ts file exists for the Patient interface
 
 interface PatientFilters {
   status?: string;

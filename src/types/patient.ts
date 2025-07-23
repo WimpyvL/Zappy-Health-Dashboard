@@ -1,5 +1,6 @@
-export interface Patient {
-  id: string;
+import { BaseDocument } from './global';
+
+export interface Patient extends BaseDocument {
   firstName: string;
   lastName: string;
   dateOfBirth: Date;
@@ -12,7 +13,5 @@ export interface Patient {
     zipCode: string;
   };
   status: 'active' | 'inactive' | 'pending';
-  createdAt: Date;
-  updatedAt: Date;
-  providerId?: string;
+  providerId?: string; // The ID of the primary provider assigned to this patient
 }

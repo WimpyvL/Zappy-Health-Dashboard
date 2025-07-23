@@ -36,22 +36,7 @@ export enum ConsultationStatus {
   RESCHEDULED = 'rescheduled'
 }
 
-export interface Provider {
-  id: string;
-  name: string;
-  email: string;
-  specialties: string[];
-  licenseNumber: string;
-  isActive: boolean;
-  availability: ProviderAvailability[];
-}
 
-export interface ProviderAvailability {
-  dayOfWeek: number; // 0-6 (Sunday-Saturday)
-  startTime: string; // HH:mm format
-  endTime: string;   // HH:mm format
-  timezone: string;
-}
 
 export interface ConsultationFilters {
   patientId?: string;
