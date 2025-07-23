@@ -9,15 +9,15 @@ import {
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword,
   signOut,
-  updateProfile,
-  connectAuthEmulator
+  updateProfile
 } from 'firebase/auth';
-import { getDoc, setDoc, doc, Timestamp, connectFirestoreEmulator } from 'firebase/firestore';
-import { db, auth, isDevelopment } from './firebase';
+import { getDoc, setDoc, doc, Timestamp } from 'firebase/firestore';
+import { db, auth } from './firebase';
 import { useRouter } from 'next/navigation';
 import { AppUser, UserRole } from '@/types/user';
 import { connectDataConnectEmulator, getDataConnect, DataConnect } from 'firebase/data-connect';
 import { connectorConfig } from '@firebasegen/default-connector';
+import { isDevelopment } from './utils';
 
 export interface AuthUser extends AppUser, FirebaseUser {}
 
@@ -84,6 +84,8 @@ const signUp = async (email: string, password: string, userData: { firstName: st
       errorMessage = "The password is too weak. Please choose a stronger password.";
     } else if (error.code === 'auth/invalid-email') {
       errorMessage = "The email address is not valid.";
+    } else {
+        errorMessage = `Sign-up failed: ${error.code}`;
     }
     throw new Error(errorMessage);
   }
@@ -96,15 +98,48 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
-    try {
-      const dc = getDataConnect(connectorConfig);
-      if (isDevelopment) {
-        connectDataConnectEmulator(dc, 'localhost', 9399, true);
-      }
-      setDataConnect(dc);
-    } catch (e) {
-      console.error("Failed to initialize DataConnect", e);
+    // START: MOCK AUTHENTICATION
+    const mockUser: AuthUser = {
+      uid: 'mock-admin-user',
+      email: 'admin@zappy.health',
+      emailVerified: true,
+      displayName: 'Admin User',
+      isAnonymous: false,
+      photoURL: '',
+      providerData: [],
+      metadata: {},
+      providerId: 'password',
+      // AppUser properties
+      role: 'admin',
+      firstName: 'Admin',
+      lastName: 'User',
+      createdAt: Timestamp.now(),
+      updatedAt: Timestamp.now(),
+      // Dummy FirebaseUser methods
+      delete: async () => {},
+      getIdToken: async () => 'mock-token',
+      getIdTokenResult: async () => ({} as any),
+      reload: async () => {},
+      toJSON: () => ({}),
+    } as AuthUser;
+
+    setUser(mockUser);
+    setLoading(false);
+    
+    const dc = getDataConnect(connectorConfig);
+    if (isDevelopment()) {
+        connectDataConnectEmulator(dc, 'localhost', 9399);
     }
+    setDataConnect(dc);
+    // END: MOCK AUTHENTICATION
+
+    /*
+    // START: REAL AUTHENTICATION (Commented out)
+    const dc = getDataConnect(connectorConfig);
+    if (isDevelopment()) {
+        connectDataConnectEmulator(dc, 'localhost', 9399);
+    }
+    setDataConnect(dc);
 
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
@@ -113,21 +148,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (userDoc.exists()) {
           const userData = userDoc.data() as AppUser;
           setUser({ ...firebaseUser, ...userData } as AuthUser);
+          if (userData.role === 'admin' || userData.role === 'provider') {
+            router.push('/dashboard');
+          } else {
+            router.push('/my-services');
+          }
         } else {
-          // This is a new user who just signed up, create their doc if it doesn't exist
-          // This case might happen if signup page and auth context are out of sync.
-          // Fallback to creating a basic patient profile.
-          const basicUserData = {
-            authId: firebaseUser.uid,
-            email: firebaseUser.email || '',
-            role: 'patient' as UserRole,
-            firstName: firebaseUser.displayName?.split(' ')[0] || '',
-            lastName: firebaseUser.displayName?.split(' ').slice(1).join(' ') || '',
-            createdAt: Timestamp.now(),
-            updatedAt: Timestamp.now()
-          };
-          await setDoc(userDocRef, basicUserData);
-          setUser({ ...firebaseUser, ...basicUserData } as AuthUser);
+          // This might be a new user, handle appropriately or log out
+          setUser(null);
         }
       } else {
         setUser(null);
@@ -136,15 +164,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
 
     return () => unsubscribe();
+    // END: REAL AUTHENTICATION
+    */
   }, []);
 
   const logout = async () => {
-    await signOut(auth);
-    setUser(null);
+    // await signOut(auth);
+    setUser(null); // Mock logout
     router.push('/');
   };
 
   const hasPermission = (permission: string): boolean => {
+    // With mock user, always return true for admin
     return user?.role === 'admin';
   };
 
