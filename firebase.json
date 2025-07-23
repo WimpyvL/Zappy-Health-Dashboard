@@ -11,17 +11,11 @@
     "rules": "storage.rules"
   },
   "hosting": {
-    "public": ".next",
+    "public": "out",
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
-    ],
-    "rewrites": [
-      {
-        "source": "**",
-        "destination": "/index.html"
-      }
     ]
   }
 }

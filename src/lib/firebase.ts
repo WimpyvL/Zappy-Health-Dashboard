@@ -1,8 +1,8 @@
 // src/lib/firebase.ts
-// This is the single source of truth for Firebase client-side initialization.
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
 import { getFirestore, Firestore, connectFirestoreEmulator } from "firebase/firestore";
 import { getAuth, Auth, connectAuthEmulator } from "firebase/auth";
+import { getStorage, FirebaseStorage, connectStorageEmulator } from "firebase/storage";
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -16,58 +16,44 @@ const firebaseConfig = {
 const isDevelopmentMode = process.env.NODE_ENV === 'development';
 const useEmulator = process.env.NEXT_PUBLIC_USE_FIREBASE_EMULATOR === 'true';
 
-function getFirebaseApp(): FirebaseApp {
+let app: FirebaseApp;
+let auth: Auth;
+let db: Firestore;
+let storage: FirebaseStorage;
+
+function initializeFirebase() {
   if (getApps().length === 0) {
+    app = initializeApp(firebaseConfig);
+  } else {
+    app = getApp();
+  }
+
+  auth = getAuth(app);
+  db = getFirestore(app);
+  storage = getStorage(app);
+
+  if (isDevelopmentMode && useEmulator) {
     try {
-      const newApp = initializeApp(firebaseConfig);
-      console.log('🔥 Firebase app initialized.');
-      return newApp;
-    } catch (error) {
-      console.error('❌ Firebase initialization failed:', error);
-      throw error;
+      connectAuthEmulator(auth, 'http://localhost:9099');
+      console.log('🔐 Connected to Auth emulator');
+    } catch (e) {
+      console.warn('🔐 Auth emulator already connected or connection failed.');
+    }
+    try {
+      connectFirestoreEmulator(db, 'localhost', 8080);
+      console.log('📡 Connected to Firestore emulator');
+    } catch (e) {
+      console.warn('📡 Firestore emulator already connected or connection failed.');
+    }
+    try {
+      connectStorageEmulator(storage, 'localhost', 9199);
+      console.log('📦 Connected to Storage emulator');
+    } catch (e) {
+      console.warn('📦 Storage emulator already connected or connection failed.');
     }
   }
-  return getApp();
 }
 
-let authInstance: Auth | null = null;
-function getFirebaseAuth(): Auth {
-  if (!authInstance) {
-    authInstance = getAuth(getFirebaseApp());
-    if (isDevelopmentMode && useEmulator) {
-      try {
-        connectAuthEmulator(authInstance, 'http://localhost:9099');
-        console.log('🔐 Connected to Auth emulator');
-      } catch (e) {
-        console.warn('🔐 Auth emulator already connected or connection failed.');
-      }
-    }
-  }
-  return authInstance;
-}
+initializeFirebase();
 
-let dbInstance: Firestore | null = null;
-function getFirebaseFirestore(): Firestore {
-  if (!dbInstance) {
-    dbInstance = getFirestore(getFirebaseApp());
-    if (isDevelopmentMode && useEmulator) {
-      try {
-        connectFirestoreEmulator(dbInstance, 'localhost', 8080);
-        console.log('📡 Connected to Firestore emulator');
-      } catch (e) {
-        console.warn('📡 Firestore emulator already connected or connection failed.');
-      }
-    }
-  }
-  return dbInstance;
-}
-
-// Export the getter functions as the main interface
-export { getFirebaseApp, getFirebaseFirestore, getFirebaseAuth, isDevelopmentMode };
-
-// For backward compatibility with files expecting direct exports (less safe)
-const app = getFirebaseApp();
-const auth = getFirebaseAuth();
-const db = getFirebaseFirestore();
-
-export { app, auth, db };
+export { app, auth, db, storage };
