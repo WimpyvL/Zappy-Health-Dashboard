@@ -206,7 +206,7 @@ export class EnhancedSubscriptionService {
         throw new Error('Subscription plan not found');
       }
 
-      const subscriptionId = `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      const subscriptionId = `sub_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
       const now = Timestamp.now();
       
       // Calculate trial and billing dates
