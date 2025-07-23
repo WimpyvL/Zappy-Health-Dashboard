@@ -205,9 +205,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   // Sign in function - will not be used while auth is disabled
   const signIn = async (email: string, password: string) => {
-<<<<<<< HEAD
-    toast({ title: "Auth Disabled", description: "Login is temporarily disabled." });
-=======
     try {
       setLoading(true);
       
@@ -295,7 +292,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setLoading(false);
     }
->>>>>>> 082014b070ec071384e295ef193136d2365d50a8
+  };
   };
 
   // Sign up function

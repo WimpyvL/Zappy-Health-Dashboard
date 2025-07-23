@@ -2,8 +2,8 @@
 "use client";
 
 import * as React from "react";
-import { MoreHorizontal, Plus, Search, ChevronDown, Edit, Trash2 } from "lucide-react";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Edit, Plus, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -11,52 +11,110 @@ import { PharmacyFormModal } from "./components/pharmacy-form-modal";
 import { useToast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, UseQueryResult, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dbService } from '@/services/database/index';
+import type { Pharmacy as DBPharmacy, DatabaseError } from '@/services/database';
 
-type Pharmacy = {
+interface PharmacyDisplay {
   id: string;
   name: string;
+  address: string;
+  phone: string;
+  email?: string;
+  licenseNumber: string;
+  isActive: boolean;
+  prescriptions: number;
   type: "Compounding" | "Retail";
   status: "Active" | "Inactive";
-  prescriptions: number;
-};
+}
 
-const fetchPharmacies = async () => {
+type QueryError = Error;
+
+const formatPharmacy = (pharmacy: DBPharmacy): PharmacyDisplay => ({
+  id: pharmacy.id,
+  name: pharmacy.name,
+  address: pharmacy.address,
+  phone: pharmacy.phone,
+  email: pharmacy.email,
+  licenseNumber: pharmacy.licenseNumber,
+  isActive: pharmacy.isActive,
+  prescriptions: 0,
+  type: "Retail", // Default type
+  status: pharmacy.isActive ? "Active" : "Inactive"
+});
+
+const fetchPharmacies = async (): Promise<PharmacyDisplay[]> => {
     const response = await dbService.pharmacies.getAll({ sortBy: 'name' });
-    if (response.error || !response.data) throw new Error(response.error as string || 'Failed to fetch pharmacies');
-    return response.data as Pharmacy[];
+    if (response.error) {
+        throw new Error(response.error.message || 'Failed to fetch pharmacies');
+    }
+    if (!response.data) {
+        throw new Error('No pharmacies found');
+    }
+    return response.data.map(formatPharmacy);
 };
 
-const savePharmacy = async (pharmacy: Partial<Pharmacy>) => {
-    if (pharmacy.id) {
-        const { id, ...data } = pharmacy;
-        const response = await dbService.pharmacies.update(id, data);
-        if (response.error) throw new Error(response.error as string);
-        return response.data;
+const savePharmacy = async (pharmacy: Partial<PharmacyDisplay>): Promise<PharmacyDisplay> => {
+    const { id, prescriptions, type, status, ...dbPharmacy } = pharmacy;
+    
+    // Ensure required fields are present
+    if (!dbPharmacy.name || !dbPharmacy.address || !dbPharmacy.phone || !dbPharmacy.licenseNumber) {
+        throw new Error('Missing required pharmacy fields');
+    }
+
+    // Convert display model to DB model
+    const dbData = {
+        name: dbPharmacy.name,
+        address: dbPharmacy.address,
+        phone: dbPharmacy.phone,
+        email: dbPharmacy.email,
+        licenseNumber: dbPharmacy.licenseNumber,
+        isActive: status === "Active"
+    };
+
+    if (id) {
+        const response = await dbService.pharmacies.update(id, dbData);
+        if (response.error) {
+            throw new Error(response.error.message || 'Failed to update pharmacy');
+        }
+        return formatPharmacy(response.data!);
     } else {
-        const response = await dbService.pharmacies.create({ ...pharmacy, prescriptions: 0 });
-        if (response.error) throw new Error(response.error as string);
-        return response.data;
+        const response = await dbService.pharmacies.create(dbData);
+        if (response.error) {
+            throw new Error(response.error.message || 'Failed to create pharmacy');
+        }
+        return formatPharmacy(response.data!);
     }
 };
 
-const deletePharmacy = async (pharmacyId: string) => {
+const deletePharmacy = async (pharmacyId: string): Promise<void> => {
     const response = await dbService.pharmacies.delete(pharmacyId);
-    if (response.error) throw new Error(response.error as string);
+    if (response.error) {
+        throw new Error(response.error.message || 'Failed to delete pharmacy');
+    }
 };
 
 export default function PharmacyPage() {
     const [isModalOpen, setIsModalOpen] = React.useState(false);
-    const [editingPharmacy, setEditingPharmacy] = React.useState<Pharmacy | null>(null);
+    const [editingPharmacy, setEditingPharmacy] = React.useState<PharmacyDisplay | null>(null);
     const { toast } = useToast();
     const queryClient = useQueryClient();
 
-    const { data: pharmacies = [], isLoading: loading } = useQuery<Pharmacy[], Error>({
+    const {
+        data: pharmacies = [],
+        isLoading: loading
+    }: UseQueryResult<PharmacyDisplay[], QueryError> = useQuery({
         queryKey: ['pharmacies'],
-        queryFn: fetchPharmacies,
-        onError: (error) => toast({ variant: "destructive", title: "Error fetching pharmacies", description: error.message }),
+        queryFn: fetchPharmacies
     });
+
+    const handleError = React.useCallback((error: QueryError) => {
+        toast({
+            variant: "destructive",
+            title: "Error with Pharmacy Operation",
+            description: error.message
+        });
+    }, [toast]);
 
     const saveMutation = useMutation({
         mutationFn: savePharmacy,

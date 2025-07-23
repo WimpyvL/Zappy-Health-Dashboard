@@ -24,11 +24,8 @@ import {
   DocumentData,
   Query,
   WhereFilterOp,
-<<<<<<< HEAD
   OrderByDirection,
-=======
   onSnapshot
->>>>>>> origin/master
 } from 'firebase/firestore';
 
 // Type definitions
@@ -261,7 +258,6 @@ interface Message extends BaseDocument {
 class DatabaseService {
   private db: Firestore | null;
 
-<<<<<<< HEAD
   constructor() {
     this.db = getFirebaseFirestore();
     if (!this.db) {
@@ -271,13 +267,9 @@ class DatabaseService {
 
   // Generic method to get a collection reference
   private _getCollection(collectionName: string): CollectionReference<DocumentData> | null {
-    if (!this.db) return null;
-=======
-  private _getCollection(collectionName: string) {
     if (!this.db) {
         throw new Error("Firestore is not initialized.");
     }
->>>>>>> origin/master
     return collection(this.db, collectionName);
   }
 
@@ -614,35 +606,8 @@ class DatabaseService {
   };
 }
 
-<<<<<<< HEAD
-export const databaseService = new DatabaseService();
-
-// Export types for use in other parts of the application
-export type {
-  DatabaseError,
-  DatabaseResponse,
-  DatabaseFilter,
-  QueryOptions,
-  BaseDocument,
-  EntityService,
-  ReadOnlyEntityService,
-  TaskEntityService,
-  Patient,
-  Provider,
-  Order,
-  Session,
-  Discount,
-  Pharmacy,
-  Product,
-  Resource,
-  Tag,
-  Invoice,
-  AuditLog,
-  Task,
-  Message,
-};
-=======
 export const dbService = new DatabaseService();
+export const databaseService = dbService; // For backward compatibility
 
 const createServiceMethods = (collectionName: string) => ({
     getAll: (options: QueryOptions = {}) => dbService.getAll(collectionName, options),
@@ -668,4 +633,28 @@ dbService.auditLogs = createServiceMethods('audit_logs');
 dbService.tasks = createServiceMethods('tasks');
 dbService.messages = createServiceMethods('conversations');
 dbService.insurance_documents = createServiceMethods('insurance_documents');
->>>>>>> origin/master
+
+// Export types for use in other parts of the application
+export type {
+  DatabaseError,
+  DatabaseResponse,
+  DatabaseFilter,
+  QueryOptions,
+  BaseDocument,
+  EntityService,
+  ReadOnlyEntityService,
+  TaskEntityService,
+  Patient,
+  Provider,
+  Order,
+  Session,
+  Discount,
+  Pharmacy,
+  Product,
+  Resource,
+  Tag,
+  Invoice,
+  AuditLog,
+  Task,
+  Message,
+};

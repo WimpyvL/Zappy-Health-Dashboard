@@ -82,7 +82,6 @@ export default function AuthPage() {
   const handleSignup = async (values: z.infer<typeof signupSchema>) => {
     setLoading(true);
     try {
-<<<<<<< HEAD
       await signUp(values.email, values.password, { 
         firstName: values.firstName, 
         lastName: values.lastName,
@@ -99,7 +98,14 @@ export default function AuthPage() {
         title: "Sign Up Failed",
         description: error.message,
       });
-=======
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleDemoLogin = async (role: 'admin' | 'provider' | 'patient') => {
+    setLoading(true);
+    try {
       const demoAccounts = {
         admin: { email: "admin@zappy.com", password: "adminPassword123!" },
         provider: { email: "provider@zappy.com", password: "providerPassword123!" },
@@ -111,7 +117,7 @@ export default function AuthPage() {
     } catch (error) {
       // Error is handled in auth context
       console.error("Demo login error:", error);
->>>>>>> 082014b070ec071384e295ef193136d2365d50a8
+    
     } finally {
       setLoading(false);
     }
@@ -119,9 +125,6 @@ export default function AuthPage() {
 
   return (
     <main className="flex min-h-screen w-full flex-col items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-<<<<<<< HEAD
-      <AdminSelector />
-=======
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="flex justify-center mb-4">
@@ -229,7 +232,9 @@ export default function AuthPage() {
           </p>
         </CardContent>
       </Card>
->>>>>>> 082014b070ec071384e295ef193136d2365d50a8
+    </main>
+  );
+}
     </main>
   );
 }
