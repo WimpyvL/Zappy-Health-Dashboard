@@ -154,6 +154,47 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const { toast } = useToast();
+  
+  // Function to load user data from Firestore
+  const loadUserData = async (firebaseUser: User): Promise<AuthUser> => {
+    const db = getFirebaseFirestore();
+    if (!db) throw new Error('Firestore not initialized');
+    
+    try {
+      // Get user document from Firestore
+      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
+      
+      // Create user object with default role
+      let userData: AuthUser = {
+        ...firebaseUser,
+        uid: firebaseUser.uid,
+        email: firebaseUser.email,
+        displayName: firebaseUser.displayName,
+        role: 'patient', // Default role
+      };
+      
+      // If user document exists in Firestore, merge with additional data
+      if (userDoc.exists()) {
+        const firestoreData = userDoc.data() as Partial<AuthUser>;
+        userData = {
+          ...userData,
+          ...firestoreData,
+        };
+      }
+      
+      return userData;
+    } catch (error) {
+      console.error('Error loading user data:', error);
+      // Return basic user data if Firestore fails
+      return {
+        ...firebaseUser,
+        uid: firebaseUser.uid,
+        email: firebaseUser.email,
+        displayName: firebaseUser.displayName,
+        role: 'patient',
+      };
+    }
+  };
 
   // UI State Management
   const [uiState, setUIState] = useState<UIState>({
@@ -271,7 +312,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } finally {
       setLoading(false);
     }
-  };
   };
 
   // Sign up function
