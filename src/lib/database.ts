@@ -4,6 +4,7 @@
  */
 
 import { getFirebaseFirestore } from '@/lib/firebase';
+import { neonDB } from './neon-db';
 import {
   collection,
   doc,
@@ -90,7 +91,7 @@ export class DatabaseService {
   private getCollection() {
     const firestore = getFirebaseFirestore();
     if (!firestore) {
-      throw new Error('Firestore not initialized. Check Firebase configuration.');
+      return null;
     }
     return collection(firestore, this.collectionName);
   }
@@ -99,7 +100,7 @@ export class DatabaseService {
   private getDoc(id: string) {
     const firestore = getFirebaseFirestore();
     if (!firestore) {
-      throw new Error('Firestore not initialized. Check Firebase configuration.');
+      return null;
     }
     return doc(firestore, this.collectionName, id);
   }
@@ -108,8 +109,12 @@ export class DatabaseService {
   async create<T extends Record<string, any>>(
     data: Omit<T, 'id' | 'createdAt' | 'updatedAt'>
   ): Promise<DatabaseResponse<{ id: string }>> {
+    const collection = this.getCollection();
+    if (!collection) {
+      return neonDB.create(this.collectionName, data);
+    }
     try {
-      const docRef = await addDoc(this.getCollection(), {
+      const docRef = await addDoc(collection, {
         ...data,
         createdAt: Timestamp.now(),
         updatedAt: Timestamp.now(),
@@ -131,8 +136,11 @@ export class DatabaseService {
 
   // Get single document by ID
   async getById<T extends BaseDocument>(id: string): Promise<DatabaseResponse<T>> {
+    const docRef = this.getDoc(id);
+    if (!docRef) {
+      return neonDB.getById(this.collectionName, id);
+    }
     try {
-      const docRef = this.getDoc(id);
       const docSnap = await getDoc(docRef);
       
       if (!docSnap.exists()) {
@@ -161,8 +169,20 @@ export class DatabaseService {
   async getMany<T extends BaseDocument>(
     options: QueryOptions = {}
   ): Promise<PaginatedResponse<T>> {
+    const collection = this.getCollection();
+    if (!collection) {
+      const { data, success, error } = await neonDB.getAll(this.collectionName);
+      return {
+        data,
+        success,
+        error,
+        hasMore: false,
+        lastDocument: null,
+        total: data.length,
+      };
+    }
     try {
-      let q = query(this.getCollection());
+      let q = query(collection);
 
       // Apply filters
       if (options.filters) {
@@ -223,8 +243,11 @@ export class DatabaseService {
     id: string,
     data: Partial<Omit<T, 'id' | 'createdAt' | 'updatedAt'>>
   ): Promise<DatabaseResponse<null>> {
+    const docRef = this.getDoc(id);
+    if (!docRef) {
+      return neonDB.update(this.collectionName, id, data);
+    }
     try {
-      const docRef = this.getDoc(id);
       await updateDoc(docRef, {
         ...data,
         updatedAt: Timestamp.now(),
@@ -246,8 +269,11 @@ export class DatabaseService {
 
   // Delete document
   async delete(id: string): Promise<DatabaseResponse<null>> {
+    const docRef = this.getDoc(id);
+    if (!docRef) {
+      return neonDB.delete(this.collectionName, id);
+    }
     try {
-      const docRef = this.getDoc(id);
       await deleteDoc(docRef);
 
       return {

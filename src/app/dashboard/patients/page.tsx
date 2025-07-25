@@ -125,7 +125,7 @@ export default function PatientsPage() {
 
   const handleFormSubmit = async (values: any) => {
     const patientData = { ...values };
-      
+
     if (editingPatient) {
       updatePatientMutation.mutate({ id: editingPatient.id, ...patientData }, {
         onSuccess: () => {
@@ -182,7 +182,7 @@ export default function PatientsPage() {
   }
 
   const isSubmitting = createPatientMutation.isPending || updatePatientMutation.isPending;
-  
+
   React.useEffect(() => {
     if (error) {
       toast({
@@ -262,7 +262,72 @@ export default function PatientsPage() {
                       <TableCell><div className="flex gap-2"><Skeleton className="h-8 w-8 rounded-md" /><Skeleton className="h-8 w-8 rounded-md" /></div></TableCell>
                     </TableRow>
                   ))
+                ) : patients && patients.length > 0 ? (
+                  patients.map((patient: Patient) => (
+                    <TableRow key={patient.id}>
+                      <TableCell>
+                        <Checkbox />
+                      </TableCell>
+                      <TableCell>
+                        <Link
+                          href={`/dashboard/patients/${patient.id}`}
+                          className="font-medium text-primary hover:underline"
+                        >{`${patient.firstName || ""} ${
+                          patient.lastName || ""
+                        }`.trim() || "N/A"}</Link>
+                        <div className="text-sm text-muted-foreground">
+                          {patient.email}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={"default"}
+                          className={
+                            "bg-green-100 text-green-800 hover:bg-green-200"
+                          }
+                        >
+                          <Check className="h-3 w-3 mr-1" />
+                          {"Active"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>N/A</TableCell>
+                      <TableCell>N/A</TableCell>
+                      <TableCell>N/A</TableCell>
+                      <TableCell>
+                        <div>{0}</div>
+                        <div className="text-xs text-muted-foreground">
+                          N/A
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          N/A
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleOpenEditModal(patient as any)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() =>
+                              handleOpenMessageModal(patient as any)
+                            }
+                          >
+                            <MessageSquare className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
                 ) : (
+<<<<<<< HEAD
                   patients?.map((patient: Patient) => (
                   <TableRow key={patient.id}>
                     <TableCell>
@@ -312,9 +377,17 @@ export default function PatientsPage() {
                           <MessageSquare className="h-4 w-4" />
                         </Button>
                       </div>
+=======
+                  <TableRow>
+                    <TableCell
+                      colSpan={8}
+                      className="h-24 text-center"
+                    >
+                      No patients found.
+>>>>>>> 40cd9635a3c3d971e6aa9133d581f8bc7d167977
                     </TableCell>
                   </TableRow>
-                )))}
+                )}
               </TableBody>
             </Table>
           </CardContent>
@@ -357,7 +430,7 @@ export default function PatientsPage() {
         onSubmit={handleFormSubmit}
         isSubmitting={isSubmitting}
       />
-       <ViewMessageModal 
+       <ViewMessageModal
         isOpen={isMessageModalOpen}
         onClose={handleCloseMessageModal}
         conversation={selectedMessage}

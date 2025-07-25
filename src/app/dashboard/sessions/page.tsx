@@ -16,11 +16,8 @@ import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 import { useRouter, useSearchParams } from 'next/navigation';
 import { format, startOfDay, endOfDay, subDays, subWeeks, subMonths } from "date-fns";
-<<<<<<< HEAD
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { dbService } from '@/services/database/index';
-=======
->>>>>>> dd48230f1490504a7bf658f14b4c77975720fb3c
 import { useSessions, useCreateSession, useUpdateSessionStatus, useProviders } from '@/services/database/hooks';
 import { telehealthFlowOrchestrator } from '@/services/telehealthFlowOrchestrator';
 import { Skeleton } from "@/components/ui/skeleton";
@@ -82,7 +79,7 @@ export default function SessionsPage() {
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [dateRange, setDateRange] = React.useState<{ from?: Date; to?: Date }>({});
   const [isDatePickerOpen, setIsDatePickerOpen] = React.useState(false);
-  
+
   // Get all filter parameters from URL
   const [searchInput, setSearchInput] = React.useState(searchParams.get('searchTerm') || '');
 
@@ -106,10 +103,10 @@ export default function SessionsPage() {
 
   const { data: sessionsData, isLoading: loading } = useSessions(sessionsParams);
   const { data: providersData } = useProviders();
-  
+
   const sessions = React.useMemo(() => {
     if (!sessionsData?.data) return [];
-    
+
     return sessionsData.data.map((s: any) => ({
       ...s,
       date: s.date && s.date.seconds ? format(new Date(s.date.seconds * 1000), "MMM dd, yyyy") : "N/A",
@@ -118,7 +115,7 @@ export default function SessionsPage() {
 
   const createMutation = useCreateSession();
   const updateStatusMutation = useUpdateSessionStatus();
-  
+
   const handleCreateSession = async (values: any) => {
     try {
       const flowResult = await telehealthFlowOrchestrator.initializeFlow({
@@ -146,10 +143,10 @@ export default function SessionsPage() {
       toast({ title: "Session Scheduled", description: "A new session has been scheduled." });
       setIsModalOpen(false);
     } catch (error) {
-      toast({ 
-        variant: "destructive", 
-        title: "Error Scheduling Session", 
-        description: error instanceof Error ? error.message : "An unexpected error occurred" 
+      toast({
+        variant: "destructive",
+        title: "Error Scheduling Session",
+        description: error instanceof Error ? error.message : "An unexpected error occurred"
       });
     }
   };
@@ -232,7 +229,7 @@ export default function SessionsPage() {
 
   const handleCustomDateRange = (range: { from?: Date; to?: Date }) => {
     setDateRange(range);
-    
+
     // Only update URL params if we have valid dates
     if (range.from) {
       updateSearchParams('dateFrom', format(range.from, 'yyyy-MM-dd'));
@@ -246,7 +243,7 @@ export default function SessionsPage() {
     } else if (!range.to) {
       updateSearchParams('dateTo', null);
     }
-    
+
     // Only set preset to custom if we have at least a from date
     if (range.from) {
       updateSearchParams('datePreset', 'custom');
@@ -397,9 +394,9 @@ export default function SessionsPage() {
                                 from: range.from || undefined,
                                 to: range.to || undefined,
                               };
-                              
+
                               handleCustomDateRange(newRange);
-                              
+
                               // Only close if we have both dates and they're different
                               if (range.from && range.to && range.from !== range.to) {
                                 setIsDatePickerOpen(false);
@@ -518,48 +515,63 @@ export default function SessionsPage() {
                       <TableCell colSpan={6}><Skeleton className="h-5 w-full" /></TableCell>
                     </TableRow>
                   ))
-                ) : sessions.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                      No sessions found. {hasActiveFilters ? 'Try adjusting your filters.' : 'Create your first session to get started.'}
-                    </TableCell>
-                  </TableRow>
-                ) : (
+                ) : sessions && sessions.length > 0 ? (
                   sessions.map((session) => (
                     <TableRow key={session.id}>
                       <TableCell>
-                        <Link href={`/dashboard/patients/${session.patientId}`} className="font-medium text-primary hover:underline">
-                          {session.patientName || 'N/A'}
+                        <Link
+                          href={`/dashboard/patients/${session.patientId}`}
+                          className="font-medium text-primary hover:underline"
+                        >
+                          {session.patientName || "N/A"}
                         </Link>
-                        <div className="text-sm text-muted-foreground">{session.patientEmail || session.patientId}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {session.patientEmail || session.patientId}
+                        </div>
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="capitalize">
-                          {session.type.replace(/_/g, ' ')}
+                          {session.type.replace(/_/g, " ")}
                         </Badge>
                       </TableCell>
                       <TableCell>{session.date}</TableCell>
-                      <TableCell>{session.provider || 'N/A'}</TableCell>
-                      <TableCell><StatusBadge status={session.status} /></TableCell>
+                      <TableCell>{session.provider || "N/A"}</TableCell>
+                      <TableCell>
+                        <StatusBadge status={session.status} />
+                      </TableCell>
                       <TableCell>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                            >
                               <MoreHorizontal className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem asChild>
-                              <Link href={`/dashboard/sessions/${session.id}`}>View Details</Link>
+                              <Link href={`/dashboard/sessions/${session.id}`}>
+                                View Details
+                              </Link>
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            {SESSION_STATUSES.map(statusOption => (
-                              <DropdownMenuItem 
-                                key={statusOption} 
-                                disabled={session.status === statusOption || updateStatusMutation.isPending}
-                                onClick={() => updateStatusMutation.mutate({ sessionId: session.id, status: statusOption })}
+                            {SESSION_STATUSES.map((statusOption) => (
+                              <DropdownMenuItem
+                                key={statusOption}
+                                disabled={
+                                  session.status === statusOption ||
+                                  updateStatusMutation.isPending
+                                }
+                                onClick={() =>
+                                  updateStatusMutation.mutate({
+                                    sessionId: session.id,
+                                    status: statusOption,
+                                  })
+                                }
                               >
-                                Mark as {statusOption.replace(/-/g, ' ')}
+                                Mark as {statusOption.replace(/-/g, " ")}
                               </DropdownMenuItem>
                             ))}
                           </DropdownMenuContent>
@@ -567,17 +579,26 @@ export default function SessionsPage() {
                       </TableCell>
                     </TableRow>
                   ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={6}
+                      className="h-24 text-center"
+                    >
+                      No sessions found.
+                    </TableCell>
+                  </TableRow>
                 )}
               </TableBody>
             </Table>
           </CardContent>
         </Card>
       </div>
-      
-      <ScheduleSessionModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)} 
-        onSubmit={handleCreateSession} 
+
+      <ScheduleSessionModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSubmit={handleCreateSession}
       />
     </>
   );

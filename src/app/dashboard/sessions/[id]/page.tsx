@@ -17,13 +17,13 @@ import { databaseService, type Session, type Patient } from '@/services/database
 
 const fetchSessionData = async (sessionId: string): Promise<{ session: Session; patient: Patient | null } | null> => {
     if (!sessionId) return null;
-    
+
     const sessionRes = await databaseService.sessions.getById(sessionId);
     if (sessionRes.error || !sessionRes.data) {
         const errorMessage = sessionRes.error?.message || 'Session not found.';
         throw new Error(errorMessage);
     }
-    
+
     const sessionData = sessionRes.data;
     let patientData = null;
 

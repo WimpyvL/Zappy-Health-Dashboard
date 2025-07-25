@@ -39,7 +39,7 @@ const fetchPatientData = async (patientId: string) => {
     if (!patientId) return null;
     const response = await databaseService.patients.getById(patientId);
     if (response.error || !response.data) throw new Error(response.error?.message || 'Patient not found');
-    
+
     const data = response.data;
     const dob = data.dateOfBirth ? new Date(data.dateOfBirth) : new Date();
     const age = new Date().getFullYear() - dob.getFullYear();
