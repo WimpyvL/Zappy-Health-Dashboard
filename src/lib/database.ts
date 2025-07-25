@@ -4,7 +4,6 @@
  */
 
 import { getFirebaseFirestore } from '@/lib/firebase';
-import { neonDB } from './neon-db';
 import {
   collection,
   doc,
@@ -111,7 +110,7 @@ export class DatabaseService {
   ): Promise<DatabaseResponse<{ id: string }>> {
     const collection = this.getCollection();
     if (!collection) {
-      return neonDB.create(this.collectionName, data);
+      return { data: null, error: 'Database not initialized', success: false };
     }
     try {
       const docRef = await addDoc(collection, {
@@ -138,7 +137,7 @@ export class DatabaseService {
   async getById<T extends BaseDocument>(id: string): Promise<DatabaseResponse<T>> {
     const docRef = this.getDoc(id);
     if (!docRef) {
-      return neonDB.getById(this.collectionName, id);
+      return { data: null, error: 'Database not initialized', success: false };
     }
     try {
       const docSnap = await getDoc(docRef);
@@ -171,14 +170,13 @@ export class DatabaseService {
   ): Promise<PaginatedResponse<T>> {
     const collection = this.getCollection();
     if (!collection) {
-      const { data, success, error } = await neonDB.getAll(this.collectionName);
-      return {
-        data,
-        success,
-        error,
+       return {
+        data: [],
         hasMore: false,
         lastDocument: null,
-        total: data.length,
+        total: 0,
+        error: 'Database not initialized',
+        success: false,
       };
     }
     try {
@@ -245,7 +243,7 @@ export class DatabaseService {
   ): Promise<DatabaseResponse<null>> {
     const docRef = this.getDoc(id);
     if (!docRef) {
-      return neonDB.update(this.collectionName, id, data);
+      return { data: null, error: 'Database not initialized', success: false };
     }
     try {
       await updateDoc(docRef, {
@@ -271,7 +269,7 @@ export class DatabaseService {
   async delete(id: string): Promise<DatabaseResponse<null>> {
     const docRef = this.getDoc(id);
     if (!docRef) {
-      return neonDB.delete(this.collectionName, id);
+      return { data: null, error: 'Database not initialized', success: false };
     }
     try {
       await deleteDoc(docRef);
@@ -295,7 +293,7 @@ export class DatabaseService {
     try {
       // Note: Firestore doesn't have a direct count method, so we fetch all and count
       // In production, you'd want to use Firestore's count() method or maintain counters
-      let q = query(this.getCollection());
+      let q = query(this.getCollection()!);
 
       if (options.filters) {
         options.filters.forEach(({ field, operator, value }) => {
