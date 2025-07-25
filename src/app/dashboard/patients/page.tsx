@@ -1,127 +1,373 @@
-
 "use client";
 
 import * as React from "react";
-import { User, Mail, Phone, FileText, MessageSquare, FlaskConical, HeartPulse, CreditCard, Briefcase, Settings } from "lucide-react";
+import Link from "next/link";
+import {
+  MoreHorizontal,
+  PlusCircle,
+  Search,
+  ChevronDown,
+  Edit,
+  MessageSquare,
+  Check,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
-import { Textarea } from "@/components/ui/textarea";
-import { PatientInfoTab } from "./[id]/components/patient-info-tab";
-import { PatientOrdersTab } from "./[id]/components/patient-orders-tab";
-import { PatientBillingTab } from "./[id]/components/patient-billing-tab";
-import { PatientNotesTab } from "./[id]/components/patient-notes-tab";
-import { PatientOverviewTab } from "./[id]/components/patient-overview-tab";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { PatientFormModal } from "./components/patient-form-modal";
 import { ViewMessageModal } from "../messages/components/view-message-modal";
-import Loading from "./[id]/loading";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery } from '@tanstack/react-query';
-import { databaseService } from '@/services/database/index';
+import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/lib/auth-context";
 
-// Types
-type Patient = {
-    id: string;
-    firstName?: string;
-    lastName?: string;
-    name: string;
-    initials: string;
-    age: string;
-    email: string;
-    phone: string;
-    status: "Active" | "Inactive" | "Pending";
-    registrationDate: string;
-    lastLogin: string;
+// Import the new centralized service hooks
+import { usePatients, useCreatePatient, useUpdatePatient, type Patient } from "@/services/database/hooks";
+
+// This type is used by ViewMessageModal, which expects a message object.
+// We'll adapt the patient object to fit this structure for now.
+type Message = {
+  id: string;
+  name: string;
+  subject: string;
+  preview: string;
+  time: string;
+  unread: boolean;
 };
 
-const fetchPatientData = async (patientId: string) => {
-    if (!patientId) return null;
-    const response = await databaseService.patients.getById(patientId);
-    if (response.error || !response.data) throw new Error(response.error?.message || 'Patient not found');
+const FilterDropdown = ({
+  label,
+  options,
+}: {
+  label: string;
+  options: string[];
+}) => (
+  <DropdownMenu>
+    <DropdownMenuTrigger asChild>
+      <Button variant="outline" className="flex items-center gap-2">
+        {label}
+        <ChevronDown className="h-4 w-4" />
+      </Button>
+    </DropdownMenuTrigger>
+    <DropdownMenuContent align="end">
+      {options.map((option) => (
+        <DropdownMenuItem key={option}>{option}</DropdownMenuItem>
+      ))}
+    </DropdownMenuContent>
+  </DropdownMenu>
+);
 
-    const data = response.data;
-    const dob = data.dateOfBirth ? new Date(data.dateOfBirth) : new Date();
-    const age = new Date().getFullYear() - dob.getFullYear();
-
-    return {
-        ...data,
-        id: data.id,
-        name: data.name || 'N/A',
-        initials: data.name ? data.name.split(' ').map(n => n[0]).join('').toUpperCase() : 'NA',
-        age: `${age} years`,
-        email: data.email || 'N/A',
-        phone: data.phone || 'N/A',
-        status: 'Active' as const,
-        registrationDate: data.createdAt ? new Date(data.createdAt).toLocaleDateString() : 'N/A',
-        lastLogin: 'Today', // This would come from auth or a separate field
-    } as Patient;
-};
-
-const tabs = [
-    { name: "Overview", icon: User }, { name: "Messages", icon: MessageSquare },
-    { name: "Notes", icon: FileText }, { name: "Lab Results", icon: FlaskConical },
-    { name: "Patient Info", icon: HeartPulse }, { name: "Orders", icon: Briefcase },
-    { name: "Billing", icon: CreditCard },
-];
-
-export default function PatientDetailPage({ params }: { params?: Promise<{ id: string }> }) {
-  const [activeTab, setActiveTab] = React.useState("Patient Info");
+export default function PatientsPage() {
+  const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const [editingPatient, setEditingPatient] = React.useState<Patient | null>(null);
+  const [isMessageModalOpen, setIsMessageModalOpen] = React.useState(false);
+  const [selectedMessage, setSelectedMessage] = React.useState<Message | null>(null);
   const { toast } = useToast();
-  const resolvedParams = params ? React.use(params) : null;
 
-  const { data: patient, isLoading: loading, error } = useQuery<Patient | null, Error>({
-    queryKey: ['patient', resolvedParams?.id],
-    queryFn: () => fetchPatientData(resolvedParams?.id ?? ''),
-    enabled: !!resolvedParams?.id,
-  });
+  // Use the new centralized hooks
+  const { data: patientsData, isLoading: loading, error } = usePatients();
+  const patients = patientsData?.data || [];
+  const createPatientMutation = useCreatePatient();
+  const updatePatientMutation = useUpdatePatient();
+
+  const handleOpenAddModal = () => {
+    setEditingPatient(null);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEditModal = (patient: Patient) => {
+    setEditingPatient(patient);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    if (createPatientMutation.isPending || updatePatientMutation.isPending) return;
+    setIsModalOpen(false);
+    setEditingPatient(null);
+  };
+
+  const handleFormSubmit = async (values: any) => {
+    const patientData = { ...values };
+
+    if (editingPatient) {
+      updatePatientMutation.mutate({ id: editingPatient.id, ...patientData }, {
+        onSuccess: () => {
+          toast({
+            title: "Patient Updated",
+            description: `${values.firstName} ${values.lastName}'s information has been saved.`,
+          });
+          handleCloseModal();
+        },
+        onError: (e: Error) => {
+           toast({
+            variant: "destructive",
+            title: "Error Saving Patient",
+            description: e.message || "An error occurred while saving the patient information. Please try again.",
+          });
+        }
+      });
+    } else {
+      createPatientMutation.mutate(patientData, {
+        onSuccess: () => {
+          toast({
+            title: "Patient Added",
+            description: `${values.firstName} ${values.lastName} has been added to the system.`,
+          });
+          handleCloseModal();
+        },
+        onError: (e: Error) => {
+          toast({
+            variant: "destructive",
+            title: "Error Saving Patient",
+            description: e.message || "An error occurred while saving the patient information. Please try again.",
+          });
+        }
+      });
+    }
+  };
+
+  const handleOpenMessageModal = (patient: Patient) => {
+    const messageData: Message = {
+      id: patient.id,
+      name: `${patient.firstName} ${patient.lastName}`,
+      subject: `Conversation with ${patient.firstName} ${patient.lastName}`,
+      preview: 'Click to view conversation history...',
+      time: new Date().toLocaleTimeString(),
+      unread: false,
+    };
+    setSelectedMessage(messageData);
+    setIsMessageModalOpen(true);
+  };
+
+  const handleCloseMessageModal = () => {
+    setIsMessageModalOpen(false);
+    setSelectedMessage(null);
+  }
+
+  const isSubmitting = createPatientMutation.isPending || updatePatientMutation.isPending;
 
   React.useEffect(() => {
     if (error) {
-      toast({ variant: 'destructive', title: 'Error fetching patient data', description: error.message });
+      toast({
+          variant: "destructive",
+          title: "Error loading patients",
+          description: error.message
+      });
     }
   }, [error, toast]);
 
-  if (loading) return <Loading />;
-  if (error || !patient) return <div className="text-center p-8">Patient not found.</div>;
-
-  const renderTabContent = () => {
-    if (!patient) {
-      return <Card><CardContent className="h-96 flex items-center justify-center"><p>Please select a patient to view details.</p></CardContent></Card>;
-    }
-    switch(activeTab) {
-        case 'Patient Info': return <PatientInfoTab patient={patient} isLoading={loading} />;
-        case 'Orders': return <PatientOrdersTab patientId={resolvedParams?.id ?? ''} />;
-        case 'Billing': return <PatientBillingTab patientId={resolvedParams?.id ?? ''} />;
-        case 'Notes': return <PatientNotesTab patientId={resolvedParams?.id ?? ''} />;
-        default: return <Card><CardContent className="h-96 flex items-center justify-center"><p>{activeTab} content goes here.</p></CardContent></Card>;
-    }
-  }
-
   return (
-    <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-4">
-        <Avatar className="h-16 w-16"><AvatarFallback className="text-2xl">{patient.initials}</AvatarFallback></Avatar>
-        <div>
-          <h1 className="text-3xl font-bold">{patient.name}</h1>
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <span>{patient.age}</span>
-            <span><Mail className="h-3 w-3 inline mr-1" />{patient.email}</span>
-            <span><Phone className="h-3 w-3 inline mr-1" />{patient.phone}</span>
+    <>
+      <div className="flex flex-col gap-6">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold">Patients</h1>
+          <div className="flex items-center gap-4">
+            <div className="text-sm text-muted-foreground">
+              Total: <span className="font-semibold">{patients?.length || 0}</span>{" "}
+              Showing:{" "}
+              <span className="font-semibold">{patients?.length || 0}</span>
+            </div>
+            <Button onClick={handleOpenAddModal}>
+              <PlusCircle className="h-4 w-4 mr-2" />
+              Add Patient
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input placeholder="Search patients..." className="pl-9" />
+          </div>
+          <FilterDropdown
+            label="All Plans"
+            options={["Premium", "Basic", "None"]}
+          />
+          <FilterDropdown
+            label="All Medications"
+            options={["Medication A", "Medication B"]}
+          />
+          <FilterDropdown
+            label="All Statuses"
+            options={["Active", "Inactive", "Pending"]}
+          />
+          <FilterDropdown label="All Tags" options={["VIP", "Follow-up"]} />
+        </div>
+
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[40px]">
+                    <Checkbox />
+                  </TableHead>
+                  <TableHead>Patient Info</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Tags</TableHead>
+                  <TableHead>Plan</TableHead>
+                  <TableHead>Last Active</TableHead>
+                  <TableHead>Orders & Rx</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  Array.from({ length: 5 }).map((_, index) => (
+                    <TableRow key={index}>
+                      <TableCell><Checkbox disabled /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-32 rounded-md" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-20 rounded-full" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-16 rounded-md" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-20 rounded-md" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-24 rounded-md" /></TableCell>
+                      <TableCell><Skeleton className="h-5 w-12 rounded-md" /></TableCell>
+                      <TableCell><div className="flex gap-2"><Skeleton className="h-8 w-8 rounded-md" /><Skeleton className="h-8 w-8 rounded-md" /></div></TableCell>
+                    </TableRow>
+                  ))
+                ) : patients && patients.length > 0 ? (
+                  patients.map((patient: Patient) => (
+                    <TableRow key={patient.id}>
+                      <TableCell>
+                        <Checkbox />
+                      </TableCell>
+                      <TableCell>
+                        <Link
+                          href={`/dashboard/patients/${patient.id}`}
+                          className="font-medium text-primary hover:underline"
+                        >{`${patient.firstName || ""} ${
+                          patient.lastName || ""
+                        }`.trim() || "N/A"}</Link>
+                        <div className="text-sm text-muted-foreground">
+                          {patient.email}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={"default"}
+                          className={
+                            "bg-green-100 text-green-800 hover:bg-green-200"
+                          }
+                        >
+                          <Check className="h-3 w-3 mr-1" />
+                          {"Active"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>N/A</TableCell>
+                      <TableCell>N/A</TableCell>
+                      <TableCell>N/A</TableCell>
+                      <TableCell>
+                        <div>{0}</div>
+                        <div className="text-xs text-muted-foreground">
+                          N/A
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          N/A
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() => handleOpenEditModal(patient as any)}
+                          >
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() =>
+                              handleOpenMessageModal(patient as any)
+                            }
+                          >
+                            <MessageSquare className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell
+                      colSpan={8}
+                      className="h-24 text-center"
+                    >
+                      No patients found.
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <div>
+            Showing 1 to {patients?.length || 0} of {patients?.length || 0} results
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <span>Show:</span>
+              <Select defaultValue="10">
+                <SelectTrigger className="w-[70px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="25">25</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                </SelectContent>
+              </Select>
+              <span>per page</span>
+            </div>
+            <div className="flex gap-1">
+              <Button variant="outline" size="icon" className="h-8 w-8" disabled>
+                <ChevronDown className="h-4 w-4 rotate-90" />
+              </Button>
+              <Button variant="outline" size="icon" className="h-8 w-8" disabled>
+                <ChevronDown className="h-4 w-4 -rotate-90" />
+              </Button>
+            </div>
           </div>
         </div>
       </div>
-      <div className="border-b">
-        <nav className="-mb-px flex space-x-6">
-          {tabs.map((tab) => (
-            <button key={tab.name} onClick={() => setActiveTab(tab.name)}
-              className={`flex items-center gap-2 py-3 px-1 border-b-2 text-sm font-medium ${activeTab === tab.name ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
-              <tab.icon className="h-4 w-4" />{tab.name}
-            </button>
-          ))}
-        </nav>
-      </div>
-      <div>{renderTabContent()}</div>
-    </div>
+      <PatientFormModal
+        isOpen={isModalOpen}
+        onClose={handleCloseModal}
+        patient={editingPatient}
+        onSubmit={handleFormSubmit}
+        isSubmitting={isSubmitting}
+      />
+       <ViewMessageModal
+        isOpen={isMessageModalOpen}
+        onClose={handleCloseMessageModal}
+        conversation={selectedMessage}
+      />
+    </>
   );
 }
