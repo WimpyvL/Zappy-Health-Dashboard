@@ -10,11 +10,8 @@ import { useToast } from "@/hooks/use-toast";
 import { DynamicFormRenderer } from "@/components/ui/dynamic-form-renderer";
 import { dynamicFormService } from "@/services/dynamicFormService";
 
-export default function EnhancedIntakeFormPage() {
-    const params = useParams();
+export default function EnhancedIntakeFormPageClient({ flowId }: { flowId: string }) {
     const router = useRouter();
-    const resolvedParams = React.use(Promise.resolve(params));
-    const flowId = resolvedParams.flowId as string;
     
     const { flow, loading: flowLoading, submitIntakeForm } = useTelehealthFlow(flowId);
     const { toast } = useToast();
@@ -224,7 +221,7 @@ export default function EnhancedIntakeFormPage() {
 
             {/* Privacy and Security Notice */}
             <Card className="max-w-3xl mx-auto w-full bg-gray-50">
-                <CardContent className="pt-4">
+_                <CardContent className="pt-4">
                     <div className="text-xs text-muted-foreground text-center space-y-1">
                         <p>🔒 Your information is encrypted and secure</p>
                         <p>📋 This form will be reviewed by a licensed healthcare provider</p>
