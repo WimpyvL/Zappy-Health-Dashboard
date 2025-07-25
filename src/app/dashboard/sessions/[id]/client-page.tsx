@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -15,48 +14,10 @@ import Error from "../error";
 import { useQuery } from '@tanstack/react-query';
 import { databaseService, type Session, type Patient } from '@/services/database/index';
 
-const fetchSessionData = async (sessionId: string): Promise<{ session: Session; patient: Patient | null } | null> => {
-    if (!sessionId) return null;
-    
-    const sessionRes = await databaseService.sessions.getById(sessionId);
-    if (sessionRes.error || !sessionRes.data) {
-        const errorMessage = sessionRes.error?.message || 'Session not found.';
-        throw new Error(errorMessage);
-    }
-    
-    const sessionData = sessionRes.data;
-    let patientData = null;
-
-    if (sessionData.patientId) {
-        const patientRes = await databaseService.patients.getById(sessionData.patientId);
-        if (patientRes.data) {
-            patientData = patientRes.data;
-        }
-    }
-    return { session: sessionData, patient: patientData };
-};
-
-export default function EditSessionPage({ params }: { params: Promise<{ id: string }> }) {
+export default function SessionPageClient({ session, patient }: { session: Session; patient: Patient | null }) {
   const { toast } = useToast();
   const router = useRouter();
-  const resolvedParams = React.use(params);
 
-  const { data, isLoading: loading, error } = useQuery({
-    queryKey: ['session', resolvedParams.id],
-    queryFn: () => fetchSessionData(resolvedParams.id),
-    enabled: !!resolvedParams.id,
-  });
-
-  React.useEffect(() => {
-    if (error) {
-      toast({ variant: "destructive", title: "Error loading session", description: (error as Error).message });
-    }
-  }, [error, toast]);
-
-  const { session, patient } = data || { session: null, patient: null };
-
-  if (loading) return <Loading />;
-  if (error) return <Error error={error as Error} reset={() => window.location.reload()} />;
   if (!session) return <div className="text-center p-8">Session could not be loaded.</div>;
 
   return (
