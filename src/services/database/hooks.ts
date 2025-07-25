@@ -22,7 +22,7 @@ import {
   getCountFromServer,
   WhereFilterOp
 } from "firebase/firestore";
-import { getFirebaseFirestore, isDevelopmentMode } from "@/lib/firebase";
+import { getFirebaseFirestore } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { useCallback, useMemo } from "react";
 import { shouldUseDemoData, demoDataService } from "@/lib/demo-data";
@@ -145,21 +145,6 @@ const getCollection = async <T extends BaseDocument>(
   options: QueryOptions = {}
 ): Promise<PaginatedResponse<T>> => {
   try {
-    // Use demo data in development mode
-    if (shouldUseDemoData()) {
-      console.log(`📊 Using demo data for collection: ${collectionName}`, options);
-      const result = await demoDataService.fetchCollection(collectionName, options);
-      console.log(`📊 Demo data result for ${collectionName}:`, result);
-      return {
-        data: result.data as unknown as T[],
-        total: result.total,
-        hasMore: result.hasMore || false,
-        lastDocument: null, // Demo mode doesn't need pagination cursors
-        error: null,
-        success: true,
-      };
-    }
-
     const { filters = [], sortBy = 'createdAt', sortDirection = 'desc', limit: pageSize = 25 } = options;
     const firestore = getFirebaseFirestore();
     if (!firestore) {
@@ -513,7 +498,19 @@ export function useDeleteEntity(
 // Patients
 export const usePatients = (options: QueryOptions = {}) => {
   const defaultOptions = { ...options, sortBy: options.sortBy || 'lastName' };
-  return useEntityList<Patient>('patients', defaultOptions);
+  
+  return useQuery({
+    queryKey: ['patients', 'list', defaultOptions],
+    queryFn: () => {
+      if (shouldUseDemoData()) {
+        console.log('Fetching demo patients...');
+        return demoDataService.getPatients(options) as Promise<PaginatedResponse<Patient>>;
+      }
+      return getCollection<Patient>('patients', defaultOptions);
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+  });
 };
 
 export const usePatientById = (id: string | undefined) => {
@@ -871,3 +868,6 @@ export const dbService = {
   // Query utilities
   queryKeys,
 };
+
+
+    
