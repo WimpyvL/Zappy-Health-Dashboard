@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview React hook for managing the telehealth flow state in components.
  */
@@ -55,7 +56,7 @@ interface UseTelehealthFlowReturn {
 
 export const useTelehealthFlow = (initialFlowId: string | null = null): UseTelehealthFlowReturn => {
   const [flow, setFlow] = useState<TelehealthFlow | null>(null);
-  const [loading, setLoading] = useState<boolean>(false);
+  const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
 
