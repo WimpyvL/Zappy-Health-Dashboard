@@ -1,19 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   /* config options here */
-<<<<<<< HEAD
   experimental: {
     allowedDevOrigins: [
       "https://9000-firebase-studio-1752532656678.cluster-duylic2g3fbzerqpzxxbw6helm.cloudworkstations.dev",
     ],
   },
-=======
   trailingSlash: true,
   skipTrailingSlashRedirect: true,
-  allowedDevOrigins: [
-    'https://9000-firebase-studio-1752532656678.cluster-duylic2g3fbzerqpzxxbw6helm.cloudworkstations.dev',
-  ],
->>>>>>> 09f51c1c02f6c4ac984835ff478df6040d66e12a
   typescript: {
     ignoreBuildErrors: true,
   },
