@@ -21,6 +21,7 @@ import {
   DocumentSnapshot,
   QueryDocumentSnapshot,
   FirestoreError,
+  WhereFilterOp,
 } from 'firebase/firestore';
 
 // Common types
@@ -33,7 +34,7 @@ export interface BaseDocument {
 export interface QueryOptions {
   filters?: Array<{
     field: string;
-    operator: FirebaseFirestore.WhereFilterOp;
+    operator: WhereFilterOp;
     value: any;
   }>;
   orderBy?: {
@@ -200,7 +201,7 @@ export class DatabaseService {
       return {
         data,
         hasMore,
-        lastDocument: dataSlice.length > 0 ? dataSlice[dataSlice.length - 1] : null,
+        lastDocument: dataSlice.length > 0 ? (dataSlice[dataSlice.length - 1] as DocumentSnapshot) : null,
         total: data.length,
         error: null,
         success: true,
@@ -340,6 +341,13 @@ export const productsService = new DatabaseService('products');
 export const discountsService = new DatabaseService('discounts');
 export const resourcesService = new DatabaseService('resources');
 export const tagsService = new DatabaseService('tags');
+export const emailNotificationsService = new DatabaseService('email_notifications');
+export const smsNotificationsService = new DatabaseService('sms_notifications');
+export const analyticsEventsService = new DatabaseService('analytics_events');
+export const analyticsSessionsService = new DatabaseService('analytics_sessions');
+export const analyticsExperimentsService = new DatabaseService('analytics_experiments');
+export const formProgressService = new DatabaseService('form_progress');
+export const formAbandonmentEventsService = new DatabaseService('form_abandonment_events');
 
 // Export singleton instance for backward compatibility
 export const databaseService = {
@@ -356,4 +364,9 @@ export const databaseService = {
   discounts: discountsService,
   resources: resourcesService,
   tags: tagsService,
+  emailNotifications: emailNotificationsService,
+  smsNotifications: smsNotificationsService,
+  analyticsEvents: analyticsEventsService,
+  analyticsSessions: analyticsSessionsService,
+  analyticsExperiments: analyticsExperimentsService,
 };

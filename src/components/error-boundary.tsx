@@ -23,7 +23,7 @@ interface State {
 export class ErrorBoundary extends Component<Props, State> {
   private resetTimeoutId: number | null = null;
 
-  public state: State = {
+  public override state: State = {
     hasError: false,
     error: null,
     errorInfo: null,
@@ -39,7 +39,7 @@ export class ErrorBoundary extends Component<Props, State> {
     };
   }
 
-  public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+  public override componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('ErrorBoundary caught an error:', error, errorInfo);
 
     // Log to monitoring service
@@ -55,7 +55,7 @@ export class ErrorBoundary extends Component<Props, State> {
     });
   }
 
-  public componentDidUpdate(prevProps: Props) {
+  public override componentDidUpdate(prevProps: Props) {
     const { resetKeys, resetOnPropsChange } = this.props;
     const { hasError } = this.state;
 
@@ -146,7 +146,7 @@ export class ErrorBoundary extends Component<Props, State> {
     alert('Error details copied to clipboard. Please send this to support.');
   };
 
-  public render() {
+  public override render() {
     if (this.state.hasError) {
       if (this.props.fallback) {
         return this.props.fallback;

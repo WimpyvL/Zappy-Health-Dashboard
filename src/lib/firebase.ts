@@ -1,8 +1,15 @@
 // src/lib/firebase.ts
+<<<<<<< HEAD
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getFirestore, Firestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { getAuth, Auth, connectAuthEmulator } from 'firebase/auth';
 import { isDevelopment } from './utils';
+=======
+import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
+import { getFirestore, Firestore, connectFirestoreEmulator } from "firebase/firestore";
+import { getAuth, Auth, connectAuthEmulator } from "firebase/auth";
+import { getStorage, FirebaseStorage, connectStorageEmulator } from "firebase/storage";
+>>>>>>> 09f51c1c02f6c4ac984835ff478df6040d66e12a
 
 const firebaseConfig = {
   apiKey: "AIzaSyBVV_vq5fjNSASYQndmbRbEtlfyOieFVTs",
@@ -18,6 +25,7 @@ const firebaseConfig = {
 let app: FirebaseApp;
 let auth: Auth;
 let db: Firestore;
+<<<<<<< HEAD
 
 const initializeFirebaseApp = () => {
   if (getApps().length) {
@@ -68,3 +76,43 @@ export const getFirebaseAuth = (): Auth => {
     }
     return auth;
 };
+=======
+let storage: FirebaseStorage;
+
+function initializeFirebase() {
+  if (getApps().length === 0) {
+    app = initializeApp(firebaseConfig);
+  } else {
+    app = getApp();
+  }
+
+  auth = getAuth(app);
+  db = getFirestore(app);
+  storage = getStorage(app);
+
+  if (isDevelopmentMode && useEmulator) {
+    try {
+      connectAuthEmulator(auth, 'http://localhost:9099');
+      console.log('🔐 Connected to Auth emulator');
+    } catch (e) {
+      console.warn('🔐 Auth emulator already connected or connection failed.');
+    }
+    try {
+      connectFirestoreEmulator(db, 'localhost', 8080);
+      console.log('📡 Connected to Firestore emulator');
+    } catch (e) {
+      console.warn('📡 Firestore emulator already connected or connection failed.');
+    }
+    try {
+      connectStorageEmulator(storage, 'localhost', 9199);
+      console.log('📦 Connected to Storage emulator');
+    } catch (e) {
+      console.warn('📦 Storage emulator already connected or connection failed.');
+    }
+  }
+}
+
+initializeFirebase();
+
+export { app, auth, db, storage };
+>>>>>>> 09f51c1c02f6c4ac984835ff478df6040d66e12a

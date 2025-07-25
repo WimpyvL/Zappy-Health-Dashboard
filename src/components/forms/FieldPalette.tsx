@@ -23,11 +23,15 @@ import {
   Palette,
   Eye,
   Minus,
-  Header,
+  Heading,
   FileText,
   Star,
   Grid3X3,
-  PenTool
+  PenTool,
+  Scale,
+  Camera,
+  Activity,
+  Stethoscope
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -177,7 +181,7 @@ const FIELD_TYPES: FieldTypeConfig[] = [
     type: 'section-header',
     label: 'Section Header',
     description: 'Section title and description',
-    icon: <Header className="w-4 h-4" />,
+    icon: <Heading className="w-4 h-4" />,
     category: 'layout'
   },
   {
@@ -196,6 +200,38 @@ const FIELD_TYPES: FieldTypeConfig[] = [
   },
 
   // Medical Fields (specialized)
+  {
+    type: 'weight',
+    label: 'Weight Tracking',
+    description: 'Patient weight measurement',
+    icon: <Scale className="w-4 h-4" />,
+    category: 'medical',
+    isNew: true
+  },
+  {
+    type: 'progress-rating',
+    label: 'Progress Rating',
+    description: '1-10 scale for symptoms/progress',
+    icon: <Activity className="w-4 h-4" />,
+    category: 'medical',
+    isNew: true
+  },
+  {
+    type: 'progress-photo',
+    label: 'Progress Photo',
+    description: 'Before/after photo upload',
+    icon: <Camera className="w-4 h-4" />,
+    category: 'medical',
+    isNew: true
+  },
+  {
+    type: 'lab-upload',
+    label: 'Lab Results Upload',
+    description: 'Upload lab reports with OCR',
+    icon: <Stethoscope className="w-4 h-4" />,
+    category: 'medical',
+    isNew: true
+  },
   {
     type: 'text',
     label: 'Medical ID',
@@ -227,7 +263,7 @@ const DraggableField: React.FC<DraggableFieldProps> = ({ fieldType }) => {
 
   const style = transform ? {
     transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-  } : undefined;
+  } : {};
 
   return (
     <motion.div

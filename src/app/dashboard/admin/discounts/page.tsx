@@ -12,7 +12,7 @@ import { DiscountFormModal } from "./components/discount-form-modal";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { dbService } from '@/services/database/index';
+import { dbService } from '@/services/database';
 
 interface Discount {
   id: string;
