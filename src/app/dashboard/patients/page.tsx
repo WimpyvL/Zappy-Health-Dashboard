@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -41,20 +42,10 @@ import { PatientFormModal } from "./components/patient-form-modal";
 import { ViewMessageModal } from "../messages/components/view-message-modal";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-<<<<<<< HEAD
-import { useListUsers } from "@firebasegen/default-connector/react";
-import type { ListUsersData } from "@firebasegen/default-connector";
-import { useAuth } from "@/lib/auth-context";
-import { useCreatePatient, useUpdatePatient, Patient } from "@/services/database/hooks";
-
-
-type User = ListUsersData['users'][0];
-=======
 import { useAuth } from "@/lib/auth-context";
 
 // Import the new centralized service hooks
 import { usePatients, useCreatePatient, useUpdatePatient, type Patient } from "@/services/database/hooks";
->>>>>>> 09f51c1c02f6c4ac984835ff478df6040d66e12a
 
 type Message = {
   id: string;
@@ -93,17 +84,10 @@ export default function PatientsPage() {
   const [isMessageModalOpen, setIsMessageModalOpen] = React.useState(false);
   const [selectedMessage, setSelectedMessage] = React.useState<Message | null>(null);
   const { toast } = useToast();
-<<<<<<< HEAD
-  const { dataConnect } = useAuth();
-
-  const { data: queryData, isLoading: loading, error } = useListUsers(dataConnect || undefined);
-  const patients = queryData?.users;
-=======
 
   // Use the new centralized hooks
   const { data: patientsData, isLoading: loading, error } = usePatients();
   const patients = patientsData?.data || [];
->>>>>>> 09f51c1c02f6c4ac984835ff478df6040d66e12a
   const createPatientMutation = useCreatePatient();
   const updatePatientMutation = useUpdatePatient();
 
@@ -163,9 +147,9 @@ export default function PatientsPage() {
     }
   };
 
-  const handleOpenMessageModal = (patient: User) => {
+  const handleOpenMessageModal = (patient: Patient) => {
     const messageData: Message = {
-      id: patient.authId,
+      id: patient.id,
       name: `${patient.firstName} ${patient.lastName}`,
       subject: `Conversation with ${patient.firstName} ${patient.lastName}`,
       preview: 'Click to view conversation history...',
@@ -327,64 +311,12 @@ export default function PatientsPage() {
                     </TableRow>
                   ))
                 ) : (
-<<<<<<< HEAD
-                  patients?.map((patient: Patient) => (
-                  <TableRow key={patient.id}>
-                    <TableCell>
-                      <Checkbox />
-                    </TableCell>
-                    <TableCell>
-                      <Link href={`/dashboard/patients/${patient.id}`} className="font-medium text-primary hover:underline">{`${patient.firstName || ''} ${patient.lastName || ''}`.trim() || 'N/A'}</Link>
-                      <div className="text-sm text-muted-foreground">
-                        {patient.email}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={"default"}
-                        className={"bg-green-100 text-green-800 hover:bg-green-200"}
-                      >
-                        <Check className="h-3 w-3 mr-1" />
-                        {"Active"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      N/A
-                    </TableCell>
-                    <TableCell>N/A</TableCell>
-                    <TableCell>N/A</TableCell>
-                    <TableCell>
-                      <div>{0}</div>
-                      <div className="text-xs text-muted-foreground">N/A</div>
-                      <div className="text-xs text-muted-foreground">N/A</div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleOpenEditModal(patient as any)}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() => handleOpenMessageModal(patient)}
-                        >
-                          <MessageSquare className="h-4 w-4" />
-                        </Button>
-                      </div>
-=======
                   <TableRow>
                     <TableCell
                       colSpan={8}
                       className="h-24 text-center"
                     >
                       No patients found.
->>>>>>> 40cd9635a3c3d971e6aa9133d581f8bc7d167977
                     </TableCell>
                   </TableRow>
                 )}
@@ -438,3 +370,4 @@ export default function PatientsPage() {
     </>
   );
 }
+
