@@ -4,7 +4,7 @@
  */
 
 import { getFirebaseFirestore } from '@/lib/firebase';
-import { nanoDB } from './nano-db';
+import { neonDB } from './neon-db';
 import {
   collection,
   doc,
@@ -111,7 +111,7 @@ export class DatabaseService {
   ): Promise<DatabaseResponse<{ id: string }>> {
     const collection = this.getCollection();
     if (!collection) {
-      return nanoDB.create(this.collectionName, data);
+      return neonDB.create(this.collectionName, data);
     }
     try {
       const docRef = await addDoc(collection, {
@@ -138,7 +138,7 @@ export class DatabaseService {
   async getById<T extends BaseDocument>(id: string): Promise<DatabaseResponse<T>> {
     const docRef = this.getDoc(id);
     if (!docRef) {
-      return nanoDB.getById(this.collectionName, id);
+      return neonDB.getById(this.collectionName, id);
     }
     try {
       const docSnap = await getDoc(docRef);
@@ -171,7 +171,7 @@ export class DatabaseService {
   ): Promise<PaginatedResponse<T>> {
     const collection = this.getCollection();
     if (!collection) {
-      const { data, success, error } = await nanoDB.getAll(this.collectionName);
+      const { data, success, error } = await neonDB.getAll(this.collectionName);
       return {
         data,
         success,
@@ -245,7 +245,7 @@ export class DatabaseService {
   ): Promise<DatabaseResponse<null>> {
     const docRef = this.getDoc(id);
     if (!docRef) {
-      return nanoDB.update(this.collectionName, id, data);
+      return neonDB.update(this.collectionName, id, data);
     }
     try {
       await updateDoc(docRef, {
@@ -271,7 +271,7 @@ export class DatabaseService {
   async delete(id: string): Promise<DatabaseResponse<null>> {
     const docRef = this.getDoc(id);
     if (!docRef) {
-      return nanoDB.delete(this.collectionName, id);
+      return neonDB.delete(this.collectionName, id);
     }
     try {
       await deleteDoc(docRef);
