@@ -1,3 +1,4 @@
+
 "use client"
 
 import { Button } from "@/components/ui/button"
@@ -22,11 +23,7 @@ import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-<<<<<<< HEAD
 import { databaseService } from '@/lib/database'
-=======
-import { databaseService } from '@/services/database'
->>>>>>> 09f51c1c02f6c4ac984835ff478df6040d66e12a
 import { TaskFormModal } from "./tasks/components/task-form-modal"
 import { CreateOrderModal } from "./orders/components/create-order-modal"
 import { Skeleton } from "@/components/ui/skeleton"
