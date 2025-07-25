@@ -11,10 +11,10 @@ import {
   updateProfile
 } from 'firebase/auth';
 import { getDoc, setDoc, doc, Timestamp } from 'firebase/firestore';
-import { db, auth } from './firebase';
+import { db, auth, getFirebaseAuth, getFirebaseFirestore } from './firebase';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { AppUser } from '@/types/user';
+import { AppUser, UserRole } from '@/types/user';
 
 export interface AuthUser extends AppUser, FirebaseUser {}
 
@@ -43,25 +43,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter();
   const { toast } = useToast();
   
-  // Function to load user data from Firestore
-  const loadUserData = async (firebaseUser: User): Promise<AuthUser> => {
+  const loadUserData = async (firebaseUser: FirebaseUser): Promise<AuthUser> => {
     const db = getFirebaseFirestore();
     if (!db) throw new Error('Firestore not initialized');
     
     try {
-      // Get user document from Firestore
       const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
       
-      // Create user object with default role
       let userData: AuthUser = {
-        ...firebaseUser,
+        ...(firebaseUser as any),
         uid: firebaseUser.uid,
-        email: firebaseUser.email,
-        displayName: firebaseUser.displayName,
-        role: 'patient', // Default role
+        email: firebaseUser.email || '',
+        displayName: firebaseUser.displayName || '',
+        role: 'patient',
       };
       
-      // If user document exists in Firestore, merge with additional data
       if (userDoc.exists()) {
         const firestoreData = userDoc.data() as Partial<AuthUser>;
         userData = {
@@ -73,12 +69,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return userData;
     } catch (error) {
       console.error('Error loading user data:', error);
-      // Return basic user data if Firestore fails
       return {
-        ...firebaseUser,
+        ...(firebaseUser as any),
         uid: firebaseUser.uid,
-        email: firebaseUser.email,
-        displayName: firebaseUser.displayName,
+        email: firebaseUser.email || '',
+        displayName: firebaseUser.displayName || '',
         role: 'patient',
       };
     }
@@ -116,13 +111,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string) => {
-<<<<<<< HEAD
-    toast({ title: "Auth Disabled", description: "Login is temporarily disabled." });
-=======
     try {
       setLoading(true);
       
-      // Demo mode authentication bypass for development
       if (email.includes('@zappy.com')) {
         console.log('🔓 Demo authentication mode');
         
@@ -131,14 +122,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                      'patient';
         const name = role.charAt(0).toUpperCase() + role.slice(1);
 
-        // This object needs to match the structure of a real Firebase User object
         const demoUser: AuthUser = {
           uid: `demo-${role}`,
           email,
           displayName: `Demo ${name}`,
           emailVerified: true,
           isAnonymous: false,
-          metadata: {}, // Mock metadata
+          metadata: {}, 
           providerData: [],
           providerId: 'password',
           tenantId: null,
@@ -150,7 +140,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           role: role as UserRole,
           firstName: 'Demo',
           lastName: name,
-        };
+        } as AuthUser;
         
         setUser(demoUser);
         toast({
@@ -161,12 +151,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
       
-      // Real Firebase authentication for production
-      const auth = getFirebaseAuth();
-      if (!auth) {
+      const authInstance = getFirebaseAuth();
+      if (!authInstance) {
         throw new Error('Firebase Auth not initialized');
       }
-      const result = await signInWithEmailAndPassword(auth, email, password);
+      const result = await signInWithEmailAndPassword(authInstance, email, password);
       const userData = await loadUserData(result.user);
       setUser(userData);
       
@@ -206,7 +195,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
->>>>>>> 40cd9635a3c3d971e6aa9133d581f8bc7d167977
   };
 
   const signUp = async (email: string, password: string, userData: { firstName: string; lastName: string }) => {
