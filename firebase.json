@@ -11,22 +11,14 @@
     "rules": "storage.rules"
   },
   "hosting": {
-<<<<<<< HEAD
     "source": ".",
-=======
-    "public": "out",
->>>>>>> 09f51c1c02f6c4ac984835ff478df6040d66e12a
     "ignore": [
       "firebase.json",
       "**/.*",
       "**/node_modules/**"
-<<<<<<< HEAD
     ],
     "frameworksBackend": {
       "region": "us-central1"
     }
-=======
-    ]
->>>>>>> 09f51c1c02f6c4ac984835ff478df6040d66e12a
   }
 }
