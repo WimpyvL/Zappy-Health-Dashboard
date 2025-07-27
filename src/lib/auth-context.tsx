@@ -11,7 +11,7 @@ import {
   updateProfile
 } from 'firebase/auth';
 import { getDoc, setDoc, doc, Timestamp } from 'firebase/firestore';
-import { db, auth, getFirebaseAuth, getFirebaseFirestore } from './firebase';
+import { getFirebaseAuth, getFirebaseFirestore } from './firebase';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { AppUser, UserRole } from '@/types/user';
