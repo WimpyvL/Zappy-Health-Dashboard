@@ -33,6 +33,17 @@ function initializeFirebase() {
     auth = getAuth(app);
     db = getFirestore(app);
     storage = getStorage(app);
+
+    // Unconditionally connect to emulators in this environment
+    if (typeof window !== 'undefined' && !(window as any)._firebaseEmulatorsConnected) {
+      console.log('Connecting to Firebase emulators...');
+      connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
+      connectFirestoreEmulator(db, 'localhost', 8080);
+      connectStorageEmulator(storage, 'localhost', 9199);
+      console.log('Successfully connected to Firebase emulators.');
+      (window as any)._firebaseEmulatorsConnected = true;
+    }
+
   } catch (error) {
     console.warn("Firebase initialization failed:", error);
     // @ts-ignore - Creating mock objects for build
@@ -43,42 +54,6 @@ function initializeFirebase() {
     db = {} as Firestore;
     // @ts-ignore - Creating mock objects for build
     storage = {} as FirebaseStorage;
-  }
-
-  // Force emulator connection in this development environment
-  if (typeof window !== 'undefined' && !(window as any)._firebaseEmulatorsConnected) {
-    console.log('Connecting to Firebase emulators.');
-    try {
-      connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
-      console.log('🔐 Connected to Auth emulator');
-    } catch (e) {
-      console.warn('🔐 Auth emulator already connected or connection failed.');
-    }
-    try {
-      connectFirestoreEmulator(db, 'localhost', 8080);
-      console.log('📡 Connected to Firestore emulator');
-    } catch (e) {
-      console.warn('📡 Firestore emulator already connected or connection failed.');
-    }
-    try {
-      connectStorageEmulator(storage, 'localhost', 9199);
-      console.log('📦 Connected to Storage emulator');
-    } catch (e) {
-      console.warn('📦 Storage emulator already connected or connection failed.');
-    }
-    
-    // Dynamically import and connect to App Check emulator
-    import('firebase/app-check').then(({ getAppCheck, connectAppCheckEmulator }) => {
-      try {
-        const appCheck = getAppCheck(app);
-        connectAppCheckEmulator(appCheck, 'localhost:9090', { isTokenAutoRefreshEnabled: true });
-        console.log('🔐 Connected to App Check Emulator.');
-      } catch(e) {
-        console.warn('App Check emulator connection failed.');
-      }
-    }).catch(e => console.error("Error connecting to App Check emulator", e));
-
-    (window as any)._firebaseEmulatorsConnected = true;
   }
 }
 
