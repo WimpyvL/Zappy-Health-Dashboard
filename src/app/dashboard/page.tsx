@@ -23,7 +23,7 @@ import { useState, useEffect } from "react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from 'next/navigation'
 import { useQuery } from '@tanstack/react-query'
-import { databaseService } from '@/lib/database'
+import { dbService } from '@/services/database'
 import { TaskFormModal } from "./tasks/components/task-form-modal"
 import { CreateOrderModal } from "./orders/components/create-order-modal"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -72,10 +72,10 @@ const fetchDashboardStats = async () => {
     pendingOrdersRes,
     newConsultationsRes,
   ] = await Promise.all([
-    databaseService.patients.getAll(),
-    databaseService.sessions.getAll({ filters: [{ field: 'date', op: '>=', value: Timestamp.now() }] }),
-    databaseService.orders.getAll({ filters: [{ field: 'status', op: 'in', value: ['Processing', 'Pending'] }] }),
-    databaseService.sessions.getAll({ filters: [{ field: 'status', op: 'in', value: ['Scheduled', 'Pending'] }] }),
+    dbService.patients.getAll(),
+    dbService.sessions.getAll({ filters: [{ field: 'date', op: '>=', value: Timestamp.now() }] }),
+    dbService.orders.getAll({ filters: [{ field: 'status', op: 'in', value: ['Processing', 'Pending'] }] }),
+    dbService.sessions.getAll({ filters: [{ field: 'status', op: 'in', value: ['Scheduled', 'Pending'] }] }),
   ]);
 
   // Check for errors in responses

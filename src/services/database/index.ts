@@ -256,20 +256,14 @@ interface Message extends BaseDocument {
 }
 
 class DatabaseService {
-  private db: Firestore | null;
+  private db: Firestore;
 
   constructor() {
     this.db = getFirebaseFirestore();
-    if (!this.db) {
-      console.error("Firestore not initialized. Check Firebase configuration.");
-    }
   }
 
   // Generic method to get a collection reference
-  private _getCollection(collectionName: string): CollectionReference<DocumentData> | null {
-    if (!this.db) {
-        throw new Error("Firestore is not initialized.");
-    }
+  private _getCollection(collectionName: string): CollectionReference<DocumentData> {
     return collection(this.db, collectionName);
   }
 
@@ -283,12 +277,6 @@ class DatabaseService {
     options: QueryOptions = {}
   ): Promise<DatabaseResponse<T[]>> {
     const coll = this._getCollection(collectionName);
-    if (!coll) {
-      return { 
-        data: [], 
-        error: { message: "Database not initialized" } 
-      };
-    }
     
     try {
       let q: Query<DocumentData> = query(coll);
@@ -343,13 +331,6 @@ class DatabaseService {
     collectionName: string, 
     id: string
   ): Promise<DatabaseResponse<T | null>> {
-    if (!this.db) {
-      return { 
-        data: null, 
-        error: { message: "Database not initialized" } 
-      };
-    }
-    
     try {
       const docRef = doc(this.db, collectionName, id);
       const docSnap = await getDoc(docRef);
@@ -392,12 +373,6 @@ class DatabaseService {
     data: Omit<T, 'id' | 'createdAt' | 'updatedAt'>
   ): Promise<DatabaseResponse<T | null>> {
     const coll = this._getCollection(collectionName);
-    if (!coll) {
-      return { 
-        data: null, 
-        error: { message: "Database not initialized" } 
-      };
-    }
     
     try {
       const now = new Date();
@@ -445,13 +420,6 @@ class DatabaseService {
     id: string, 
     data: Partial<Omit<T, 'id' | 'createdAt'>>
   ): Promise<DatabaseResponse<T | null>> {
-    if (!this.db) {
-      return { 
-        data: null, 
-        error: { message: "Database not initialized" } 
-      };
-    }
-    
     try {
       const docRef = doc(this.db, collectionName, id);
       await updateDoc(docRef, {
@@ -493,10 +461,6 @@ class DatabaseService {
    * Deletes a document from a collection.
    */
   async delete(collectionName: string, id: string): Promise<{ error: DatabaseError | null }> {
-    if (!this.db) {
-      return { error: { message: "Database not initialized" } };
-    }
-    
     try {
       const docRef = doc(this.db, collectionName, id);
       await deleteDoc(docRef);
@@ -604,35 +568,16 @@ class DatabaseService {
     create: (data) => this.create<Message>('conversations', data),
     delete: (id) => this.delete('conversations', id),
   };
+
+  listen(collectionName: string, id: string, onUpdate: (data: any | null) => void) {
+    const docRef = doc(this.db, collectionName, id);
+    return onSnapshot(docRef, (doc) => {
+        onUpdate(doc.exists() ? { id: doc.id, ...doc.data() } : null);
+    });
+  }
 }
 
 export const dbService = new DatabaseService();
-export const databaseService = dbService; // For backward compatibility
-
-const createServiceMethods = (collectionName: string) => ({
-    getAll: (options: QueryOptions = {}) => dbService.getAll(collectionName, options),
-    getById: (id: string) => dbService.getById(collectionName, id),
-    create: (data: any) => dbService.create(collectionName, data),
-    update: (id: string, data: any) => dbService.update(collectionName, id, data),
-    delete: (id: string) => dbService.delete(collectionName, id),
-    listen: (id: string, onUpdate: (data: any | null) => void) => dbService.listen(collectionName, id, onUpdate)
-});
-
-// Create specific service namespaces
-dbService.patients = createServiceMethods('patients');
-dbService.providers = createServiceMethods('providers');
-dbService.orders = createServiceMethods('orders');
-dbService.sessions = createServiceMethods('sessions');
-dbService.discounts = createServiceMethods('discounts');
-dbService.pharmacies = createServiceMethods('pharmacies');
-dbService.products = createServiceMethods('products');
-dbService.resources = createServiceMethods('resources');
-dbService.tags = createServiceMethods('tags');
-dbService.invoices = createServiceMethods('invoices');
-dbService.auditLogs = createServiceMethods('audit_logs');
-dbService.tasks = createServiceMethods('tasks');
-dbService.messages = createServiceMethods('conversations');
-dbService.insurance_documents = createServiceMethods('insurance_documents');
 
 // Export types for use in other parts of the application
 export type {
