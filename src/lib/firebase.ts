@@ -45,8 +45,9 @@ function initializeFirebase() {
     storage = {} as FirebaseStorage;
   }
 
-  if (isDevelopment() && typeof window !== 'undefined' && !(window as any)._firebaseEmulatorsConnected) {
-    console.log('Running in development mode, connecting to emulators.');
+  // Force emulator connection in this development environment
+  if (typeof window !== 'undefined' && !(window as any)._firebaseEmulatorsConnected) {
+    console.log('Connecting to Firebase emulators.');
     try {
       connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
       console.log('🔐 Connected to Auth emulator');
@@ -68,9 +69,13 @@ function initializeFirebase() {
     
     // Dynamically import and connect to App Check emulator
     import('firebase/app-check').then(({ getAppCheck, connectAppCheckEmulator }) => {
-      const appCheck = getAppCheck(app);
-      connectAppCheckEmulator(appCheck, 'localhost:9090', { isTokenAutoRefreshEnabled: true });
-      console.log('🔐 Connected to App Check Emulator.');
+      try {
+        const appCheck = getAppCheck(app);
+        connectAppCheckEmulator(appCheck, 'localhost:9090', { isTokenAutoRefreshEnabled: true });
+        console.log('🔐 Connected to App Check Emulator.');
+      } catch(e) {
+        console.warn('App Check emulator connection failed.');
+      }
     }).catch(e => console.error("Error connecting to App Check emulator", e));
 
     (window as any)._firebaseEmulatorsConnected = true;
