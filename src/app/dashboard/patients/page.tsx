@@ -46,6 +46,7 @@ import { useAuth } from "@/lib/auth-context";
 
 // Import the new centralized service hooks
 import { usePatients, useCreatePatient, useUpdatePatient, type Patient } from "@/services/database/hooks";
+import { Timestamp } from "firebase/firestore";
 
 type Message = {
   id: string;
@@ -108,44 +109,36 @@ export default function PatientsPage() {
   };
 
   const handleFormSubmit = async (values: any) => {
-    const patientData = { ...values };
+    // Convert dob to Timestamp for Firestore
+    const patientData = { 
+      ...values, 
+      dob: Timestamp.fromDate(new Date(values.dob)),
+    };
+    
+    const mutation = editingPatient ? updatePatientMutation : createPatientMutation;
+    const action = editingPatient ? 'Updated' : 'Added';
 
-    if (editingPatient) {
-      updatePatientMutation.mutate({ id: editingPatient.id, ...patientData }, {
+    mutation.mutate(
+      editingPatient ? { id: editingPatient.id, ...patientData } : patientData,
+      {
         onSuccess: () => {
           toast({
-            title: "Patient Updated",
+            title: `Patient ${action}`,
             description: `${values.firstName} ${values.lastName}'s information has been saved.`,
           });
           handleCloseModal();
         },
         onError: (e: Error) => {
-           toast({
-            variant: "destructive",
-            title: "Error Saving Patient",
-            description: e.message || "An error occurred while saving the patient information. Please try again.",
-          });
-        }
-      });
-    } else {
-      createPatientMutation.mutate(patientData, {
-        onSuccess: () => {
-          toast({
-            title: "Patient Added",
-            description: `${values.firstName} ${values.lastName} has been added to the system.`,
-          });
-          handleCloseModal();
-        },
-        onError: (e: Error) => {
           toast({
             variant: "destructive",
-            title: "Error Saving Patient",
-            description: e.message || "An error occurred while saving the patient information. Please try again.",
+            title: `Error Saving Patient`,
+            description: e.message || `An error occurred while saving the patient.`,
           });
         }
-      });
-    }
+      }
+    );
   };
+
 
   const handleOpenMessageModal = (patient: Patient) => {
     const messageData: Message = {
@@ -271,20 +264,16 @@ export default function PatientsPage() {
                           }
                         >
                           <Check className="h-3 w-3 mr-1" />
-                          {"Active"}
+                          {patient.status}
                         </Badge>
                       </TableCell>
-                      <TableCell>N/A</TableCell>
-                      <TableCell>N/A</TableCell>
-                      <TableCell>N/A</TableCell>
                       <TableCell>
-                        <div>{0}</div>
-                        <div className="text-xs text-muted-foreground">
-                          N/A
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          N/A
-                        </div>
+                        {patient.tags?.map(tag => <Badge key={tag} variant="outline" className="mr-1">{tag}</Badge>)}
+                      </TableCell>
+                      <TableCell>{patient.plan}</TableCell>
+                      <TableCell>{patient.lastActive ? format(patient.lastActive.toDate(), 'PPP') : 'N/A'}</TableCell>
+                      <TableCell>
+                        <div>{patient.orders}</div>
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-2">
@@ -292,7 +281,7 @@ export default function PatientsPage() {
                             variant="ghost"
                             size="icon"
                             className="h-8 w-8"
-                            onClick={() => handleOpenEditModal(patient as any)}
+                            onClick={() => handleOpenEditModal(patient)}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -301,7 +290,7 @@ export default function PatientsPage() {
                             size="icon"
                             className="h-8 w-8"
                             onClick={() =>
-                              handleOpenMessageModal(patient as any)
+                              handleOpenMessageModal(patient)
                             }
                           >
                             <MessageSquare className="h-4 w-4" />
@@ -365,9 +354,8 @@ export default function PatientsPage() {
        <ViewMessageModal
         isOpen={isMessageModalOpen}
         onClose={handleCloseMessageModal}
-        conversation={selectedMessage}
+        conversation={selectedMessage as any}
       />
     </>
   );
 }
-
