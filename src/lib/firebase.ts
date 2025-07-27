@@ -1,12 +1,9 @@
-
 // src/lib/firebase.ts
 import { initializeApp, getApps, getApp, FirebaseApp } from "firebase/app";
 import { getFirestore, Firestore, connectFirestoreEmulator } from "firebase/firestore";
 import { getAuth, Auth, connectAuthEmulator } from "firebase/auth";
 import { getStorage, FirebaseStorage, connectStorageEmulator } from "firebase/storage";
-import { isDevelopment } from './utils';
 
-// Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyBVV_vq5fjNSASYQndmbRbEtlfyOieFVTs",
   authDomain: "zappy-health-c1kob.firebaseapp.com",
@@ -21,48 +18,40 @@ let app: FirebaseApp;
 let auth: Auth;
 let db: Firestore;
 let storage: FirebaseStorage;
+let emulatorsConnected = false;
 
 function initializeFirebase() {
-  try {
-    if (getApps().length === 0) {
-      app = initializeApp(firebaseConfig);
-    } else {
-      app = getApp();
+  if (getApps().length === 0) {
+    app = initializeApp(firebaseConfig);
+  } else {
+    app = getApp();
+  }
+  auth = getAuth(app);
+  db = getFirestore(app);
+  storage = getStorage(app);
+
+  // In a real development environment, we'd use a condition like:
+  // if (process.env.NODE_ENV === 'development' && !emulatorsConnected) {
+  // However, to ensure it works in this specific Studio environment,
+  // we will connect unconditionally.
+  if (!emulatorsConnected) {
+    console.log("Connecting to Firebase emulators...");
+    try {
+      connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+      connectFirestoreEmulator(db, '127.0.0.1', 8080);
+      connectStorageEmulator(storage, '127.0.0.1', 9199);
+      console.log("Successfully connected to Firebase emulators.");
+      emulatorsConnected = true;
+    } catch (error) {
+      console.error("Error connecting to Firebase emulators:", error);
     }
-
-    auth = getAuth(app);
-    db = getFirestore(app);
-    storage = getStorage(app);
-
-    // Unconditionally connect to emulators in this environment
-    if (typeof window !== 'undefined' && !(window as any)._firebaseEmulatorsConnected) {
-      console.log('Connecting to Firebase emulators...');
-      connectAuthEmulator(auth, 'http://localhost:9099', { disableWarnings: true });
-      connectFirestoreEmulator(db, 'localhost', 8080);
-      connectStorageEmulator(storage, 'localhost', 9199);
-      console.log('Successfully connected to Firebase emulators.');
-      (window as any)._firebaseEmulatorsConnected = true;
-    }
-
-  } catch (error) {
-    console.warn("Firebase initialization failed:", error);
-    // @ts-ignore - Creating mock objects for build
-    app = {} as FirebaseApp;
-    // @ts-ignore - Creating mock objects for build
-    auth = { currentUser: null } as Auth;
-    // @ts-ignore - Creating mock objects for build
-    db = {} as Firestore;
-    // @ts-ignore - Creating mock objects for build
-    storage = {} as FirebaseStorage;
   }
 }
 
 initializeFirebase();
 
-// Exported instances
 export { app, auth, db, storage };
 
-// Helper functions to get Firebase services
 export const getFirebaseApp = () => app;
 export const getFirebaseAuth = () => auth;
 export const getFirebaseFirestore = () => db;
